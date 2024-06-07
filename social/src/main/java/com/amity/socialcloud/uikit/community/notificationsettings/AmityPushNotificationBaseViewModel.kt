@@ -17,7 +17,6 @@ open class AmityPushNotificationBaseViewModel : AmityBaseViewModel() {
 
     var isPostEnabled = false
     var isCommentEnabled = false
-    var isStoryEnabled = false
     var isGlobalModerator = false
     var isGlobalPushEnabled = true
     var isCommunityPushEnabled = false
@@ -49,7 +48,6 @@ open class AmityPushNotificationBaseViewModel : AmityBaseViewModel() {
                         isPostEnabled = true
                     }
                 }
-
                 is AmityCommunityNotificationEvent.COMMENT_CREATED,
                 is AmityCommunityNotificationEvent.COMMENT_REACTED,
                 is AmityCommunityNotificationEvent.COMMENT_REPLIED -> {
@@ -58,13 +56,7 @@ open class AmityPushNotificationBaseViewModel : AmityBaseViewModel() {
                     }
                 }
 
-                is AmityCommunityNotificationEvent.STORY_COMMENT_CREATED,
-                is AmityCommunityNotificationEvent.STORY_CREATED,
-                is AmityCommunityNotificationEvent.STORY_REACTED -> {
-                    if (event.isNetworkEnabled()) {
-                        isStoryEnabled = true
-                    }
-                }
+                else -> {}
             }
         }
     }
