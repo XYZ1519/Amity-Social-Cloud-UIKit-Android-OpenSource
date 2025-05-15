@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.android'
+    id 'kotlin-kapt'
 }
 
 android {
@@ -28,11 +29,17 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
+    }
+
+    packagingOptions {
+        pickFirst("META-INF/*.kotlin_module")
+        exclude 'META-INF/INDEX.LIST'
+        exclude 'META-INF/io.netty.versions.properties'
     }
 }
 
@@ -42,28 +49,38 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.9.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
+    implementation "com.squareup.retrofit2:retrofit:$retrofitVersion"
+    implementation "com.squareup.retrofit2:adapter-rxjava3:$retrofitVersion"
+    implementation "com.squareup.retrofit2:converter-gson:$retrofitVersion"
+
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
 
-    def composeBom = platform('androidx.compose:compose-bom:2022.12.00')
+    def composeBom = platform('androidx.compose:compose-bom:2024.12.01')
     api composeBom
     androidTestApi composeBom
 
     // Material Design 3
-    api 'androidx.compose.material3:material3-android:1.2.1'
+    api 'androidx.compose.material3:material3-android:1.3.1'
+    api 'androidx.compose.material:material-android:1.6.7'
     // Android Studio Preview support
-    api 'androidx.compose.ui:ui-tooling-preview'
-    debugApi 'androidx.compose.ui:ui-tooling'
+    api 'androidx.compose.ui:ui-tooling'
     // Optional - Integration with activities
     api 'androidx.activity:activity-compose'
     // Optional - Integration with ViewModels
     api 'androidx.lifecycle:lifecycle-viewmodel-compose'
     // Optional - Integration with RxJava
     api 'androidx.compose.runtime:runtime-rxjava3'
+    api 'androidx.compose.ui:ui-viewbinding'
 
     // image loading
-    api "io.coil-kt:coil-compose:2.4.0"
+    api "io.coil-kt.coil3:coil:3.0.0"
+    api "io.coil-kt.coil3:coil-compose:3.0.0"
+    api "io.coil-kt.coil3:coil-video:3.0.0"
+    api "io.coil-kt.coil3:coil-network-okhttp:3.0.0"
+    api "io.coil-kt.coil3:coil-network-cache-control:3.0.0"
+
     //  extract colors from images with palette
     api "androidx.palette:palette-ktx:1.0.0"
 
@@ -71,4 +88,8 @@ dependencies {
     api "androidx.paging:paging-compose:3.2.1"
     api "com.linkedin.android.spyglass:spyglass:3.0.1"
 
+    def room_version = "2.5.1"
+    api "androidx.room:room-runtime:$room_version"
+    api "androidx.room:room-rxjava3:$room_version"
+    kapt "androidx.room:room-compiler:$room_version"
 }

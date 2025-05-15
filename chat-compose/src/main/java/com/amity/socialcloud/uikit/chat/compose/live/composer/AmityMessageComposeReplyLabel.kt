@@ -14,7 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -37,7 +36,7 @@ fun AmityMessageComposeReplyLabel(
         modifier = modifier
             .fillMaxWidth()
             .height(62.dp)
-            .background(color = Color(0xFF292B32))//AmityTheme.colors.secondaryShade4
+            .background(color = AmityTheme.colors.baseShade4)
             .padding(start = 16.dp, top = 0.dp, end = 12.dp, bottom = 0.dp)
     ) {
         val creator = parentMessage?.getCreator()
@@ -63,9 +62,9 @@ fun AmityMessageComposeReplyLabel(
                 text = text,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = AmityTheme.typography.body.copy(
+                style = AmityTheme.typography.bodyLegacy.copy(
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFFFFFFFF)//AmityTheme.colors.baseShade1,
+                    color = AmityTheme.colors.baseShade1,
                 ),
             )
             Spacer(modifier = modifier.height(2.dp))
@@ -73,8 +72,8 @@ fun AmityMessageComposeReplyLabel(
                 text = parentText,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                style = AmityTheme.typography.body.copy(
-                    color = Color(0xFFEBECEF)//AmityTheme.colors.baseShade1,
+                style = AmityTheme.typography.bodyLegacy.copy(
+                    color = AmityTheme.colors.baseShade1,
                 ),
             )
         }

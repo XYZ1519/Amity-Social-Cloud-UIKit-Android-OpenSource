@@ -26,6 +26,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amity.socialcloud.sdk.model.social.story.AmityStory
 import com.amity.socialcloud.sdk.model.social.story.AmityStoryTarget
 import com.amity.socialcloud.uikit.common.common.readableNumber
+import com.amity.socialcloud.uikit.common.ui.elements.AmityAlertDialog
+import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
+import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.story.view.AmityStoryModalDialogUIState
 import com.amity.socialcloud.uikit.community.compose.story.view.AmityStoryModalSheetUIState
@@ -33,9 +36,7 @@ import com.amity.socialcloud.uikit.community.compose.story.view.AmityViewStoryPa
 import com.amity.socialcloud.uikit.community.compose.story.view.elements.AmityStoryCommentCountElement
 import com.amity.socialcloud.uikit.community.compose.story.view.elements.AmityStoryReactionCountElement
 import com.amity.socialcloud.uikit.community.compose.story.view.elements.AmityStoryViewCountElement
-import com.amity.socialcloud.uikit.common.ui.elements.AmityAlertDialogWithThreeActions
-import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
-import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.compose.R as CommonR
 
 @Composable
 fun AmityStoryBottomRow(
@@ -216,12 +217,12 @@ fun AmityStoryUploadFailedRow(
     if (openAlertDialog.value) {
         viewModel.handleSegmentTimer(shouldPause = true)
 
-        AmityAlertDialogWithThreeActions(
+        AmityAlertDialog(
             dialogTitle = "Failed to upload story",
             dialogText = "Would you like to discard or retry uploading?",
-            dismissText = "CANCEL",
-            action1Text = "DISCARD",
-            action2Text = "RETRY",
+            dismissText = "Cancel",
+            action1Text = "Discard",
+            action2Text = "Retry",
             onAction1 = {
                 openAlertDialog.value = false
                 viewModel.updateDialogUIState(
@@ -236,7 +237,7 @@ fun AmityStoryUploadFailedRow(
                     story = story,
                     onSuccess = {
                         pageScope?.showSnackbar(
-                            drawableRes = R.drawable.amity_ic_check_circle,
+                            drawableRes = CommonR.drawable.amity_ic_check_circle,
                             message = "Successfully shared story"
                         )
                     },

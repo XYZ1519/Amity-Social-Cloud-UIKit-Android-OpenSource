@@ -1,9 +1,9 @@
 package com.amity.socialcloud.uikit.common.ui.scope
 
-import androidx.annotation.DrawableRes
 import com.amity.socialcloud.uikit.common.config.AmityUIKitConfig
 import com.amity.socialcloud.uikit.common.config.AmityUIKitConfigController
 import com.google.gson.JsonObject
+
 
 interface AmityComposeScope {
 
@@ -18,9 +18,10 @@ interface AmityComposeScope {
     fun isExcluded(): Boolean {
         return AmityUIKitConfigController.isExcluded(getConfigId())
     }
+
 }
 
-interface AmityComposePageScope : AmityComposeScope {
+interface AmityComposePageScope : AmityComposeScope, SnackbarScope {
 
     fun getPageScope(): AmityComposePageScope {
         return this
@@ -28,18 +29,17 @@ interface AmityComposePageScope : AmityComposeScope {
 
     fun getPageTheme(): AmityUIKitConfig.UIKitTheme?
 
-    fun showSnackbar(message: String, @DrawableRes drawableRes: Int? = null)
+
+
 }
 
-interface AmityComposeComponentScope : AmityComposeScope {
+interface AmityComposeComponentScope : AmityComposeScope, SnackbarScope {
 
     fun getComponentScope(): AmityComposeComponentScope {
         return this
     }
 
     fun getComponentTheme(): AmityUIKitConfig.UIKitTheme?
-
-    fun showSnackbar(message: String, @DrawableRes drawableRes: Int? = null)
 
     fun getAccessibilityId(viewId: String = ""): String
 }
@@ -50,7 +50,6 @@ interface AmityComposeElementScope : AmityComposeScope {
         return this
     }
 
-    fun showSnackbar(message: String, @DrawableRes drawableRes: Int? = null)
-
     fun getAccessibilityId(viewId: String = ""): String
 }
+

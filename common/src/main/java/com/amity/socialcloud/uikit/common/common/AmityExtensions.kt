@@ -13,6 +13,8 @@ import androidx.annotation.ColorRes
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.paging.PagedList
+import com.amity.socialcloud.sdk.model.core.content.AmityContentFeedType
+import com.amity.socialcloud.sdk.model.core.error.AmityError
 import com.amity.socialcloud.uikit.common.R
 import com.amity.socialcloud.uikit.common.common.views.AmityColorPaletteUtil
 import com.amity.socialcloud.uikit.common.common.views.AmityColorShade
@@ -26,8 +28,11 @@ import com.google.android.material.shape.ShapeAppearanceModel
 import com.google.android.material.snackbar.BaseTransientBottomBar
 import com.google.android.material.snackbar.Snackbar
 import org.joda.time.DateTime
+import org.joda.time.Duration
 import java.math.RoundingMode
 import java.text.DecimalFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.ln
 import kotlin.math.pow
@@ -109,7 +114,7 @@ fun isPlurals(number: Long): Boolean {
 fun Int.readableNumber(): String {
     if (this < 1000) return "" + this
     val exp = (ln(this.toDouble()) / ln(1000.0)).toInt()
-    val format = DecimalFormat("0.0")
+    val format = DecimalFormat("0.#")
     val value: String = format.format(this / 1000.0.pow(exp.toDouble()))
     return String.format("%s%c", value, "KMBTPE"[exp - 1])
 }
@@ -128,6 +133,37 @@ fun DateTime.readableTimeDiff(): String {
             minutes > 0 -> minutes.toString() + "m"
             seconds > 1 -> seconds.toString() + "s"
             else -> "Just now"
+        }
+    }
+}
+
+fun DateTime.readableSocialTimeDiff(): String {
+    val now = DateTime.now()
+
+    if (now.year().get() > this.year().get()) {
+        val formatter = SimpleDateFormat("d MMM yyyy", Locale.getDefault())
+        val formattedDateTime: String = formatter.format(this.toDate())
+        return formattedDateTime
+    } else {
+        if (now.dayOfYear - this.dayOfYear <= 7) {
+            //  within 7 days
+            val diff = now.millis - this.millis
+            diff.let {
+                val days = TimeUnit.MILLISECONDS.toDays(diff)
+                val hours = TimeUnit.MILLISECONDS.toHours(diff)
+                val minutes = TimeUnit.MILLISECONDS.toMinutes(diff)
+
+                return when {
+                    days > 0 -> days.toString() + "d"
+                    hours > 0 -> hours.toString() + "h"
+                    minutes > 0 -> minutes.toString() + "m"
+                    else -> "Just now"
+                }
+            }
+        } else {
+            val formatter = SimpleDateFormat("d MMM", Locale.getDefault())
+            val formattedDateTime: String = formatter.format(this.toDate())
+            return formattedDateTime
         }
     }
 }
@@ -277,6 +313,37 @@ fun Double.formatCount(): String {
     }
 }
 
+fun DateTime.readableTimeLeft(startTime: DateTime = DateTime.now()): String {
+
+    if (this.isBefore(startTime) || this == startTime) {
+        return "0 m left"
+    }
+
+    val duration = Duration(startTime, this)
+
+    // Calculate total hours and days
+    val totalHours = duration.standardHours
+    val totalMinutes = duration.standardMinutes
+    val totalDays = duration.standardDays
+
+    return when {
+        totalDays > 0 -> {
+            // Round up to the next day if hours are greater than 0
+            val daysLeft = if (duration.standardHours % 24 > 0) totalDays + 1 else totalDays
+            "${daysLeft}d left"
+        }
+        totalHours > 0 -> {
+            "${totalHours}h left"
+        }
+        totalMinutes > 0 -> {
+            "${totalMinutes}m left"
+        }
+        else -> {
+            "0m left" // In case the target time is in the past or very close to now
+        }
+    }
+}
+
 fun View.expandViewHitArea(): View? {
     val parent = (this.parent as? View)
     parent?.post {
@@ -308,4 +375,51 @@ fun View.setSafeOnClickListener(onSafeClick: (View) -> Unit) {
         onSafeClick(it)
     }
     setOnClickListener(safeClickListener)
+}
+
+fun Throwable.toImageUploadError(): String {
+    if(AmityError.from(this) == AmityError.FILE_SIZE_EXCEEDED) {
+        return "Oops, photo can be maxed 30 MB"
+    }
+
+    val errorMessage = this.message ?: "Oops, photo upload failed"
+    val localizedMessages = mapOf(
+        Regex("""Image uploading failed: Image size in bytes: \d+ is more than the maximum limit""")
+                to "Oops, photo can be maxed 30 MB",
+        Regex("""Image uploading failed: Request has invalid image format""")
+                to "Oops, photo formats accepted: JPG and PNG",
+    )
+
+    for ((pattern, localizedMessage) in localizedMessages) {
+        if (pattern.matches(errorMessage)) {
+            return localizedMessage
+        }
+    }
+
+    return errorMessage
+}
+
+fun Throwable.toVideoUploadError(contentType: AmityContentFeedType): String {
+    if(AmityError.from(this) == AmityError.FILE_SIZE_EXCEEDED) {
+        return "Oops, video can be maxed 1 GB"
+    }
+
+    val maxDuration = if(contentType == AmityContentFeedType.STORY) 15 else 7200
+
+    val errorMessage = this.message ?: "Oops, video upload failed"
+    val localizedMessages = mapOf(
+        Regex("""Failed to upload video. Video duration exceeds the maximum limit of \d+s\.""")
+                to "Oops, video can be maxed $maxDuration seconds",
+        Regex("""Video uploading failed: Video size in bytes: \d+ is more than the maximum limit""")
+                to "Oops, video can be maxed 1 GB",
+        Regex("""Video uploading failed: Request has invalid video format""")
+                to "Oops, video formats accepted: 3gp, avi, f4v, flv, m4v, mov, mp4, ogv, 3g2, wmv, vob, webm, and mkv",
+    )
+
+    for ((pattern, localizedMessage) in localizedMessages) {
+        if (pattern.matches(errorMessage)) {
+            return localizedMessage
+        }
+    }
+    return errorMessage
 }

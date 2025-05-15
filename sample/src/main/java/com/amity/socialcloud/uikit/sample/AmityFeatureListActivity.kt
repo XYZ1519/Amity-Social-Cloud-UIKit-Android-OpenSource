@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.text.InputType
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -15,14 +16,18 @@ import com.afollestad.materialdialogs.input.InputCallback
 import com.afollestad.materialdialogs.input.input
 import com.amity.socialcloud.sdk.api.chat.AmityChatClient
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
+import com.amity.socialcloud.uikit.AmityUIKit4Manager
 import com.amity.socialcloud.uikit.chat.home.AmityChatHomePageActivity
 import com.amity.socialcloud.uikit.chat.messages.AmityMessageListActivity
+import com.amity.socialcloud.uikit.community.compose.community.category.AmityAllCategoriesPageActivity
+import com.amity.socialcloud.uikit.community.compose.socialhome.AmitySocialHomePageActivity
 import com.amity.socialcloud.uikit.community.home.activity.AmityCommunityHomePageActivity
 import com.amity.socialcloud.uikit.community.newsfeed.activity.AmityCustomPostRankingFeedActivity
 import com.amity.socialcloud.uikit.community.utils.AmityCommunityNavigation
 import com.amity.socialcloud.uikit.sample.databinding.AmityActivityFeatureListBinding
 import com.amity.socialcloud.uikit.sample.liveChat.AmityLiveChatListActivity
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.schedulers.Schedulers
 
 class AmityFeatureListActivity : AppCompatActivity() {
@@ -37,6 +42,7 @@ class AmityFeatureListActivity : AppCompatActivity() {
 
         checkNotificationPermission()
 
+        val context = this
         binding.apply {
             communityHome.setOnClickListener {
                 val communityIntent = Intent(
@@ -44,6 +50,23 @@ class AmityFeatureListActivity : AppCompatActivity() {
                     AmityCommunityHomePageActivity::class.java
                 )
                 startActivity(communityIntent)
+            }
+
+            communityHomeV4.setOnClickListener {
+                val communityIntent = Intent(
+                    this@AmityFeatureListActivity,
+                    AmitySocialHomePageActivity::class.java
+                )
+                startActivity(communityIntent)
+            }
+
+            socialV4Compatible.setOnClickListener {
+                startActivity(
+                    AmityCommunityHomePageActivity.newIntent(
+                        this@AmityFeatureListActivity,
+                        useNewsFeedV4 = true
+                    )
+                )
             }
 
             customRankingFeed.setOnClickListener {
@@ -62,6 +85,13 @@ class AmityFeatureListActivity : AppCompatActivity() {
 
             userProfile.setOnClickListener {
                 AmityCommunityNavigation.navigateToUserProfile(
+                    this@AmityFeatureListActivity,
+                    AmityCoreClient.getUserId()
+                )
+            }
+
+            userProfileV4.setOnClickListener {
+                AmityCommunityNavigation.navigateToUserProfileV4(
                     this@AmityFeatureListActivity,
                     AmityCoreClient.getUserId()
                 )
@@ -92,6 +122,40 @@ class AmityFeatureListActivity : AppCompatActivity() {
                         AmityLiveChatListActivity::class.java
                     )
                 )
+            }
+
+            configSync.setOnClickListener {
+                configSync.isEnabled = false
+                Log.d("UIKitV4", "syncing config")
+                val delayForTesting = 5L
+                Completable.complete()
+                    .delay(delayForTesting, java.util.concurrent.TimeUnit.SECONDS)
+                    .andThen(
+                AmityUIKit4Manager.syncNetworkConfig()
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .doOnComplete {
+                        Log.d("UIKitV4", "sync complete")
+                        Toast.makeText(context, "config synced", Toast.LENGTH_SHORT).show()
+                    }
+                    .doOnError {
+                        Log.d("UIKitV4", "sync failed")
+                        it.printStackTrace()
+                        Toast.makeText(context, "config sync failed: " + it.message , Toast.LENGTH_SHORT).show()
+                    }
+                    .doFinally {
+                        configSync.isEnabled = true
+                    })
+
+                    .subscribe()
+            }
+
+            playground.setOnClickListener {
+                val intent = Intent(
+                    this@AmityFeatureListActivity,
+                    AmityPlaygroundActivity::class.java
+                )
+                startActivity(intent)
             }
         }
     }

@@ -3,7 +3,7 @@ package com.amity.snipet.verifier.customization
 import android.content.Context
 import com.amity.socialcloud.sdk.model.social.story.AmityStory
 import com.amity.socialcloud.uikit.AmityUIKit4Manager
-import com.amity.socialcloud.uikit.community.compose.story.target.AmityStoryTargetTabComponentBehavior
+import com.amity.socialcloud.uikit.community.compose.story.target.AmityStoryTabComponentBehavior
 import com.amity.socialcloud.uikit.community.compose.story.view.AmityViewStoryPageType
 
 class AmityOverridingNavigationBehavior {
@@ -13,7 +13,7 @@ class AmityOverridingNavigationBehavior {
      asc_page: https://docs.amity.co/amity-uikit/uikit-v4-beta/customization/
      description: Overriding navigation behavior
      */
-    class CustomStoryTabComponentBehaviour : AmityStoryTargetTabComponentBehavior() {
+    class CustomStoryTabComponentBehaviour : AmityStoryTabComponentBehavior() {
 
         override fun goToViewStoryPage(
             context: Context,
@@ -31,7 +31,7 @@ class AmityOverridingNavigationBehavior {
         }
     }
 
-    // Call this function in Application class to setup custom behaviour class in UIKit
+    // Call this function in AmityUIKit4Manager class to setup custom behaviour class in UIKit
     fun setCustomBehavior() {
         val customStoryTabComponentBehaviour = CustomStoryTabComponentBehaviour()
         AmityUIKit4Manager.behavior.storyTabComponentBehavior = customStoryTabComponentBehaviour

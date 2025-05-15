@@ -5,7 +5,6 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -46,6 +45,7 @@ import com.amity.socialcloud.sdk.model.social.story.AmityStory
 import com.amity.socialcloud.uikit.common.common.readableMinuteSeconds
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
+import com.amity.socialcloud.uikit.common.ui.elements.AmityMenuButton
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.asDrawableRes
 import com.amity.socialcloud.uikit.common.utils.closePage
@@ -55,7 +55,6 @@ import com.amity.socialcloud.uikit.common.utils.getValue
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.story.create.elements.AmityStoryCameraPreviewElement
-import com.amity.socialcloud.uikit.community.compose.story.create.elements.AmityStoryCameraRelatedButtonElement
 import com.amity.socialcloud.uikit.community.compose.story.create.elements.AmityStoryCameraShutterButtonElement
 import com.amity.socialcloud.uikit.community.compose.story.create.elements.AmityStoryPhotoVideoSelectionElement
 import com.amity.socialcloud.uikit.community.compose.story.draft.AmityStoryMediaType
@@ -89,6 +88,7 @@ fun AmityCreateStoryPage(
     var isPhotoSelected by remember { mutableStateOf(true) }
     var isCameraPermissionGranted by remember { mutableStateOf(false) }
     var isMediaPermissionGranted by remember { mutableStateOf(false) }
+    var shouldShowPermissionRequiredMessage by remember { mutableStateOf(false) }
 
     var isBackCameraSelected by remember { mutableStateOf(true) }
     var isFlashLightOn by remember { mutableStateOf(false) }
@@ -106,6 +106,7 @@ fun AmityCreateStoryPage(
     val cameraPermissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             isCameraPermissionGranted = permissions.entries.all { it.value }
+            shouldShowPermissionRequiredMessage = !isCameraPermissionGranted
         }
 
     val mediaPickerLauncher =
@@ -188,6 +189,12 @@ fun AmityCreateStoryPage(
     }
 
     AmityBasePage(pageId = "camera_page") {
+        LaunchedEffect(shouldShowPermissionRequiredMessage) {
+            if (shouldShowPermissionRequiredMessage) {
+                getPageScope().showSnackbar("Required permission is not granted.")
+            }
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -217,9 +224,9 @@ fun AmityCreateStoryPage(
                         pageScope = getPageScope(),
                         elementId = "close_button"
                     ) {
-                        AmityStoryCameraRelatedButtonElement(
+                        AmityMenuButton(
                             icon = getConfig().getValue("close_icon").asDrawableRes(),
-                            iconSize = 12.dp,
+                            size = 12.dp,
                             modifier = Modifier
                                 .size(32.dp)
                                 .constrainAs(closeBtn) {
@@ -236,9 +243,9 @@ fun AmityCreateStoryPage(
                     }
 
                     if (isBackCameraSelected) {
-                        AmityStoryCameraRelatedButtonElement(
+                        AmityMenuButton(
                             icon = if (isFlashLightOn) R.drawable.amity_ic_story_flash else R.drawable.amity_ic_story_flash_off,
-                            iconSize = if (isFlashLightOn) 19.dp else 24.dp,
+                            size = if (isFlashLightOn) 19.dp else 24.dp,
                             modifier = Modifier
                                 .size(32.dp)
                                 .constrainAs(flashBtn) {
@@ -252,9 +259,9 @@ fun AmityCreateStoryPage(
                             }
                         )
                     }
-                    AmityStoryCameraRelatedButtonElement(
+                    AmityMenuButton(
                         icon = R.drawable.amity_ic_story_media,
-                        iconSize = 24.dp,
+                        size = 24.dp,
                         modifier = Modifier
                             .size(40.dp)
                             .constrainAs(selectMediaBtn) {
@@ -264,27 +271,17 @@ fun AmityCreateStoryPage(
                             .testTag("media_picker_button"),
                     ) {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        if (isMediaPermissionGranted) {
-                            mediaPickerLauncher.launch(
-                                PickVisualMediaRequest(
-                                    mediaType =
-                                    if (isPhotoSelected) ActivityResultContracts.PickVisualMedia.ImageOnly
-                                    else ActivityResultContracts.PickVisualMedia.VideoOnly,
-                                )
+                        mediaPickerLauncher.launch(
+                            PickVisualMediaRequest(
+                                mediaType =
+                                if (isPhotoSelected) ActivityResultContracts.PickVisualMedia.ImageOnly
+                                else ActivityResultContracts.PickVisualMedia.VideoOnly,
                             )
-                        } else {
-                            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                                mediaPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
-                            } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                                mediaPermissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
-                            } else {
-                                mediaPermissionLauncher.launch(Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED )
-                            }
-                        }
+                        )
                     }
-                    AmityStoryCameraRelatedButtonElement(
+                    AmityMenuButton(
                         icon = R.drawable.amity_ic_story_switch_camera,
-                        iconSize = 20.dp,
+                        size = 20.dp,
                         modifier = Modifier
                             .size(40.dp)
                             .constrainAs(switchCameraBtn) {

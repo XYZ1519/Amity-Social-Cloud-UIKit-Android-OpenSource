@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.amity.socialcloud.sdk.core.session.model.NetworkConnectionEvent
 import com.amity.socialcloud.uikit.chat.compose.R
-import com.amity.socialcloud.uikit.chat.compose.live.composer.AmityLiveChatPageViewModel
+import com.amity.socialcloud.uikit.chat.compose.live.AmityLiveChatPageViewModel
 import com.amity.socialcloud.uikit.chat.compose.live.elements.AmityLiveChatHeaderAvatar
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
@@ -39,7 +39,10 @@ fun AmityLiveChatHeader(
 		.getNetworkConnectionStateFlow()
 		.collectAsState(initial = NetworkConnectionEvent.Connected)
 	
-	AmityBaseComponent(componentId = "chat_header") {
+	AmityBaseComponent(
+		componentId = "chat_header",
+		pageScope = pageScope,
+	) {
 		Row(
 			verticalAlignment = Alignment.CenterVertically,
 			modifier = Modifier.padding(16.dp, 8.dp)
@@ -56,15 +59,20 @@ fun AmityLiveChatHeader(
 					fontSize = 17.sp,
 					lineHeight = 22.sp,
 					fontWeight = FontWeight(600),
-					color = AmityTheme.colors.baseInverse,
+					color = AmityTheme.colors.baseInverse
 				)
 				Spacer(modifier = Modifier.width(8.dp))
 				when (connection) {
 					NetworkConnectionEvent.Connected -> {
-						ChatHeaderMembersCount(channel?.getMemberCount())
+						ChatHeaderMembersCount(
+							memberCount = channel?.getMemberCount(),
+							pageScope = pageScope,
+						)
 					}
 					NetworkConnectionEvent.Disconnected -> {
-						ChatHeaderWaitingForNetwork()
+						ChatHeaderWaitingForNetwork(
+							pageScope = pageScope,
+						)
 					}
 				}
 				
@@ -75,10 +83,20 @@ fun AmityLiveChatHeader(
 
 
 @Composable
-fun ChatHeaderMembersCount(memberCount: Int? = null) {
+fun ChatHeaderMembersCount(
+	modifier: Modifier = Modifier,
+	memberCount: Int? = null,
+	pageScope: AmityComposePageScope? = null,
+) {
 	if (memberCount != null) {
-		AmityBaseComponent(componentId = "member_count") {
-			Row(verticalAlignment = Alignment.CenterVertically) {
+		AmityBaseComponent(
+			componentId = "member_count",
+			pageScope = pageScope,
+		) {
+			Row(
+				modifier = modifier,
+				verticalAlignment = Alignment.CenterVertically
+			) {
 				Image(
 					painter = painterResource(id = R.drawable.amity_ic_member_count),
 					contentDescription = "Members count icon",
@@ -102,14 +120,23 @@ fun ChatHeaderMembersCount(memberCount: Int? = null) {
 }
 
 @Composable
-fun ChatHeaderWaitingForNetwork() {
-	AmityBaseComponent(componentId = "waiting_for_network") {
-		Row(verticalAlignment = Alignment.CenterVertically) {
+fun ChatHeaderWaitingForNetwork(
+	modifier: Modifier = Modifier,
+	pageScope: AmityComposePageScope? = null,
+) {
+	AmityBaseComponent(
+		componentId = "waiting_for_network",
+		pageScope = pageScope,
+	) {
+		Row(
+			modifier = modifier,
+			verticalAlignment = Alignment.CenterVertically
+		) {
 			CircularProgressIndicator(
 				modifier = Modifier
 					.size(16.dp)
 					.padding(top = 0.dp, bottom = 2.dp),
-				color = AmityTheme.colors.primary
+				color = AmityTheme.colors.baseInverse
 			)
 			Spacer(modifier = Modifier.width(4.dp))
 			Text(

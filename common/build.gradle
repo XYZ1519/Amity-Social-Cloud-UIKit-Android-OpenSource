@@ -3,9 +3,19 @@ apply plugin: 'com.android.library'
 
 
 android {
+    namespace 'com.amity.socialcloud.uikit.common'
+
     buildFeatures {
         dataBinding = true
         viewBinding = true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
     }
 
     packagingOptions {

@@ -44,13 +44,15 @@ import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
 import com.amity.socialcloud.sdk.model.social.story.AmityStory
 import com.amity.socialcloud.sdk.model.social.story.AmityStoryTarget
 import com.amity.socialcloud.sdk.model.social.story.analytics
+import com.amity.socialcloud.uikit.common.ad.AmityListItem
+import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
 import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import com.amity.socialcloud.uikit.common.ui.elements.AmityAlertDialog
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.closePage
-import com.amity.socialcloud.uikit.common.utils.showToast
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.story.view.components.AmityStoryAdView
 import com.amity.socialcloud.uikit.community.compose.story.view.components.AmityStoryBodyRow
 import com.amity.socialcloud.uikit.community.compose.story.view.components.AmityStoryBottomRow
 import com.amity.socialcloud.uikit.community.compose.story.view.components.AmityStoryHeaderRow
@@ -102,10 +104,30 @@ fun AmityViewCommunityStoryPage(
         stories.itemCount
     }
 
-    val currentStory by remember(targetId, storyPagerState.targetPage, stories.itemCount) {
+    val currentData by remember(targetId, storyPagerState.targetPage, stories.itemCount) {
         derivedStateOf {
             try {
                 stories[storyPagerState.targetPage]
+            } catch (e: IndexOutOfBoundsException) {
+                null
+            }
+        }
+    }
+
+    val currentStory by remember(currentData) {
+        derivedStateOf {
+            try {
+                (currentData as? AmityListItem.StoryItem)?.story
+            } catch (e: IndexOutOfBoundsException) {
+                null
+            }
+        }
+    }
+
+    val currentAd by remember(currentData) {
+        derivedStateOf {
+            try {
+                (currentData as? AmityListItem.AdItem)?.ad
             } catch (e: IndexOutOfBoundsException) {
                 null
             }
@@ -173,7 +195,7 @@ fun AmityViewCommunityStoryPage(
         ) {
             if (storyPagerState.targetPage == 0) {
                 stories.itemSnapshotList.items.indexOfFirst {
-                    !it.isSeen()
+                    !((it as? AmityListItem.StoryItem)?.story?.isSeen() ?: true)
                 }.let { index ->
                     if (index != -1) {
                         storyPagerState.scrollToPage(index)
@@ -191,7 +213,11 @@ fun AmityViewCommunityStoryPage(
 
     LaunchedEffect(isTargetVisible, isShowingVideoStory, shouldPauseTimer) {
         if (!isTargetVisible) return@LaunchedEffect
-        val storyId = currentStory?.getStoryId() ?: return@LaunchedEffect
+        val storyId = currentStory?.getStoryId()
+        if(storyId == null) {
+            exoPlayer.pause()
+            return@LaunchedEffect
+        }
         if (isShowingVideoStory) {
             AmityStoryVideoPlayerHelper.playMediaItem(storyId = storyId)
         } else {
@@ -207,8 +233,11 @@ fun AmityViewCommunityStoryPage(
 
     LaunchedEffect(isVideoPlaybackReady, isShowingVideoStory) {
         if (isShowingVideoStory) {
-            viewModel.handleSegmentTimer(shouldPause = !isVideoPlaybackReady)
             shouldShowLoading = !isVideoPlaybackReady
+            viewModel.handleSegmentTimer(shouldPause = shouldShowLoading)
+        } else {
+            viewModel.handleSegmentTimer(shouldPause = false)
+            shouldShowLoading = false
         }
     }
 
@@ -247,6 +276,13 @@ fun AmityViewCommunityStoryPage(
         }
     }
 
+    DisposableEffect(Unit) {
+        onDispose {
+            exoPlayer.release()
+            AmityStoryVideoPlayerHelper.clear()
+        }
+    }
+
     val dialogState by viewModel.dialogUIState.collectAsState()
 
     when (dialogState) {
@@ -255,8 +291,8 @@ fun AmityViewCommunityStoryPage(
             viewModel.handleSegmentTimer(true)
             val data = dialogState as AmityStoryModalDialogUIState.OpenConfirmDeleteDialog
             AmityAlertDialog(
-                dialogTitle = "Discard this story?",
-                dialogText = "The story will be permanently deleted. It cannot be undone.",
+                dialogTitle = "Discard story?",
+                dialogText = "The story will be permanently discarded. It cannot be undone.",
                 confirmText = "Discard",
                 dismissText = "Cancel",
                 onConfirmation = {
@@ -265,7 +301,7 @@ fun AmityViewCommunityStoryPage(
                         storyId = data.storyId,
                         onSuccess = {
                             shouldShowLoading = false
-                            context.showToast("Story deleted")
+                            AmityUIKitSnackbar.publishSnackbarMessage("Story deleted")
                             viewModel.updateDialogUIState(AmityStoryModalDialogUIState.CloseDialog)
                             viewModel.handleSegmentTimer(false)
 
@@ -285,7 +321,7 @@ fun AmityViewCommunityStoryPage(
                         },
                         onError = {
                             shouldShowLoading = false
-                            context.showToast("Failed to delete story")
+                            AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to delete story. Please try again.")
                             viewModel.updateDialogUIState(AmityStoryModalDialogUIState.CloseDialog)
                             viewModel.handleSegmentTimer(false)
                         }
@@ -311,81 +347,122 @@ fun AmityViewCommunityStoryPage(
         ) {
             HorizontalPager(
                 state = storyPagerState,
-                beyondBoundsPageCount = 3,
+                beyondViewportPageCount = 3,
                 userScrollEnabled = false,
-                key = { stories[it]?.getStoryId() ?: it },
+                key = {
+                    (stories[it] as? AmityListItem.StoryItem)?.story?.getStoryId() ?: it
+                },
             ) { index ->
-                val story = stories[index] ?: return@HorizontalPager
+                when (val data = stories[index]) {
+                    is AmityListItem.StoryItem -> {
+                        val story = data.story
 
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = modifier.fillMaxSize()
-                ) {
-                    AmityStoryBodyRow(
-                        modifier = modifier
-                            .aspectRatio(9f / 16f),
-                        exoPlayer = exoPlayer,
-                        dataType = story.getDataType(),
-                        data = story.getData(),
-                        state = story.getState(),
-                        items = story.getStoryItems(),
-                        isVisible = storyPagerState.targetPage == index,
-                        onTap = { isTapRight ->
-                            AmityStoryVideoPlayerHelper.resetPlaybackIndex()
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = modifier.fillMaxSize()
+                        ) {
+                            AmityStoryBodyRow(
+                                modifier = modifier
+                                    .aspectRatio(9f / 16f),
+                                exoPlayer = exoPlayer,
+                                dataType = story.getDataType(),
+                                data = story.getData(),
+                                state = story.getState(),
+                                items = story.getStoryItems(),
+                                isVisible = storyPagerState.targetPage == index,
+                                onTap = { isTapRight ->
+                                    AmityStoryVideoPlayerHelper.resetPlaybackIndex()
 
-                            scope.launch {
-                                moveSegment(
-                                    shouldMoveToNext = isTapRight,
-                                    totalSegments = stories.itemCount,
-                                    storyPagerState = storyPagerState,
-                                    firstSegmentReached = firstSegmentReached,
-                                    lastSegmentReached = lastSegmentReached,
-                                )
-                            }
-                        },
-                        onHold = {
-                            viewModel.handleSegmentTimer(shouldPause = it)
-                        },
-                        onSwipeUp = {
-                            viewModel.updateSheetUIState(
-                                AmityStoryModalSheetUIState.OpenCommentTraySheet(
-                                    storyId = story.getStoryId(),
-                                    community = viewModel.community,
-                                    shouldAllowInteraction = isCommunityJoined,
-                                    shouldAllowComment = isCommentCreateAllowed,
-                                )
+                                    scope.launch {
+                                        moveSegment(
+                                            shouldMoveToNext = isTapRight,
+                                            totalSegments = stories.itemCount,
+                                            storyPagerState = storyPagerState,
+                                            firstSegmentReached = firstSegmentReached,
+                                            lastSegmentReached = lastSegmentReached,
+                                        )
+                                    }
+                                },
+                                onHold = {
+                                    viewModel.handleSegmentTimer(shouldPause = it)
+                                },
+                                onSwipeUp = {
+                                    viewModel.updateSheetUIState(
+                                        AmityStoryModalSheetUIState.OpenCommentTraySheet(
+                                            storyId = story.getStoryId(),
+                                            community = viewModel.community,
+                                            shouldAllowInteraction = isCommunityJoined,
+                                            shouldAllowComment = isCommentCreateAllowed,
+                                        )
+                                    )
+                                },
+                                onSwipeDown = {
+                                    context.closePage()
+                                },
+                                onHyperlinkClick = {
+                                    scope.launch(Dispatchers.IO) {
+                                        story.analytics().markLinkAsClicked()
+                                    }
+                                }
                             )
-                        },
-                        onSwipeDown = {
-                            context.closePage()
-                        },
-                        onHyperlinkClick = {
-                            scope.launch(Dispatchers.IO) {
-                                story.analytics().markLinkAsClicked()
-                            }
-                        }
-                    )
 
-                    AmityStoryBottomRow(
-                        modifier = modifier,
-                        pageScope = getPageScope(),
-                        storyId = story.getStoryId(),
-                        story = story,
-                        target = story.getTarget(),
-                        state = story.getState(),
-                        reachCount = story.getReach(),
-                        commentCount = story.getCommentCount(),
-                        reactionCount = story.getReactionCount(),
-                        isReactedByMe = story.getMyReactions().isNotEmpty(),
-                        isCreatedByMe = story.getCreatorId() == AmityCoreClient.getUserId(),
-                        hasModeratorRole = hasModeratorRole,
-                    )
+                            AmityStoryBottomRow(
+                                modifier = modifier,
+                                pageScope = getPageScope(),
+                                storyId = story.getStoryId(),
+                                story = story,
+                                target = story.getTarget(),
+                                state = story.getState(),
+                                reachCount = story.getReach(),
+                                commentCount = story.getCommentCount(),
+                                reactionCount = story.getReactionCount(),
+                                isReactedByMe = story.getMyReactions().isNotEmpty(),
+                                isCreatedByMe = story.getCreatorId() == AmityCoreClient.getUserId(),
+                                hasModeratorRole = hasModeratorRole,
+                            )
+                        }
+                    }
+
+                    is AmityListItem.AdItem -> {
+                        val ad = data.ad
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = modifier.fillMaxSize()
+                        ) {
+                            AmityStoryAdView(
+                                modifier = modifier.aspectRatio(9f / 16f),
+                                ad = ad,
+                                onTap = { isTapRight ->
+                                    AmityStoryVideoPlayerHelper.resetPlaybackIndex()
+
+                                    scope.launch {
+                                        moveSegment(
+                                            shouldMoveToNext = isTapRight,
+                                            totalSegments = stories.itemCount,
+                                            storyPagerState = storyPagerState,
+                                            firstSegmentReached = firstSegmentReached,
+                                            lastSegmentReached = lastSegmentReached,
+                                        )
+                                    }
+                                },
+                                onHold = {
+                                    viewModel.handleSegmentTimer(shouldPause = it)
+                                },
+                                onSwipeDown = {
+                                    context.closePage()
+                                },
+                            )
+                        }
+                    }
+
+                    else -> {}
                 }
             }
 
             AmityStoryHeaderRow(
                 pageScope = getPageScope(),
                 story = currentStory,
+                ad = currentAd,
                 totalSegments = stories.itemCount,
                 currentSegment = storyPagerState.targetPage,
                 shouldPauseTimer = shouldPauseTimer || !isTargetVisible,
@@ -438,7 +515,7 @@ fun AmityViewCommunityStoryPage(
                 }
             }
 
-            if (shouldShowLoading || currentStory == null || !isMovedToUnseenStory) {
+            if (shouldShowLoading || !isMovedToUnseenStory) {
                 Box(
                     modifier = modifier
                         .fillMaxSize()

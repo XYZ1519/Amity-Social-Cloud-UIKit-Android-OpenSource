@@ -4,6 +4,8 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.amity.socialcloud.sdk.model.social.story.AmityStory
+import com.amity.socialcloud.uikit.common.ad.AmityListItem
+import com.amity.socialcloud.uikit.common.utils.getVideoUrlWithFallbackQuality
 import kotlinx.coroutines.flow.MutableStateFlow
 
 object AmityStoryVideoPlayerHelper {
@@ -47,11 +49,9 @@ object AmityStoryVideoPlayerHelper {
                     _isVideoPlaybackReady.value = true
                 }
 
-                Player.STATE_BUFFERING -> {
+                else -> {
                     _isVideoPlaybackReady.value = false
                 }
-
-                else -> {}
             }
         }
     }
@@ -62,29 +62,31 @@ object AmityStoryVideoPlayerHelper {
         setupListener()
     }
 
-    fun add(stories: List<AmityStory>) {
-        stories.filter {
-            it.getDataType() == AmityStory.DataType.VIDEO
-        }.map { story ->
-            val video = (story.getData() as AmityStory.Data.VIDEO).getVideo()
+    fun add(stories: List<AmityListItem>) {
+        stories.asSequence().filterIsInstance<AmityListItem.StoryItem>()
+            .map { it.story }
+            .filter {
+                it.getDataType() == AmityStory.DataType.VIDEO
+            }.map { story ->
+                val video = (story.getData() as AmityStory.Data.VIDEO).getVideo()
 
-            story.getStoryId() to video
-        }.map { (storyId, video) ->
-            if (!urlMapping.containsKey(storyId)) {
-                urlMapping[storyId] = exoPlayer?.mediaItemCount ?: 0
-                exoPlayer?.apply {
-                    val fileUrl = video?.getVideoUrl()
-                    if (fileUrl.isNullOrEmpty()) {
-                        video?.getUri()?.let {
-                            addMediaItem(MediaItem.fromUri(it))
+                story.getStoryId() to video
+            }.map { (storyId, video) ->
+                if (!urlMapping.containsKey(storyId)) {
+                    urlMapping[storyId] = exoPlayer?.mediaItemCount ?: 0
+                    exoPlayer?.apply {
+                        val fileUrl = video?.getVideoUrlWithFallbackQuality()
+                        if (fileUrl.isNullOrEmpty()) {
+                            video?.getUri()?.let {
+                                addMediaItem(MediaItem.fromUri(it))
+                            }
+                        } else {
+                            addMediaItem(MediaItem.fromUri(fileUrl))
                         }
-                    } else {
-                        addMediaItem(MediaItem.fromUri(fileUrl))
+                        prepare()
                     }
-                    prepare()
                 }
-            }
-        }
+            }.toList()
     }
 
     fun playMediaItem(storyId: String) {

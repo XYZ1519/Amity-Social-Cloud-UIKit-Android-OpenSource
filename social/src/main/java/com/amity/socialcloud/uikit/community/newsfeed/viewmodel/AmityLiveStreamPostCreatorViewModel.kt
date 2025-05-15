@@ -19,6 +19,7 @@ import com.amity.socialcloud.sdk.model.social.member.AmityCommunityMembership
 import com.amity.socialcloud.sdk.model.video.stream.AmityStream
 import com.amity.socialcloud.sdk.video.model.AmityBroadcastResolution
 import com.amity.socialcloud.uikit.common.base.AmityBaseViewModel
+import com.amity.socialcloud.uikit.common.service.AmityFileService
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Single
@@ -43,7 +44,7 @@ class AmityLiveStreamPostCreatorViewModel :
         onUploadFailed: () -> Unit
     ): Completable {
         onUploading.invoke()
-        return AmityCoreClient.newFileRepository().uploadImage(uri)
+        return AmityFileService().uploadImage(uri)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .doOnNext { handleUploadState(it, onUploadCompleted, onUploadFailed) }
@@ -96,7 +97,7 @@ class AmityLiveStreamPostCreatorViewModel :
     }
 
     private fun getCurrentUser(onProfileLoaded: (title: String?, imageUrl: String?) -> Unit): Completable {
-        return AmityCoreClient.newUserRepository()
+        return AmityCoreClient
             .getCurrentUser()
             .firstOrError()
             .subscribeOn(Schedulers.io())
@@ -222,6 +223,7 @@ class AmityLiveStreamPostCreatorViewModel :
             .membership(communityId)
             .searchMembers(keyword)
             .membershipFilter(listOf(AmityCommunityMembership.MEMBER))
+            .includeDeleted(false)
             .build()
             .query()
             .subscribeOn(Schedulers.io())
@@ -236,7 +238,7 @@ class AmityLiveStreamPostCreatorViewModel :
         keyword: String,
         onResult: (users: PagingData<AmityUser>) -> Unit
     ): Completable {
-        return userRepository.searchUserByDisplayName(keyword)
+        return userRepository.searchUsers(keyword)
             .sortBy(AmityUserSortOption.DISPLAYNAME)
             .build()
             .query()

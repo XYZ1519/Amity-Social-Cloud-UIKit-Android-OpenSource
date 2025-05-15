@@ -4,6 +4,7 @@ import com.amity.socialcloud.sdk.api.social.AmitySocialClient
 import com.amity.socialcloud.sdk.api.social.comment.query.AmityCommentLoader
 import com.amity.socialcloud.sdk.api.social.comment.query.AmityCommentSortOption
 import com.amity.socialcloud.sdk.model.social.comment.AmityComment
+import com.amity.socialcloud.sdk.model.social.comment.AmityCommentReferenceType
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.BackpressureStrategy
 import io.reactivex.rxjava3.core.Completable
@@ -13,25 +14,28 @@ import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.PublishSubject
 
 
-private const val COMMENT_PREVIEW_SIZE = 3
-private const val TYPICAL_REPLY_PAGE_SIZE = 5
+private const val COMMENT_PREVIEW_SIZE = 0
+private const val TYPICAL_REPLY_PAGE_SIZE = 15
 
-class AmityStoryCommentReplyLoader(reference: AmityComment.Reference, commentId: String) {
-
+class AmityStoryCommentReplyLoader(
+    referenceId: String,
+    referenceType: AmityCommentReferenceType,
+    parentCommentId: String,
+) {
     private var loader: AmityCommentLoader
 
     init {
         loader = AmitySocialClient.newCommentRepository()
             .getComments()
             .run {
-                when (reference) {
-                    is AmityComment.Reference.STORY -> story(reference.getStoryId())
-                    is AmityComment.Reference.POST -> post(reference.getPostId())
-                    is AmityComment.Reference.CONTENT -> content(reference.getContentId())
-                    AmityComment.Reference.UNKNOWN -> content("")
+
+                when (referenceType) {
+                    AmityCommentReferenceType.POST -> post(referenceId)
+                    AmityCommentReferenceType.STORY -> story(referenceId)
+                    AmityCommentReferenceType.CONTENT -> content(referenceId)
                 }
             }
-            .parentId(commentId)
+            .parentId(parentCommentId)
             .sortBy(AmityCommentSortOption.LAST_CREATED)
             .includeDeleted(true)
             .build()
@@ -48,6 +52,8 @@ class AmityStoryCommentReplyLoader(reference: AmityComment.Reference, commentId:
 
     fun showLoadMoreButton(): Flowable<Boolean> {
         return showLoadMoreButtonSubject.toFlowable(BackpressureStrategy.BUFFER)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
             .doOnSubscribe {
                 showLoadMoreButtonSubject.onNext(shouldShowLoadMoreButton())
             }
@@ -68,6 +74,8 @@ class AmityStoryCommentReplyLoader(reference: AmityComment.Reference, commentId:
             showLoadMoreButtonSubject.onNext(shouldShowLoadMoreButton())
             publishingComments
         }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
     }
 
     fun load(isReload: Boolean = false) {

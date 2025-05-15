@@ -1,6 +1,7 @@
 package com.amity.socialcloud.uikit.community.compose.story.target.community
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -11,15 +12,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
-import com.amity.socialcloud.sdk.model.core.file.AmityImage
+import com.amity.socialcloud.sdk.api.social.AmitySocialClient
+import com.amity.socialcloud.sdk.helper.core.coroutines.asFlow
 import com.amity.socialcloud.sdk.model.social.story.AmityStory
 import com.amity.socialcloud.sdk.model.social.story.AmityStoryTarget
+import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.story.target.elements.AmityStoryTargetElement
 import com.amity.socialcloud.uikit.community.compose.story.target.utils.AmityStoryTargetRingUiState
 import com.amity.socialcloud.uikit.community.compose.story.target.utils.toRingUiState
 import com.amity.socialcloud.uikit.community.compose.story.view.AmityViewStoryPageType
-import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
 
 @Composable
 fun AmityStoryCommunityTabComponent(
@@ -67,22 +71,38 @@ fun AmityStoryCommunityTabComponent(
         }
     }
 
+    val allowAllUserStoryCreation by AmitySocialClient.getSettings()
+        .asFlow()
+        .map { it.getStorySettings().isAllowAllUserToCreateStory() }
+        .catch {
+            emit(false)
+        }
+        .collectAsState(initial = false)
+
+    val shouldShowStoryCreationButton by remember(
+        allowAllUserStoryCreation,
+        hasManageStoryPermission,
+        community?.isJoined()
+    ) {
+        derivedStateOf {
+            (allowAllUserStoryCreation || hasManageStoryPermission)
+                    && (community?.isJoined() == true)
+        }
+    }
+
     if (community == null) return
-    if (!hasManageStoryPermission && isStoryEmpty) return
+    if (!shouldShowStoryCreationButton && isStoryEmpty) return
 
     AmityBaseComponent(componentId = "story_tab_component") {
         AmityStoryTargetElement(
             modifier = modifier,
             componentScope = getComponentScope(),
-            communityDisplayName = community?.getDisplayName() ?: "",
-            avatarUrl = community?.getAvatar()?.getUrl(AmityImage.Size.LARGE) ?: "",
+            community = community,
             ringUiState = storyTargetRingUiState,
-            isPublicCommunity = community?.isPublic() ?: false,
-            isOfficialCommunity = community?.isOfficial() ?: false,
             isCommunityTarget = true,
-            hasManageStoryPermission = hasManageStoryPermission,
+            hasManageStoryPermission = shouldShowStoryCreationButton,
         ) {
-            if (hasManageStoryPermission && isStoryEmpty) {
+            if (shouldShowStoryCreationButton && isStoryEmpty) {
                 behavior.goToCreateStoryPage(
                     context = context,
                     targetId = communityId,

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -21,22 +22,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.palette.graphics.Palette
-import coil.compose.rememberAsyncImagePainter
-import coil.request.CachePolicy
-import coil.request.ImageRequest
+import coil3.compose.AsyncImagePainter
+import coil3.compose.rememberAsyncImagePainter
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.toBitmap
 import com.amity.socialcloud.sdk.model.core.file.AmityImage
 import com.amity.socialcloud.sdk.model.social.story.AmityStory
 import com.amity.socialcloud.sdk.model.social.story.AmityStoryImageDisplayMode
 import com.amity.socialcloud.sdk.model.social.story.AmityStoryItem
+import com.amity.socialcloud.uikit.common.utils.toComposeColor
 import com.amity.socialcloud.uikit.community.compose.story.hyperlink.elements.AmityStoryHyperlinkView
 import com.amity.socialcloud.uikit.community.compose.story.view.elements.AmityStoryBodyGestureBox
 import com.amity.socialcloud.uikit.community.compose.story.view.elements.AmityStoryVideoPlayer
-import com.amity.socialcloud.uikit.common.utils.toComposeColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -123,7 +126,7 @@ fun AmityStoryBodyImageView(
     val imagePath = remember {
         when (syncState) {
             AmityStory.State.SYNCED -> {
-                data.getImage()?.getUrl(AmityImage.Size.FULL)
+                data.getImage()?.getUrl(AmityImage.Size.LARGE)
             }
 
             AmityStory.State.SYNCING,
@@ -139,16 +142,16 @@ fun AmityStoryBodyImageView(
         model = ImageRequest.Builder(LocalContext.current)
             .data(imagePath)
             .allowHardware(false)
-            .dispatcher(Dispatchers.IO)
             .diskCachePolicy(CachePolicy.ENABLED)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .build()
     )
 
-    LaunchedEffect(painter) {
-        val bitmap = painter.imageLoader.execute(painter.request).drawable?.toBitmap()
+    val painterState by painter.state.collectAsState()
 
-        if (bitmap != null) {
+    LaunchedEffect(painter, painterState) {
+        if (painterState is AsyncImagePainter.State.Success) {
+            val bitmap = (painterState as AsyncImagePainter.State.Success).result.image.toBitmap()
             launch(Dispatchers.Default) {
                 palette = Palette.Builder(bitmap).generate()
             }
@@ -223,14 +226,4 @@ fun AmityStoryBodyHyperlinkView(
             context.startActivity(browserIntent)
         }
     )
-}
-
-@Preview
-@Composable
-fun AmityStoryBodyRowPreview() {
-//    AmityStoryBodyRow(
-//        exoPlayer = null,
-//        isVisible = true,
-//        shouldPauseVideo = false
-//    )
 }

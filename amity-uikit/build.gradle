@@ -2,6 +2,7 @@ apply from: "../buildsystem/activity.gradle"
 apply plugin: 'com.android.library'
 
 android {
+    namespace 'com.amity.socialcloud.uikit'
     buildTypes {
         release {
             consumerProguardFiles 'amity-proguard-rules.pro'
@@ -10,12 +11,16 @@ android {
             consumerProguardFiles 'amity-proguard-rules.pro'
         }
     }
+    packagingOptions {
+        pickFirst("META-INF/*.kotlin_module")
+        exclude 'META-INF/INDEX.LIST'
+        exclude 'META-INF/io.netty.versions.properties'
+    }
 }
-
 
 dependencies {
     api project(path: ':social')
     api project(path: ':chat')
 
-    api "com.github.AmityCo.Amity-Social-Cloud-SDK-Android:amity-sdk:$amityMessagingSdkVersion"
+    api "$amitySDKDependency:amity-sdk:$amityMessagingSdkVersion"
 }

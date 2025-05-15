@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.waterfall
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -22,14 +23,14 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.amity.socialcloud.sdk.model.social.comment.AmityComment
+import com.amity.socialcloud.sdk.model.social.comment.AmityCommentReferenceType
+import com.amity.socialcloud.uikit.common.ui.elements.AmityBottomSheetActionItem
+import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponent
 import com.amity.socialcloud.uikit.community.compose.story.view.AmityStoryModalDialogUIState
 import com.amity.socialcloud.uikit.community.compose.story.view.AmityStoryModalSheetUIState
 import com.amity.socialcloud.uikit.community.compose.story.view.AmityViewStoryPageViewModel
-import com.amity.socialcloud.uikit.common.ui.elements.AmityBottomSheetActionItem
-import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -71,7 +72,7 @@ fun AmityStoryModalBottomSheet(
             },
             sheetState = sheetState,
             containerColor = AmityTheme.colors.background,
-            windowInsets = WindowInsets(top = 54.dp),
+            contentWindowInsets = { WindowInsets.waterfall },
             modifier = modifier
                 .semantics {
                     testTagsAsResourceId = true
@@ -82,7 +83,8 @@ fun AmityStoryModalBottomSheet(
                     val data = sheetUIState as AmityStoryModalSheetUIState.OpenCommentTraySheet
                     AmityCommentTrayComponent(
                         modifier = modifier,
-                        reference = AmityComment.Reference.STORY(data.storyId),
+                        referenceId = data.storyId,
+                        referenceType = AmityCommentReferenceType.STORY,
                         community = data.community,
                         shouldAllowInteraction = data.shouldAllowInteraction,
                         shouldAllowCreation = data.shouldAllowComment,

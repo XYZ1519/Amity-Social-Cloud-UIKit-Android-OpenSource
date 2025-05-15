@@ -3,6 +3,7 @@ package com.amity.snipet.verifier.setup
 import android.app.Application
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.api.core.endpoint.AmityEndpoint
+import com.amity.socialcloud.uikit.AmityUIKit4Manager
 
 class AmityUIKitInitialization {
 
@@ -16,9 +17,9 @@ class AmityUIKitInitialization {
         override fun onCreate() {
             super.onCreate()
             // setup() function should be called once per application lifecycle
-            AmityCoreClient.setup(
-                apiKey = "apikey",
-                endpoint = AmityEndpoint.EU // optional param, defaulted as SG region
+            AmityUIKit4Manager.setup(
+                apiKey = "YOUR_API_KEY",
+                endpoint =  AmityEndpoint.EU
             )
         }
     }

@@ -71,6 +71,7 @@ class AmityPollCreatorViewModel : AmityBaseViewModel() {
             .membership(communityId)
             .searchMembers(keyword)
             .membershipFilter(listOf(AmityCommunityMembership.MEMBER))
+            .includeDeleted(false)
             .build()
             .query()
             .subscribeOn(Schedulers.io())
@@ -85,7 +86,7 @@ class AmityPollCreatorViewModel : AmityBaseViewModel() {
         keyword: String,
         onResult: (users: PagingData<AmityUser>) -> Unit
     ): Completable {
-        return userRepository.searchUserByDisplayName(keyword)
+        return userRepository.searchUsers(keyword)
             .sortBy(AmityUserSortOption.DISPLAYNAME)
             .build()
             .query()

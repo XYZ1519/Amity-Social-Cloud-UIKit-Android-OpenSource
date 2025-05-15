@@ -15,6 +15,7 @@ val amityColorBase = Color(0xFF292B32)
 val amityColorBaseInverse = Color(0xFFFFFFFF)
 
 val amityColorBackground = Color(0xFFFFFFFF)
+val amityColorBackgroundShade1 = Color(0xFFF6F7F8)
 val amityColorMessageBubble = Color(0xFF1054DE)
 val amityColorMessageBubbleInverse = Color(0xFFEBECEF)
 
@@ -32,8 +33,6 @@ val amityColorBaseShade1 = Color(0xFF636878)
 val amityColorBaseShade2 = Color(0xFF898E9E)
 val amityColorBaseShade3 = Color(0xFFA5A9B5)
 val amityColorBaseShade4 = Color(0xFFEBECEF)
-val amityColorBaseShade5 = Color(0xFF292B32)
-val amityColorBaseShade6 = Color(0xFF40434E)
 
 val AmityUIKitColors = AmityColors(
     primary = amityColorPrimary,
@@ -45,8 +44,11 @@ val AmityUIKitColors = AmityColors(
     messageBubble = amityColorMessageBubble,
     messageBubbleInverse = amityColorMessageBubbleInverse,
     divider = amityColorBaseShade4,
+    newsfeedDivider = amityColorBaseShade4,
     border = amityColorBaseShade4,
     background = amityColorBackground,
+    backgroundShade1 = amityColorBackgroundShade1,
+    sheetBackground = amityColorBaseShade4,
     primaryShade1 = amityColorPrimaryShade1,
     primaryShade2 = amityColorPrimaryShade2,
     primaryShade3 = amityColorPrimaryShade3,
@@ -59,8 +61,6 @@ val AmityUIKitColors = AmityColors(
     baseShade2 = amityColorBaseShade2,
     baseShade3 = amityColorBaseShade3,
     baseShade4 = amityColorBaseShade4,
-    baseShade5 = amityColorBaseShade5,
-    baseShade6 = amityColorBaseShade6,
 )
 
 @Immutable
@@ -74,8 +74,11 @@ data class AmityColors(
     val messageBubble: Color,
     val messageBubbleInverse: Color,
     val divider: Color,
+    val newsfeedDivider: Color,
     val border: Color,
     val background: Color,
+    val backgroundShade1: Color,
+    val sheetBackground: Color,
     val primaryShade1: Color,
     val primaryShade2: Color,
     val primaryShade3: Color,
@@ -88,11 +91,12 @@ data class AmityColors(
     val baseShade2: Color,
     val baseShade3: Color,
     val baseShade4: Color,
-    val baseShade5: Color,
-    val baseShade6: Color,
 ) {
 
-    fun applyConfiguration(theme: AmityUIKitConfig.UIKitTheme): AmityColors {
+    fun applyConfiguration(
+        theme: AmityUIKitConfig.UIKitTheme,
+        isUIKitInDarkTheme: Boolean,
+    ): AmityColors {
         val primary = theme.primaryColor.asColor()
         val secondary = theme.secondaryColor.asColor()
         val base = theme.baseColor.asColor()
@@ -100,8 +104,23 @@ data class AmityColors(
         val baseShade2 = theme.baseShade2Color.asColor()
         val baseShade3 = theme.baseShade3Color.asColor()
         val baseShade4 = theme.baseShade4Color.asColor()
+        val baseInverse = theme.baseInverseColor.asColor()
         val alert = theme.alertColor.asColor()
+        val divider = theme.baseShade4Color.asColor()
         val background = theme.backgroundColor.asColor()
+        val backgroundShade1 = theme.backgroundShade1Color.asColor()
+
+        val newsfeedDivider = if (isUIKitInDarkTheme) {
+            Color.Black
+        } else {
+            baseShade4
+        }
+
+        val sheetBackground = if (isUIKitInDarkTheme) {
+            baseShade4
+        } else {
+            background
+        }
 
         return AmityUIKitColors.copy(
             primary = primary,
@@ -119,9 +138,13 @@ data class AmityColors(
             baseShade2 = baseShade2,
             baseShade3 = baseShade3,
             baseShade4 = baseShade4,
+            baseInverse = baseInverse,
             alert = alert,
             background = background,
-            divider = baseShade4
+            backgroundShade1 = backgroundShade1,
+            sheetBackground = sheetBackground,
+            divider = divider,
+            newsfeedDivider = newsfeedDivider,
         )
     }
 

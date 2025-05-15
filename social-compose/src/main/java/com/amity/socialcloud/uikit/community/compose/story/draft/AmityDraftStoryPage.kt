@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.waterfall
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
@@ -32,6 +33,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,21 +53,26 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.palette.graphics.Palette
-import coil.compose.rememberAsyncImagePainter
-import coil.request.ImageRequest
+import coil3.compose.AsyncImagePainter
+import coil3.compose.rememberAsyncImagePainter
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.toBitmap
 import com.amity.socialcloud.sdk.model.social.story.AmityStory
 import com.amity.socialcloud.sdk.model.social.story.AmityStoryImageDisplayMode
 import com.amity.socialcloud.sdk.model.social.story.AmityStoryTarget
 import com.amity.socialcloud.uikit.common.config.AmityUIKitConfigController
+import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import com.amity.socialcloud.uikit.common.ui.elements.AmityAlertDialog
+import com.amity.socialcloud.uikit.common.ui.elements.AmityCommunityAvatarView
+import com.amity.socialcloud.uikit.common.ui.elements.AmityMenuButton
 import com.amity.socialcloud.uikit.common.ui.theme.AmityComposeTheme
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.asBoolean
@@ -74,9 +81,7 @@ import com.amity.socialcloud.uikit.common.utils.closePage
 import com.amity.socialcloud.uikit.common.utils.closePageWithResult
 import com.amity.socialcloud.uikit.common.utils.getBackgroundColor
 import com.amity.socialcloud.uikit.common.utils.getValue
-import com.amity.socialcloud.uikit.common.utils.showToast
 import com.amity.socialcloud.uikit.common.utils.toComposeColor
-import com.amity.socialcloud.uikit.community.compose.story.create.elements.AmityStoryCameraRelatedButtonElement
 import com.amity.socialcloud.uikit.community.compose.story.hyperlink.AmityStoryHyperlinkComponent
 import com.amity.socialcloud.uikit.community.compose.story.hyperlink.elements.AmityStoryHyperlinkView
 import com.amity.socialcloud.uikit.community.compose.story.view.elements.AmityStoryVideoPlayer
@@ -103,15 +108,14 @@ fun AmityDraftStoryPage(
         viewModel.getTarget(targetId, targetType)
     }.subscribeAsState(initial = null)
 
-    val communityAvatarUrl by remember {
+    val community by remember {
         derivedStateOf {
             when (storyTarget?.getTargetType()) {
                 AmityStory.TargetType.COMMUNITY -> {
-                    (storyTarget as? AmityStoryTarget.COMMUNITY)?.getCommunity()?.getAvatar()
-                        ?.getUrl()
+                    (storyTarget as? AmityStoryTarget.COMMUNITY)?.getCommunity()
                 }
 
-                else -> ""
+                else -> null
             }
         }
     }
@@ -140,13 +144,6 @@ fun AmityDraftStoryPage(
     val scope = rememberCoroutineScope()
     var showBottomSheet by remember { mutableStateOf(false) }
 
-    val communityAvatarPainter = rememberAsyncImagePainter(
-        ImageRequest
-            .Builder(LocalContext.current)
-            .data(data = communityAvatarUrl)
-            .build()
-    )
-
     var palette by remember { mutableStateOf<Palette?>(null) }
 
     val painter = rememberAsyncImagePainter(
@@ -155,11 +152,11 @@ fun AmityDraftStoryPage(
             .allowHardware(false)
             .build()
     )
+    val painterState by painter.state.collectAsState()
 
-    LaunchedEffect(painter) {
-        val bitmap = painter.imageLoader.execute(painter.request).drawable?.toBitmap()
-
-        if (bitmap != null) {
+    LaunchedEffect(painter, painterState) {
+        if (painterState is AsyncImagePainter.State.Success) {
+            val bitmap = (painterState as AsyncImagePainter.State.Success).result.image.toBitmap()
             launch(Dispatchers.Default) {
                 palette = Palette.Builder(bitmap).generate()
             }
@@ -168,8 +165,8 @@ fun AmityDraftStoryPage(
 
     if (openAlertDialog.value) {
         AmityAlertDialog(
-            dialogTitle = "Discard this story?",
-            dialogText = "The story will be permanently deleted. It cannot be undone.",
+            dialogTitle = "Discard story?",
+            dialogText = "The story will be permanently discarded. It cannot be undone.",
             confirmText = "Discard",
             dismissText = "Cancel",
             onConfirmation = { context.closePage() },
@@ -246,7 +243,7 @@ fun AmityDraftStoryPage(
                     pageScope = getPageScope(),
                     elementId = "back_button"
                 ) {
-                    AmityStoryCameraRelatedButtonElement(
+                    AmityMenuButton(
                         icon = getConfig().getValue("back_icon").asDrawableRes(),
                         modifier = Modifier
                             .size(32.dp)
@@ -266,7 +263,7 @@ fun AmityDraftStoryPage(
                         pageScope = getPageScope(),
                         elementId = "aspect_ratio_button"
                     ) {
-                        AmityStoryCameraRelatedButtonElement(
+                        AmityMenuButton(
                             icon = getConfig().getValue("aspect_ratio_icon").asDrawableRes(),
                             modifier = Modifier
                                 .size(32.dp)
@@ -287,7 +284,7 @@ fun AmityDraftStoryPage(
                     pageScope = getPageScope(),
                     elementId = "story_hyperlink_button"
                 ) {
-                    AmityStoryCameraRelatedButtonElement(
+                    AmityMenuButton(
                         icon = getConfig().getValue("hyperlink_button_icon").asDrawableRes(),
                         modifier = Modifier
                             .size(32.dp)
@@ -301,7 +298,7 @@ fun AmityDraftStoryPage(
                             if (hyperlinkUrlText.isEmpty()) {
                                 showBottomSheet = true
                             } else {
-                                context.showToast("Can't add more than one link to your story.")
+                                AmityUIKitSnackbar.publishSnackbarErrorMessage("Can't add more than one link to your story.")
                             }
                         }
                     )
@@ -367,10 +364,14 @@ fun AmityDraftStoryPage(
                                             hyperlinkUrlText = hyperlinkUrlText,
                                             hyperlinkCustomText = hyperlinkCustomText,
                                             onSuccess = {
-                                                context.showToast("Successfully shared story")
+                                                AmityUIKitSnackbar.publishSnackbarMessage(
+                                                    "Successfully shared story"
+                                                )
                                             },
                                             onError = { message ->
-                                                context.showToast(message)
+                                                AmityUIKitSnackbar.publishSnackbarErrorMessage(
+                                                    message
+                                                )
                                             }
                                         )
                                         context.closePageWithResult(Activity.RESULT_OK)
@@ -384,10 +385,14 @@ fun AmityDraftStoryPage(
                                             hyperlinkUrlText = hyperlinkUrlText,
                                             hyperlinkCustomText = hyperlinkCustomText,
                                             onSuccess = {
-                                                context.showToast("Successfully shared story")
+                                                AmityUIKitSnackbar.publishSnackbarMessage(
+                                                    "Successfully shared story"
+                                                )
                                             },
                                             onError = { message ->
-                                                context.showToast(message)
+                                                AmityUIKitSnackbar.publishSnackbarMessage(
+                                                    message
+                                                )
                                             }
                                         )
                                         context.closePageWithResult(Activity.RESULT_OK)
@@ -398,10 +403,8 @@ fun AmityDraftStoryPage(
                         if (getConfig().getValue("hide_avatar").asBoolean()) {
                             Spacer(modifier = Modifier.width(8.dp))
                         } else {
-                            Image(
-                                painter = communityAvatarPainter,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
+                            AmityCommunityAvatarView(
+                                community = community,
                                 modifier = Modifier
                                     .size(32.dp)
                                     .clip(CircleShape)
@@ -420,7 +423,7 @@ fun AmityDraftStoryPage(
                                 id = getConfig().getValue("share_icon").asDrawableRes()
                             ),
                             contentDescription = null,
-                            tint = Color.Black,
+                            tint = AmityTheme.colors.base,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -435,7 +438,7 @@ fun AmityDraftStoryPage(
                         },
                         sheetState = sheetState,
                         containerColor = AmityTheme.colors.background,
-                        windowInsets = WindowInsets(top = 54.dp),
+                        contentWindowInsets = { WindowInsets.waterfall },
                     ) {
                         AmityStoryHyperlinkComponent(
                             defaultUrlText = hyperlinkUrlText,
@@ -451,7 +454,7 @@ fun AmityDraftStoryPage(
 
                                 hyperlinkUrlText = urlText
                                 hyperlinkCustomText = customText
-                            }
+                            },
                         )
                     }
                 }

@@ -27,7 +27,7 @@ open class AmityPushNotificationBaseViewModel : AmityBaseViewModel() {
         onDataLoaded: (value: Boolean) -> Unit,
         onDataError: () -> Unit
     ): Completable {
-        return AmitySocialClient.newCommunityRepository().notification(communityId)
+        return AmityCoreClient.notifications().community(communityId)
             .getSettings()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
@@ -65,12 +65,14 @@ open class AmityPushNotificationBaseViewModel : AmityBaseViewModel() {
                         isStoryEnabled = true
                     }
                 }
+
+                is AmityCommunityNotificationEvent.LIVESTREAM_START -> {}
             }
         }
     }
 
     fun getGlobalPushNotificationSettings(onSuccess: () -> Unit, onError: () -> Unit): Completable {
-        return AmityCoreClient.notification()
+        return AmityCoreClient.notifications().user()
             .getSettings()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())

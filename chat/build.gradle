@@ -2,7 +2,17 @@ apply from: "../buildsystem/activity.gradle"
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
+android {
+    namespace 'com.amity.socialcloud.uikit.chat'
+
+    packagingOptions {
+        pickFirst("META-INF/*.kotlin_module")
+        exclude 'META-INF/INDEX.LIST'
+        exclude 'META-INF/io.netty.versions.properties'
+    }
+}
+
 dependencies {
-    implementation project(path: ':common')
+    api project(path: ':common')
     api project(path: ':chat-compose')
 }

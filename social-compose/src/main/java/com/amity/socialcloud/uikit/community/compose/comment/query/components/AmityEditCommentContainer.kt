@@ -14,7 +14,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,43 +22,45 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amity.socialcloud.sdk.helper.core.mention.AmityMentionMetadata
 import com.amity.socialcloud.sdk.helper.core.mention.AmityMentionMetadataGetter
-import com.amity.socialcloud.sdk.helper.core.mention.AmityMentionee
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
+import com.amity.socialcloud.sdk.model.social.comment.AmityComment
 import com.amity.socialcloud.uikit.common.common.views.AmityColorShade
-import com.amity.socialcloud.uikit.common.config.AmityUIKitConfigController
-import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentViewModel
+import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
-import com.amity.socialcloud.uikit.community.compose.ui.components.mentions.AmityMentionSuggestionView
-import com.amity.socialcloud.uikit.community.compose.ui.components.mentions.AmityMentionTextField
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.getBackgroundColor
 import com.amity.socialcloud.uikit.common.utils.getValue
 import com.amity.socialcloud.uikit.common.utils.shade
+import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentViewModel
+import com.amity.socialcloud.uikit.community.compose.ui.components.mentions.AmityMentionTextField
+import com.amity.socialcloud.uikit.community.compose.ui.components.mentions.AmityMentionSuggestionView
 import com.google.gson.JsonObject
 
 @Composable
 fun AmityEditCommentContainer(
     modifier: Modifier = Modifier,
     componentScope: AmityComposeComponentScope? = null,
-    commentId: String,
-    commentText: String,
-    mentionGetter: AmityMentionMetadataGetter,
-    mentionees: List<AmityMentionee>,
+    comment: AmityComment,
     onEditFinished: () -> Unit,
 ) {
     val focusRequester = remember { FocusRequester() }
+    val mentionGetter = remember {
+        AmityMentionMetadataGetter(comment.getMetadata() ?: JsonObject())
+    }
+    val commentText = remember {
+        (comment.getData() as? AmityComment.Data.TEXT)?.getText() ?: ""
+    }
 
     val viewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
         "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
@@ -77,10 +78,10 @@ fun AmityEditCommentContainer(
 
     var selectedUserToMention by remember { mutableStateOf<AmityUser?>(null) }
     var mentionedUsers by remember { mutableStateOf<List<AmityMentionMetadata.USER>>(emptyList()) }
+    val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
+    // Define character limit constant for comments
+    val COMMENT_MAX_CHAR_LIMIT = 50000
 
     AmityBaseComponent(
         modifier = modifier,
@@ -108,12 +109,16 @@ fun AmityEditCommentContainer(
                 AmityMentionTextField(
                     modifier = Modifier
                         .weight(1f)
-                        .focusRequester(focusRequester)
+                        .background(
+                            color = AmityTheme.colors.baseShade4,
+                            shape = RoundedCornerShape(20.dp)
+                        )
+                        .padding(horizontal = 12.dp) // Match exact padding from original component
                         .testTag(getAccessibilityId("text_field")),
                     value = localCommentText,
                     mentionedUser = selectedUserToMention,
                     mentionMetadata = mentionGetter.getMentionedUsers(),
-                    mentionees = mentionees,
+                    mentionees = comment.getMentionees(),
                     onValueChange = {
                         localCommentText = it
                     },
@@ -122,11 +127,12 @@ fun AmityEditCommentContainer(
                     },
                     onQueryToken = {
                         queryToken = it ?: ""
-                        shouldShowSuggestion = !it.isNullOrEmpty()
+                        shouldShowSuggestion = (it != null) // This will hide suggestions when token is null
                     },
                     onUserMentions = {
                         mentionedUsers = it
-                    }
+                    },
+                    autoFocus = true, // Enable auto-focus for edit container
                 )
             }
             if (shouldShowSuggestion) {
@@ -162,7 +168,7 @@ fun AmityEditCommentContainer(
                     ) {
                         Text(
                             text = getElementScope().getConfig().getValue("cancel_button_text"),
-                            style = AmityTheme.typography.caption.copy(
+                            style = AmityTheme.typography.captionLegacy.copy(
                                 color = AmityTheme.colors.baseShade1,
                             ),
                             modifier = modifier.testTag(getAccessibilityId())
@@ -185,10 +191,18 @@ fun AmityEditCommentContainer(
                         enabled = isAllowedToSave,
                         modifier = modifier.height(30.dp),
                         onClick = {
+                            // Check character limit before proceeding
+                            if (localCommentText.length > COMMENT_MAX_CHAR_LIMIT) {
+                                AmityUIKitSnackbar.publishSnackbarErrorMessage(
+                                    context.getString(R.string.amity_add_comment_exceed_error_message, COMMENT_MAX_CHAR_LIMIT)
+                                )
+                                return@Button
+                            }
+
                             onEditFinished()
 
                             viewModel.editComment(
-                                commentId = commentId,
+                                commentId = comment.getCommentId(),
                                 commentText = localCommentText,
                                 userMentions = mentionedUsers,
                                 onSuccess = {
@@ -203,8 +217,8 @@ fun AmityEditCommentContainer(
                     ) {
                         Text(
                             text = getElementScope().getConfig().getValue("save_button_text"),
-                            style = AmityTheme.typography.caption.copy(
-                                color = AmityTheme.colors.baseInverse,
+                            style = AmityTheme.typography.captionLegacy.copy(
+                                color = Color.White,
                             ),
                             modifier = modifier.testTag(getAccessibilityId())
                         )
@@ -213,17 +227,4 @@ fun AmityEditCommentContainer(
             }
         }
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AmityEditCommentContainerPreview() {
-    AmityUIKitConfigController.setup(LocalContext.current)
-    AmityEditCommentContainer(
-        commentId = "",
-        commentText = "Hello World",
-        onEditFinished = {},
-        mentionGetter = AmityMentionMetadataGetter(JsonObject()),
-        mentionees = emptyList(),
-    )
 }

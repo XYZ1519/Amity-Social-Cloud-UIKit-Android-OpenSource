@@ -2,55 +2,54 @@ package com.amity.socialcloud.uikit.community.compose.comment.query
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.amity.socialcloud.sdk.helper.core.mention.AmityMentionMetadataGetter
 import com.amity.socialcloud.sdk.model.social.comment.AmityComment
+import com.amity.socialcloud.sdk.model.social.comment.AmityCommentReferenceType
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
-import com.amity.socialcloud.uikit.common.utils.isCommunityModerator
-import com.google.gson.JsonObject
+import com.amity.socialcloud.uikit.community.compose.comment.query.elements.AmityCommentViewReplyBar
 
 @Composable
 fun AmityReplyCommentView(
     modifier: Modifier = Modifier,
     componentScope: AmityComposeComponentScope? = null,
     allowInteraction: Boolean,
-    reference: AmityComment.Reference,
+    referenceId: String,
+    referenceType: AmityCommentReferenceType,
     currentUserId: String,
     editingCommentId: String?,
     comment: AmityComment,
     onEdit: (String?) -> Unit,
+    replyCount: Int? = null,
+    shouldShowReplies: (Boolean) -> Unit = {},
 ) {
     if (comment.isDeleted()) {
-        AmityDeletedCommentView(isReplyComment = true)
-    } else {
-        val mentionGetter = AmityMentionMetadataGetter(comment.getMetadata() ?: JsonObject())
-        val commentText = (comment.getData() as? AmityComment.Data.TEXT)?.getText() ?: ""
+        AmityDeletedCommentView(modifier = modifier, isReplyComment = true, replyCount = replyCount)
 
+        replyCount?.let {
+            if (replyCount - 1 > 0) {
+                AmityCommentViewReplyBar(
+                    modifier = modifier,
+                    isViewAllReplies = true,
+                    replyCount = replyCount - 1,
+                ) {
+                    shouldShowReplies(true)
+                }
+            }
+        }
+    } else {
         AmitySingleCommentView(
             modifier = modifier,
             componentScope = componentScope,
             allowInteraction = allowInteraction,
-            reference = reference,
+            comment = comment,
+            referenceId = referenceId,
+            referenceType = referenceType,
             isReplyComment = true,
             currentUserId = currentUserId,
-            commentId = comment.getCommentId(),
             editingCommentId = editingCommentId,
-            commentText = commentText,
-            mentionGetter = mentionGetter,
-            mentionees = comment.getMentionees(),
-            creatorId = comment.getCreatorId(),
-            creatorAvatarUrl = comment.getCreator()?.getAvatar()?.getUrl() ?: "",
-            creatorDisplayName = comment.getCreator()?.getDisplayName() ?: "",
-            createdAt = comment.getCreatedAt(),
-            isEdited = comment.isEdited(),
-            isCommunityModerator = comment.isCommunityModerator(),
-            isReactedByMe = comment.getMyReactions().isNotEmpty(),
-            isFlaggedByMe = comment.isFlaggedByMe(),
-            isFailed = comment.getState() == AmityComment.State.FAILED,
-            reactionCount = comment.getReactionCount(),
-            childCount = null,
-            replyComments = emptyList(),
             onReply = {},
             onEdit = onEdit,
+            replyCount = replyCount,
+            shouldShowReplies = shouldShowReplies,
         )
     }
 }

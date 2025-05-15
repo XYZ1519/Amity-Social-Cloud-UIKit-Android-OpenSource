@@ -1,7 +1,12 @@
 package com.amity.socialcloud.uikit.chat.home.fragment
 
 import android.os.Bundle
-import android.view.*
+import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import androidx.appcompat.app.ActionBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
@@ -18,7 +23,7 @@ import com.amity.socialcloud.uikit.common.common.showSnackBar
 import com.amity.socialcloud.uikit.common.contract.AmityPickMemberContract
 import com.ekoapp.rxlifecycle.extension.untilLifecycleEnd
 
-class AmityChatHomePageFragment private constructor() : Fragment() {
+class AmityChatHomePageFragment : Fragment() {
     private lateinit var mViewModel: AmityChatHomePageViewModel
     private lateinit var fragmentStateAdapter: AmityFragmentStateAdapter
 

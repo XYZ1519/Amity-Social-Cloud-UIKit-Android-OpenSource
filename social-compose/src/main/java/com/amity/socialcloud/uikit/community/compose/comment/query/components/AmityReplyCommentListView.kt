@@ -8,35 +8,46 @@ import androidx.compose.runtime.rxjava3.subscribeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.amity.socialcloud.sdk.model.social.comment.AmityComment
+import com.amity.socialcloud.sdk.model.social.comment.AmityCommentReferenceType
+import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.community.compose.comment.query.AmityReplyCommentView
 import com.amity.socialcloud.uikit.community.compose.comment.query.AmityStoryCommentReplyLoader
 import com.amity.socialcloud.uikit.community.compose.comment.query.elements.AmityCommentViewReplyBar
-import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 
 @Composable
 fun AmityReplyCommentListView(
     modifier: Modifier = Modifier,
     componentScope: AmityComposeComponentScope? = null,
     allowInteraction: Boolean,
-    reference: AmityComment.Reference,
+    referenceId: String,
+    referenceType: AmityCommentReferenceType,
     currentUserId: String,
     commentId: String,
     editingCommentId: String?,
     replyCount: Int,
+    replyTargetId: String? = null,
     replies: List<AmityComment>,
     onEdit: (String?) -> Unit,
 ) {
     val loader = remember {
-        AmityStoryCommentReplyLoader(reference, commentId).apply { load() }
+        AmityStoryCommentReplyLoader(referenceId, referenceType, commentId).apply { load() }
     }
 
     val shouldShowLoadMoreButton by remember {
         loader.showLoadMoreButton()
     }.subscribeAsState(initial = true)
 
-    val comments by remember {
+    val commentsRaw by remember {
         loader.getComments()
     }.subscribeAsState(initial = replies)
+
+    val comments = remember(commentsRaw, replyTargetId) {
+        if (replyTargetId != null) {
+            commentsRaw.sortedByDescending { it.getCommentId() == replyTargetId }
+        } else {
+            commentsRaw
+        }
+    }
 
     Column {
         comments.forEach { comment ->
@@ -44,7 +55,8 @@ fun AmityReplyCommentListView(
                 modifier = modifier,
                 componentScope = componentScope,
                 allowInteraction = allowInteraction,
-                reference = reference,
+                referenceId = referenceId,
+                referenceType = referenceType,
                 currentUserId = currentUserId,
                 editingCommentId = editingCommentId,
                 comment = comment,
@@ -69,7 +81,8 @@ fun AmityReplyCommentListView(
 fun AmityReplyCommentListViewPreview() {
     AmityReplyCommentListView(
         allowInteraction = true,
-        reference = AmityComment.Reference.STORY(""),
+        referenceId = "",
+        referenceType = AmityCommentReferenceType.STORY,
         currentUserId = "",
         commentId = "",
         editingCommentId = null,

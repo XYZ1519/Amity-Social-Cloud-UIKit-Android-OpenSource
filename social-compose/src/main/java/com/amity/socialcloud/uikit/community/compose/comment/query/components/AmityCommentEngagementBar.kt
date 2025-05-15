@@ -22,19 +22,19 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amity.socialcloud.sdk.model.core.reaction.AmityReactionReferenceType
-import com.amity.socialcloud.uikit.common.common.readableTimeDiff
-import com.amity.socialcloud.uikit.community.compose.R
-import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentViewModel
-import com.amity.socialcloud.uikit.community.compose.reaction.AmityReactionListBottomSheet
+import com.amity.socialcloud.sdk.model.social.comment.AmityComment
+import com.amity.socialcloud.uikit.common.common.readableSocialTimeDiff
+import com.amity.socialcloud.uikit.common.reaction.AmityReactionList
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
-import org.joda.time.DateTime
+import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
+import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentViewModel
 
 
 @Composable
@@ -43,18 +43,16 @@ fun AmityCommentEngagementBar(
     componentScope: AmityComposeComponentScope? = null,
     allowInteraction: Boolean,
     isReplyComment: Boolean,
-    commentId: String,
-    createdAt: DateTime,
-    isEdited: Boolean,
+    comment: AmityComment,
     isCreatedByMe: Boolean,
-    isFlaggedByMe: Boolean,
-    isReactedByMe: Boolean,
-    reactionCount: Int,
     onReply: (String) -> Unit,
     onEdit: () -> Unit,
 ) {
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
+    val behavior by lazy {
+        AmitySocialBehaviorHelper.commentTrayComponentBehavior
+    }
 
     val viewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
         "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
@@ -62,8 +60,8 @@ fun AmityCommentEngagementBar(
     val viewModel =
         viewModel<AmityCommentTrayComponentViewModel>(viewModelStoreOwner = viewModelStoreOwner)
 
-    var isReacted by remember { mutableStateOf(isReactedByMe) }
-    var localReactionCount by remember { mutableIntStateOf(reactionCount) }
+    var isReacted by remember { mutableStateOf(comment.getMyReactions().isNotEmpty()) }
+    var localReactionCount by remember { mutableIntStateOf(comment.getReactionCount()) }
     var showCommentActionSheet by remember { mutableStateOf(false) }
     var showReactionListSheet by remember { mutableStateOf(false) }
 
@@ -77,8 +75,9 @@ fun AmityCommentEngagementBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = createdAt.readableTimeDiff() + if (isEdited) " (edited)" else "",
-                    style = AmityTheme.typography.caption.copy(
+                    text = comment.getCreatedAt()
+                        .readableSocialTimeDiff() + if (comment.isEdited()) " (edited)" else "",
+                    style = AmityTheme.typography.captionLegacy.copy(
                         fontWeight = FontWeight.Normal,
                         color = AmityTheme.colors.baseShade2,
                     ),
@@ -87,10 +86,9 @@ fun AmityCommentEngagementBar(
 
                 Text(
                     text = context.getString(
-                        if (isReacted) R.string.amity_liked
-                        else R.string.amity_like
+                        R.string.amity_like
                     ),
-                    style = AmityTheme.typography.caption.copy(
+                    style = AmityTheme.typography.captionLegacy.copy(
                         color = if (isReacted) AmityTheme.colors.primary
                         else AmityTheme.colors.baseShade2,
                     ),
@@ -100,10 +98,10 @@ fun AmityCommentEngagementBar(
                             isReacted = !isReacted
                             if (isReacted) {
                                 localReactionCount++
-                                viewModel.addReaction(commentId)
+                                viewModel.addReaction(comment.getCommentId())
                             } else {
                                 localReactionCount--
-                                viewModel.removeReaction(commentId)
+                                viewModel.removeReaction(comment.getCommentId())
                             }
                         }
                         .testTag("comment_list/comment_bubble_reaction_button")
@@ -112,12 +110,12 @@ fun AmityCommentEngagementBar(
                 if (!isReplyComment) {
                     Text(
                         text = context.getString(R.string.amity_reply),
-                        style = AmityTheme.typography.caption.copy(
+                        style = AmityTheme.typography.captionLegacy.copy(
                             color = AmityTheme.colors.baseShade2,
                         ),
                         modifier = modifier
                             .clickable {
-                                onReply(commentId)
+                                onReply(comment.getCommentId())
                             }
                             .testTag("comment_list/comment_bubble_reply_button")
                     )
@@ -147,7 +145,7 @@ fun AmityCommentEngagementBar(
             ) {
                 Text(
                     text = localReactionCount.toString(),
-                    style = AmityTheme.typography.caption.copy(
+                    style = AmityTheme.typography.captionLegacy.copy(
                         fontWeight = FontWeight.Normal,
                         color = AmityTheme.colors.secondaryShade2,
                     ),
@@ -165,11 +163,11 @@ fun AmityCommentEngagementBar(
         AmityCommentActionsBottomSheet(
             modifier = modifier,
             componentScope = componentScope,
-            commentId = commentId,
+            commentId = comment.getCommentId(),
             shouldShow = showCommentActionSheet,
             isReplyComment = isReplyComment,
             isCommentCreatedByMe = isCreatedByMe,
-            isFlaggedByMe = isFlaggedByMe,
+            isFlaggedByMe = comment.isFlaggedByMe(),
             isFailed = false,
             onEdit = onEdit,
         ) {
@@ -177,32 +175,20 @@ fun AmityCommentEngagementBar(
         }
 
         if (showReactionListSheet) {
-            AmityReactionListBottomSheet(
+            AmityReactionList(
                 modifier = modifier,
                 referenceType = AmityReactionReferenceType.COMMENT,
-                referenceId = commentId,
-            ) {
-                showReactionListSheet = false
-            }
+                referenceId = comment.getCommentId(),
+                onClose = {
+                    showReactionListSheet = false
+                },
+                onUserClick = {
+                    behavior.goToUserProfilePage(
+                        context = context,
+                        userId = it,
+                    )
+                }
+            )
         }
     }
-}
-
-
-@Preview(showBackground = true, backgroundColor = 0xFFFFFFFF)
-@Composable
-fun AmityCommentEngagementBarPreview() {
-    AmityCommentEngagementBar(
-        allowInteraction = true,
-        isReplyComment = false,
-        commentId = "",
-        createdAt = DateTime.now(),
-        isEdited = true,
-        isCreatedByMe = true,
-        isFlaggedByMe = false,
-        isReactedByMe = true,
-        reactionCount = 1,
-        onReply = {},
-        onEdit = {},
-    )
 }

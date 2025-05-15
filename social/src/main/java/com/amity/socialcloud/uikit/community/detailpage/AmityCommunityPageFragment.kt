@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.paging.ExperimentalPagingApi
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
+import com.amity.socialcloud.sdk.model.social.community.AmityCommunityPostSettings
 import com.amity.socialcloud.sdk.model.social.story.AmityStory
 import com.amity.socialcloud.uikit.common.base.AmityFragmentStateAdapter
 import com.amity.socialcloud.uikit.common.common.setSafeOnClickListener
@@ -107,7 +108,8 @@ class AmityCommunityPageFragment : RxFragment(),
 
     private fun observeCommunity() {
         viewModel.getCommunity {
-            if (it.isJoined()) {
+            if ((it.isJoined() && it.getPostSettings() != AmityCommunityPostSettings.ADMIN_CAN_POST_ONLY)
+                || viewModel.hasManageStoryPermission) {
                 binding.fabCreatePost.visibility = View.VISIBLE
             } else {
                 binding.fabCreatePost.visibility = View.GONE
@@ -204,7 +206,7 @@ class AmityCommunityPageFragment : RxFragment(),
         val postCreationOptions =
             mutableListOf(
                 BottomSheetMenuItem(
-                    iconResId = R.drawable.ic_amity_ic_post_create,
+                    iconResId = R.drawable.amity_ic_post_create,
                     titleResId = R.string.amity_post,
                     action = {
                         createGenericPost.launch(viewModel.communityId)
