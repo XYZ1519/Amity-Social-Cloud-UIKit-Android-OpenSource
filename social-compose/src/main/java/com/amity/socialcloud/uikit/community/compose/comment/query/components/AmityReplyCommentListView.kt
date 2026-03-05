@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.amity.socialcloud.sdk.model.social.comment.AmityComment
 import com.amity.socialcloud.sdk.model.social.comment.AmityCommentReferenceType
+import com.amity.socialcloud.uikit.common.ui.elements.EXPANDABLE_TEXT_MAX_LINES
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.community.compose.comment.query.AmityReplyCommentView
 import com.amity.socialcloud.uikit.community.compose.comment.query.AmityStoryCommentReplyLoader
@@ -24,13 +25,22 @@ fun AmityReplyCommentListView(
     currentUserId: String,
     commentId: String,
     editingCommentId: String?,
+    includeDeleted: Boolean = true,
     replyCount: Int,
     replyTargetId: String? = null,
+    showEngagementRow: Boolean,
     replies: List<AmityComment>,
+    previewLines: Int = EXPANDABLE_TEXT_MAX_LINES,
     onEdit: (String?) -> Unit,
+    fromNonMemberCommunity: Boolean = false,
 ) {
     val loader = remember {
-        AmityStoryCommentReplyLoader(referenceId, referenceType, commentId).apply { load() }
+        AmityStoryCommentReplyLoader(
+            referenceId = referenceId,
+            referenceType = referenceType,
+            parentCommentId = commentId,
+            includeDeleted = includeDeleted
+        ).apply { load() }
     }
 
     val shouldShowLoadMoreButton by remember {
@@ -39,7 +49,7 @@ fun AmityReplyCommentListView(
 
     val commentsRaw by remember {
         loader.getComments()
-    }.subscribeAsState(initial = replies)
+    }.subscribeAsState(initial = replies.let { if(includeDeleted) it else it.filter { it.isDeleted() == false } })
 
     val comments = remember(commentsRaw, replyTargetId) {
         if (replyTargetId != null) {
@@ -59,8 +69,11 @@ fun AmityReplyCommentListView(
                 referenceType = referenceType,
                 currentUserId = currentUserId,
                 editingCommentId = editingCommentId,
+                showEngagementRow = showEngagementRow,
                 comment = comment,
+                previewLines = previewLines,
                 onEdit = onEdit,
+                fromNonMemberCommunity = fromNonMemberCommunity,
             )
         }
     }
@@ -74,20 +87,4 @@ fun AmityReplyCommentListView(
             loader.load()
         }
     }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFFFFFFFF)
-@Composable
-fun AmityReplyCommentListViewPreview() {
-    AmityReplyCommentListView(
-        allowInteraction = true,
-        referenceId = "",
-        referenceType = AmityCommentReferenceType.STORY,
-        currentUserId = "",
-        commentId = "",
-        editingCommentId = null,
-        replyCount = 3,
-        replies = emptyList(),
-        onEdit = {},
-    )
 }

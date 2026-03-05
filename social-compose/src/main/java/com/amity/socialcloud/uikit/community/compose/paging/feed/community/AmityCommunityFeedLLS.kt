@@ -1,5 +1,6 @@
 package com.amity.socialcloud.uikit.community.compose.paging.feed.community
 
+import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyListScope
@@ -25,6 +26,7 @@ fun LazyListScope.amityCommunityFeedLLS(
     communityPosts: LazyPagingItems<AmityListItem>,
     pinPosts: LazyPagingItems<AmityPinnedPost>,
     announcementPosts: LazyPagingItems<AmityPinnedPost>,
+    onClipClick: (AmityPost) -> Unit = {},
     onClick: (AmityPost, AmityPostCategory) -> Unit,
 ) {
     items(
@@ -56,6 +58,9 @@ fun LazyListScope.amityCommunityFeedLLS(
                     category = category,
                     hideMenuButton = false,
                     hideTarget = true,
+                    onClipClick = { childPost ->
+                        onClipClick(childPost)
+                    },
                     onTapAction = {
                         onClick(post, category)
                     }

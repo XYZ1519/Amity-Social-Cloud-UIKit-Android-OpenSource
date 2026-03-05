@@ -11,6 +11,7 @@ import com.amity.socialcloud.sdk.model.core.ad.AmityAdPlacement
 import com.amity.socialcloud.sdk.model.core.permission.AmityPermission
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
 import com.amity.socialcloud.sdk.model.social.member.AmityCommunityMember
+import com.amity.socialcloud.sdk.model.social.post.AmityPost
 import com.amity.socialcloud.sdk.model.social.story.AmityStory
 import com.amity.socialcloud.sdk.model.social.story.AmityStoryImageDisplayMode
 import com.amity.socialcloud.sdk.model.social.story.AmityStoryItem
@@ -94,6 +95,7 @@ class AmityViewStoryPageViewModel : AmityBaseViewModel() {
             .addReaction(AmityReactionReference.STORY(storyId), AmityConstants.POST_REACTION)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
+            .doOnError {  }
             .subscribe()
     }
 
@@ -102,6 +104,7 @@ class AmityViewStoryPageViewModel : AmityBaseViewModel() {
             .removeReaction(AmityReactionReference.STORY(storyId), AmityConstants.POST_REACTION)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
+            .doOnError {  }
             .subscribe()
     }
 
@@ -235,6 +238,12 @@ sealed class AmityStoryModalSheetUIState {
     ) : AmityStoryModalSheetUIState()
 
     object CloseSheet : AmityStoryModalSheetUIState()
+
+    fun isNotMember(community: AmityCommunity?): Boolean {
+        val isNotMember =
+            !(community?.isJoined() ?: true)
+        return isNotMember
+    }
 }
 
 sealed class AmityStoryModalDialogUIState {

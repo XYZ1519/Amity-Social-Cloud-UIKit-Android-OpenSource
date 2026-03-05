@@ -14,12 +14,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 
 @Composable
-fun AmityCreateLivestreamNoPermissionView(
+fun AmityMediaAndCameraNoPermissionView(
     modifier: Modifier = Modifier,
     title: String? = null,
     description: String? = null,
@@ -33,23 +34,17 @@ fun AmityCreateLivestreamNoPermissionView(
         Text(
             modifier = Modifier,
             text = title ?: "",
-            style = AmityTheme.typography.titleLegacy.copy(
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                lineHeight = 24.sp
-            )
+            style = AmityTheme.typography.titleBold,
+            color = Color.White,
+            textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(4.dp))
         Text(
             modifier = Modifier,
             text = description ?: "",
-            style = AmityTheme.typography.captionLegacy.copy(
-                fontWeight = FontWeight.Medium,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-                lineHeight = 18.sp
-            )
+            style = AmityTheme.typography.caption,
+            color = Color.White,
+            textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(24.dp))
         Button(
@@ -74,4 +69,15 @@ fun AmityCreateLivestreamNoPermissionView(
             )
         }
     }
+}
+
+@Preview
+@Composable
+fun AmityCameraAndMicNoPermissionViewPreview() {
+    AmityMediaAndCameraNoPermissionView(
+        modifier = Modifier.height(300.dp),
+        title = "Allow access to your\ncamera and microphone",
+        description = "This lets you record and live stream\n" +
+                "from this device."
+    )
 }

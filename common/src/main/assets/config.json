@@ -53,6 +53,28 @@
       "image": "message_reaction_sad.png"
     }
   ],
+  "social_reactions": [
+    {
+      "name": "like",
+      "image": "message_reaction_like.png"
+    },
+    {
+      "name": "love",
+      "image": "message_reaction_heart.png"
+    },
+    {
+      "name": "fire",
+      "image": "message_reaction_fire.png"
+    },
+    {
+      "name": "happy",
+      "image": "message_reaction_grinning.png"
+    },
+    {
+      "name": "sad",
+      "image": "message_reaction_sad.png"
+    }
+  ],
   "customizations": {
     "camera_page/*/*": {
       "resolution": "720p"
@@ -113,6 +135,129 @@
       "mute_icon": "mute.png",
       "unmute_icon": "unmute.png",
       "background_color": "#1243EE"
+    },
+    "create_clip_post_page/*/*": {
+      "theme": {}
+    },
+    "create_clip_post_page/*/start_record_button": {
+    },
+    "create_clip_post_page/*/stop_record_button": {
+    },
+    "create_clip_post_page/*/record_timer_status": {
+    },
+    "create_clip_post_page/*/cancel_create_clip_button": {
+      "image": "close.png"
+    },
+    "create_clip_post_page/*/add_thumbnail_button": {
+      "image": "addThumbNail"
+    },
+    "create_clip_post_page/*/switch_camera_button": {
+      "image": "switchCamera"
+    },
+    "draft_clip_page/*/*": {
+      "theme": {}
+    },
+    "draft_clip_page/*/back_button": {
+      "image": "back.png"
+    },
+    "draft_clip_page/*/mute_button": {
+      "mute_button_icon": "muteButtonIcon",
+      "unmute_button_icon": "unmuteButtonIcon",
+      "background_color": "#80000000"
+    },
+    "draft_clip_page/*/aspect_ratio_button": {
+      "image": "aspectRatioIcon",
+      "background_color": "#80000000"
+    },
+    "draft_clip_page/*/next_button": {
+      "image": "share_story_button.png"
+    },
+    "clip_feed_page/*/*": {
+      "theme": {}
+    },
+    "clip_feed_page/*/back_button": {
+      "image": "value"
+    },
+    "clip_feed_page/*/title": {
+      "text": "value"
+    },
+    "clip_feed_page/*/create_new_clip_button": {
+      "image": "value"
+    },
+    "clip_feed_page/*/reaction_button": {
+      "image": "value"
+    },
+    "clip_feed_page/*/comment_button": {
+      "image": "value"
+    },
+    "clip_feed_page/*/mute_button": {
+      "image": "value"
+    },
+    "clip_feed_page/*/option_button": {
+      "image": "value"
+    },
+    "clip_feed_page/*/community_display_name": {},
+    "clip_feed_page/*/community_private_badge": {
+      "image": "lockIcon"
+    },
+    "clip_feed_page/*/community_official_badge": {
+      "image": "lockIcon"
+    },
+    "livestream_player_page/*/share_link": {
+      "image": "icon",
+      "text": "Share to"
+    },
+    "livestream_player_page/*/copy_link": {
+      "image": "icon",
+      "text": "Copy live stream link"
+    },
+    "create_livestream_page/*/share_link": {
+      "image": "icon",
+      "text": "Share to"
+    },
+    "create_livestream_page/*/copy_link": {
+      "image": "icon",
+      "text": "Copy live stream link"
+    },
+    "clip_feed_page/*/share_link": {
+      "image": "icon",
+      "text": "Share to"
+    },
+    "clip_feed_page/*/copy_link": {
+      "image": "icon",
+      "text": "Copy clip link"
+    },
+    "post_detail_page/*/share_link": {
+      "image": "icon",
+      "text": "Share to"
+    },
+    "post_detail_page/*/copy_link": {
+      "image": "icon",
+      "text": "Copy post link"
+    },
+    "*/post_content/share_link": {
+      "image": "icon",
+      "text": "Share to"
+    },
+    "*/post_content/copy_link": {
+      "image": "icon",
+      "text": "Copy post link"
+    },
+    "user_profile_page/*/share_link": {
+      "image": "icon",
+      "text": "Share to"
+    },
+    "user_profile_page/*/copy_link": {
+      "image": "icon",
+      "text": "Copy profile link"
+    },
+    "community_profile_page/*/share_link": {
+      "image": "icon",
+      "text": "Share to"
+    },
+    "community_profile_page/*/copy_link": {
+      "image": "icon",
+      "text": "Copy profile link"
     },
     "*/edit_comment_component/*": {
     },
@@ -222,11 +367,24 @@
     "social_home_page/*/newsfeed_button": {
       "text": "Newsfeed"
     },
-    "social_home_page/*/explore_button": {
+    "social_home_page/*/communities_button": {
+      "text": "Communities"
+    },
+    "social_home_page/*/explore_subtab_button": {
       "text": "Explore"
     },
-    "social_home_page/*/my_communities_button": {
-      "text": "My Communities"
+    "social_home_page/*/my_communities_subtab_button": {
+      "text": "My communities"
+    },
+    "social_home_page/*/events_button": {
+      "text": "Events"
+    },
+    "social_home_page/create_post_menu/create_clip_button": {
+      "text": "Clip",
+      "image": "createClipIcon"
+    },
+    "social_home_page/*/clips_button": {
+      "text": "Clips"
     },
     "social_home_page/empty_newsfeed/illustration": {
       "icon": "emptyFeedIcon"
@@ -243,6 +401,13 @@
     },
     "social_home_page/empty_newsfeed/create_community_button": {
       "icon": "createCommunityIcon"
+    },
+    "social_home_page/my_communities/create_community_card": {},
+    "social_home_page/my_communities/create_community_icon": {
+      "icon": "addIcon"
+    },
+    "social_home_page/my_communities/create_community_text": {
+      "text": "Create community"
     },
     "social_home_page/my_communities/community_avatar": {},
     "social_home_page/my_communities/community_display_name": {},
@@ -424,6 +589,16 @@
     "select_post_target_page/*/my_timeline_text": {
       "text": "My Timeline"
     },
+    "select_event_target_page/*/close_button": {
+      "image": "closeIcon"
+    },
+    "select_event_target_page/*/my_timeline_avatar": {},
+    "select_event_target_page/*/title": {
+      "text": "Create event in"
+    },
+    "select_event_target_page/*/my_timeline_text": {
+      "text": "My Timeline"
+    },
     "select_story_target_page/*/close_button": {
       "image": "closeIcon"
     },
@@ -523,6 +698,9 @@
     "community_profile_page/community_header/community_join_button": {
       "image": "plusIcon"
     },
+    "community_profile_page/community_header/community_cancel_request_button": {
+      "image": "clockIcon"
+    },
     "community_profile_page/community_header/community_pending_post": {
     },
     "community_profile_page/*/back_button": {
@@ -536,6 +714,16 @@
     "community_profile_page/community_pin/*": {},
     "community_profile_page/*/community_create_post_button": {
       "image": "plusIcon"
+    },
+    "community_profile_page/community_video_feed/videos_button": {
+      "text": "Videos"
+    },
+    "community_profile_page/community_video_feed/clips_button": {
+      "text": "Clips"
+    },
+    "community_profile_page/community_video_feed/empty_clip_feed": {
+      "text": "No clips yet",
+      "image": "emptyClipIcon"
     },
     "community_setup_page/*/*": {},
     "community_setup_page/*/close_button": {
@@ -577,11 +765,38 @@
     "community_setup_page/*/community_privacy_public_description": {
       "text": "Anyone can join, view, and search the posts in this community."
     },
+    "community_setup_page/*/community_membership_title": {
+      "text": "Membership"
+    },
+    "community_setup_page/*/community_membership_description": {
+      "text": "Requires moderator approval"
+    },
+    "community_setup_page/*/community_membership_sub_description": {
+      "text": "Users will become members only when their join request is approved by a moderator of this community."
+    },
+    "community_setup_page/*/community_privacy_private_and_visible_icon": {
+      "image": "privacyAndVisibleIcon"
+    },
+    "community_setup_page/*/community_privacy_private_and_visible_title": {
+      "text": "Private & visible"
+    },
+    "community_setup_page/*/community_privacy_private_and_visible_description": {
+      "text": "Community is discoverable by anyone. Content is hidden from non-members."
+    },
+    "community_setup_page/*/community_privacy_private_and_hidden_icon": {
+      "image": "privacyPrivateIcon"
+    },
+    "community_setup_page/*/community_privacy_private_and_hidden_title": {
+      "text": "Private & hidden"
+    },
+    "community_setup_page/*/community_privacy_private_and_hidden_description": {
+      "text": "Community and content are hidden from non-members."
+    },
     "community_setup_page/*/community_add_member_title": {
       "text": "Member"
     },
     "community_setup_page/*/community_add_member_button": {
-      "text": "Add",
+      "text": "Invite",
       "image": "addIcon"
     },
     "community_setup_page/*/community_create_button": {
@@ -600,6 +815,14 @@
       "text": "Camera",
       "image": "postAttachmentCamera"
     },
+    "event_setup_page/*/image_button": {
+      "text": "Photo",
+      "image": "postAttachmentPhoto"
+    },
+    "event_setup_page/*/camera_button": {
+      "text": "Camera",
+      "image": "postAttachmentCamera"
+    },
     "community_add_category_page/*/*": {},
     "community_add_member_page/*/*": {},
     "community_membership_page/*/*": {},
@@ -609,6 +832,9 @@
     },
     "community_setting_page/*/members": {
       "text": "Members"
+    },
+    "community_setting_page/*/pending_invitations": {
+      "text": "Pending invitations"
     },
     "community_setting_page/*/notifications": {
       "text": "Notifications"
@@ -647,6 +873,39 @@
       "text": "Accept"
     },
     "pending_posts_page/pending_post_content/post_decline_button": {
+      "text": "Decline"
+    },
+    "pending_request_page/*/*": {},
+    "pending_request_page/*/back_button": {
+      "image": "backIcon"
+    },
+    "pending_request_page/*/title": {
+      "text": "Pending posts"
+    },
+    "pending_request_page/pending_post_list/*": {},
+    "pending_request_page/pending_post_list/timestamp": {},
+    "pending_request_page/pending_post_list/post_accept_button": {
+      "text": "Accept"
+    },
+    "pending_request_page/pending_post_list/post_decline_button": {
+      "text": "Decline"
+    },
+    "pending_request_page/*/posts_button_tab": {
+      "text": "Posts"
+    },
+    "pending_request_page/pending_post_list/posts_tab_description": {
+      "text": "Decline pending post will permanently delete the selected post from community."
+    },
+    "pending_request_page/*/join_requests_button_tab": {
+      "text": "Join requests"
+    },
+    "pending_request_page/join_request_content/join_requests_tab_description": {
+      "text": "Declining a join request is irreversible. The user must send a new request if declined."
+    },
+    "pending_request_page/join_request_content/join_accept_button": {
+      "text": "Accept"
+    },
+    "pending_request_page/join_request_content/join_decline_button": {
       "text": "Decline"
     },
     "user_profile_page/*/*": {},
@@ -749,6 +1008,16 @@
     },
     "user_profile_page/user_video_feed/blocked_user_video_feed_info": {
       "text": "Unblock to see their posts."
+    },
+    "user_profile_page/user_video_feed/videos_button": {
+      "text": "Videos"
+    },
+    "user_profile_page/user_video_feed/clips_button": {
+      "text": "Clips"
+    },
+    "user_profile_page/user_video_feed/empty_clip_feed": {
+      "text": "No clips yet",
+      "image": "emptyClipIcon"
     },
     "edit_user_profile_page/*/*": {},
     "edit_user_profile_page/*/back_button": {

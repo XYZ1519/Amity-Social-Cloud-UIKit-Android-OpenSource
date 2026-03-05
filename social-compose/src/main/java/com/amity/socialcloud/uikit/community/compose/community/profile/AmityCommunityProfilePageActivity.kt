@@ -21,9 +21,10 @@ class AmityCommunityProfilePageActivity : AppCompatActivity() {
 		enableEdgeToEdge()
 
 		val communityId = intent.getStringExtra(EXTRA_PARAM_COMMUNITY_ID) ?: ""
+		val isCommunityJustCreated = intent.getBooleanExtra(IS_COMMUNITY_JUST_CREATED, false)
 
 		setContent {
-			AmityCommunityProfilePage(communityId = communityId)
+			AmityCommunityProfilePage(communityId = communityId, isCommunityJustCreated = isCommunityJustCreated)
 		}
 	}
 
@@ -54,16 +55,19 @@ class AmityCommunityProfilePageActivity : AppCompatActivity() {
 
 	companion object {
 		private const val EXTRA_PARAM_COMMUNITY_ID = "community_id"
+		private const val IS_COMMUNITY_JUST_CREATED = "is_community_just_created"
 
 		fun newIntent(
 			context: Context,
-			communityId: String
+			communityId: String,
+			isCommunityJustCreated: Boolean = false,
 		): Intent {
 			return Intent(
 				context,
 				AmityCommunityProfilePageActivity::class.java
 			).apply {
 				putExtra(EXTRA_PARAM_COMMUNITY_ID, communityId)
+				putExtra(IS_COMMUNITY_JUST_CREATED, isCommunityJustCreated)
 			}
 		}
 	}

@@ -39,11 +39,11 @@ fun AmityCommunityProfileTabRow(
         Column(
             modifier = modifier
                 .background(color = AmityTheme.colors.background)
-                .padding(start = 16.dp, top = 16.dp, end = 16.dp)
+                .padding(top = 16.dp)
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(20.dp),
-                modifier = modifier.fillMaxWidth()
+                modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp),
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -124,12 +124,10 @@ fun AmityCommunityProfileTabRow(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = ImageVector.vectorResource(id = R.drawable.amity_ic_community_image_feed),
+                            imageVector = ImageVector.vectorResource(id = com.amity.socialcloud.uikit.common.R.drawable.amity_ic_create_event),
                             contentDescription = "",
                             tint = if (selectedIndex == 2) AmityTheme.colors.base else AmityTheme.colors.secondaryShade3,
-                            modifier = Modifier
-                                .size(24.dp)
-                                .padding(2.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                     Box(
@@ -159,7 +157,7 @@ fun AmityCommunityProfileTabRow(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = ImageVector.vectorResource(id = R.drawable.amity_ic_community_video_feed),
+                            imageVector = ImageVector.vectorResource(id = R.drawable.amity_ic_community_media_tab),
                             contentDescription = "",
                             tint = if (selectedIndex == 3) AmityTheme.colors.base else AmityTheme.colors.secondaryShade3,
                             modifier = Modifier

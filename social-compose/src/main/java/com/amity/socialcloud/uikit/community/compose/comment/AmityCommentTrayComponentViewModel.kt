@@ -1,5 +1,6 @@
 package com.amity.socialcloud.uikit.community.compose.comment
 
+import android.util.Log
 import androidx.lifecycle.viewModelScope
 import androidx.paging.LoadState
 import androidx.paging.PagingData
@@ -11,6 +12,8 @@ import com.amity.socialcloud.sdk.helper.core.coroutines.asFlow
 import com.amity.socialcloud.sdk.helper.core.mention.AmityMentionMetadata
 import com.amity.socialcloud.sdk.helper.core.mention.AmityMentionMetadataCreator
 import com.amity.socialcloud.sdk.model.core.ad.AmityAdPlacement
+import com.amity.socialcloud.sdk.model.core.flag.AmityContentFlagReason
+import com.amity.socialcloud.sdk.model.core.reaction.AmityReactionReferenceType
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
 import com.amity.socialcloud.sdk.model.social.comment.AmityComment
 import com.amity.socialcloud.sdk.model.social.comment.AmityCommentReferenceType
@@ -19,7 +22,9 @@ import com.amity.socialcloud.uikit.common.ad.AmityAdInjector
 import com.amity.socialcloud.uikit.common.ad.AmityListItem
 import com.amity.socialcloud.uikit.common.base.AmityBaseViewModel
 import com.amity.socialcloud.uikit.common.utils.AmityConstants
+import com.ekoapp.ekosdk.internal.api.socket.request.FlagContentRequest
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.flow.Flow
@@ -40,6 +45,10 @@ class AmityCommentTrayComponentViewModel : AmityBaseViewModel() {
 
     private val _comment = MutableStateFlow<AmityComment?>(null)
     val comment get() = _comment.asStateFlow()
+
+    private val _sheetUiState =
+        MutableStateFlow<CommentBottomSheetState>(CommentBottomSheetState.CloseSheet)
+    val sheetUiState get() = _sheetUiState.asStateFlow()
 
     var community: AmityCommunity? = null
         private set
@@ -65,7 +74,7 @@ class AmityCommentTrayComponentViewModel : AmityBaseViewModel() {
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .asFlow()
-                .catch {  }
+                .catch { }
                 .collectLatest { data ->
                     _comment.update { data }
                 }
@@ -76,15 +85,22 @@ class AmityCommentTrayComponentViewModel : AmityBaseViewModel() {
         referenceId: String,
         referenceType: AmityCommentReferenceType,
         communityId: String?,
+        includeDeleted: Boolean = true
     ): Flow<PagingData<AmityListItem>> {
         val injector = AmityAdInjector<AmityComment>(
             AmityAdPlacement.COMMENT,
             communityId,
         )
-        return getCommentQuery(
-            referenceId = referenceId,
-            referenceType = referenceType,
-        )
+        return AmitySocialClient.newCommentRepository()
+            .getComments()
+            .run {
+                when (referenceType) {
+                    AmityCommentReferenceType.POST -> post(referenceId)
+                    AmityCommentReferenceType.STORY -> story(referenceId)
+                    AmityCommentReferenceType.CONTENT -> content(referenceId)
+                }
+            }
+            .includeDeleted(includeDeleted)
             .build()
             .query()
             .onBackpressureBuffer()
@@ -138,28 +154,69 @@ class AmityCommentTrayComponentViewModel : AmityBaseViewModel() {
 
     fun addReaction(
         commentId: String,
+        reaction: String,
+        onError: (Throwable) -> Unit = { },
     ) {
         AmityCoreClient.newReactionRepository()
             .addReaction(
-                reactionReference = AmityReactionReference.COMMENT(commentId),
-                reactionName = AmityConstants.POST_REACTION
+                referenceType = AmityReactionReferenceType.COMMENT,
+                referenceId = commentId,
+                reactionName = reaction,
             )
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
+            .doOnError {
+                onError(it)
+            }
             .subscribe()
     }
 
     fun removeReaction(
         commentId: String,
+        reaction: String,
+        onError: (Throwable) -> Unit = { },
     ) {
         AmityCoreClient.newReactionRepository()
             .removeReaction(
-                reactionReference = AmityReactionReference.COMMENT(commentId),
-                reactionName = AmityConstants.POST_REACTION
+                referenceType = AmityReactionReferenceType.COMMENT,
+                referenceId = commentId,
+                reactionName = reaction,
             )
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
+            .doOnError {
+                onError(it)
+            }
             .subscribe()
+    }
+
+    fun switchReaction(
+        commentId: String,
+        reaction: String,
+        previousReaction: String,
+        onSuccess: () -> Unit = {},
+        onError: (Throwable) -> Unit = {},
+    ) {
+        AmityCoreClient.newReactionRepository().let { repository ->
+            repository
+                .removeReaction(AmityReactionReferenceType.COMMENT, commentId, previousReaction)
+                .andThen(
+                    Completable.defer { repository.addReaction(AmityReactionReferenceType.COMMENT, commentId, reaction) }
+                        .delay(1000, TimeUnit.MILLISECONDS) // Adding a delay to prevent rapid reaction changes
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .doOnComplete {
+                            onSuccess()
+                        }
+                        .doOnError { error ->
+                            onError(error)
+                        }
+                )
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe()
+                .let(compositeDisposable::add)
+        }
     }
 
     fun editComment(
@@ -206,11 +263,12 @@ class AmityCommentTrayComponentViewModel : AmityBaseViewModel() {
 
     fun flagComment(
         commentId: String,
+        reason: AmityContentFlagReason,
         onSuccess: () -> Unit,
         onError: (Throwable) -> Unit,
     ) {
         AmitySocialClient.newCommentRepository()
-            .flagComment(commentId)
+            .flagComment(commentId, reason)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .doOnComplete(onSuccess)
@@ -232,19 +290,8 @@ class AmityCommentTrayComponentViewModel : AmityBaseViewModel() {
             .subscribe()
     }
 
-    private fun getCommentQuery(
-        referenceId: String,
-        referenceType: AmityCommentReferenceType,
-    ): AmityCommentQuery.Builder {
-        return AmitySocialClient.newCommentRepository()
-            .getComments()
-            .run {
-                when (referenceType) {
-                    AmityCommentReferenceType.POST -> post(referenceId)
-                    AmityCommentReferenceType.STORY -> story(referenceId)
-                    AmityCommentReferenceType.CONTENT -> content(referenceId)
-                }
-            }
+    fun updateSheetUIState(page: CommentBottomSheetState) {
+        _sheetUiState.update { page }
     }
 
     sealed class CommentListState {
@@ -260,7 +307,7 @@ class AmityCommentTrayComponentViewModel : AmityBaseViewModel() {
             ): CommentListState {
                 return if (loadState is LoadState.Loading && itemCount == 0) {
                     LOADING
-                } else if (loadState is LoadState.NotLoading && loadState.endOfPaginationReached && itemCount == 0) {
+                } else if (loadState is LoadState.NotLoading && itemCount == 0) {
                     EMPTY
                 } else if (loadState is LoadState.Error && itemCount == 0) {
                     ERROR
@@ -269,5 +316,17 @@ class AmityCommentTrayComponentViewModel : AmityBaseViewModel() {
                 }
             }
         }
+    }
+
+    sealed class CommentBottomSheetState(val commentId: String) {
+        data class OpenSheet(val id: String) : CommentBottomSheetState(id)
+
+        data class OpenReportSheet(val id: String) : CommentBottomSheetState(id)
+
+        data class OpenReportCustomReasonSheet(val id: String) : CommentBottomSheetState(id)
+
+        data class OpenErrorSheet(val id: String) : CommentBottomSheetState(id)
+
+        object CloseSheet : CommentBottomSheetState("")
     }
 }

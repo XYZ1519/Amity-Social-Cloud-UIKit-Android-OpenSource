@@ -5,6 +5,7 @@ import androidx.paging.LoadState
 import androidx.paging.PagingData
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.api.social.AmitySocialClient
+import com.amity.socialcloud.sdk.api.social.post.query.AmityFeedSource
 import com.amity.socialcloud.sdk.helper.core.coroutines.asFlow
 import com.amity.socialcloud.sdk.model.core.error.AmityError
 import com.amity.socialcloud.sdk.model.core.follow.AmityMyFollowInfo
@@ -12,6 +13,8 @@ import com.amity.socialcloud.sdk.model.core.follow.AmityUserFollowInfo
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
 import com.amity.socialcloud.uikit.common.base.AmityBaseViewModel
+import com.amity.socialcloud.uikit.common.utils.isSignedIn
+import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Flowable
 import io.reactivex.rxjava3.schedulers.Schedulers
@@ -44,6 +47,11 @@ class AmityUserProfilePageViewModel(val userId: String) : AmityBaseViewModel() {
     }
     val videoPostListState get() = _videoPostListState
 
+    private val _clipPostListState by lazy {
+        MutableStateFlow<PostListState>(PostListState.EMPTY)
+    }
+    val clipPostListState get() = _clipPostListState
+
     fun setPostListState(state: PostListState) {
         _postListState.value = state
     }
@@ -56,9 +64,15 @@ class AmityUserProfilePageViewModel(val userId: String) : AmityBaseViewModel() {
         _videoPostListState.value = state
     }
 
+    fun setClipPostListState(state: PostListState) {
+        _clipPostListState.value = state
+    }
+
     private val fetchUserError = MutableStateFlow<Throwable?>(null)
 
     fun getFetchErrorState() = fetchUserError.asStateFlow()
+
+    var filter = listOf(AmityFeedSource.USER, AmityFeedSource.COMMUNITY)
 
     init {
         refresh()
@@ -173,6 +187,8 @@ class AmityUserProfilePageViewModel(val userId: String) : AmityBaseViewModel() {
         return AmitySocialClient.newFeedRepository()
             .getUserFeed(userId)
             .includeDeleted(false)
+            .feedSources(filter)
+            .dataTypes(AmitySocialBehaviorHelper.supportedPostTypes)
             .build()
             .query()
             .subscribeOn(Schedulers.io())
@@ -182,10 +198,10 @@ class AmityUserProfilePageViewModel(val userId: String) : AmityBaseViewModel() {
     }
 
     fun getUserImagePosts(): Flow<PagingData<AmityPost>> {
-        return AmitySocialClient.newPostRepository()
-            .getPosts()
-            .targetUser(userId)
-            .types(listOf(AmityPost.DataType.sealedOf(AmityPost.DataType.IMAGE.getApiKey())))
+        return AmitySocialClient.newFeedRepository()
+            .getUserFeed(userId)
+            .dataTypes(listOf(AmityPost.DataType.IMAGE))
+            .feedSources(filter)
             .includeDeleted(false)
             .build()
             .query()
@@ -196,10 +212,24 @@ class AmityUserProfilePageViewModel(val userId: String) : AmityBaseViewModel() {
     }
 
     fun getUserVideoPosts(): Flow<PagingData<AmityPost>> {
-        return AmitySocialClient.newPostRepository()
-            .getPosts()
-            .targetUser(userId)
-            .types(listOf(AmityPost.DataType.sealedOf(AmityPost.DataType.VIDEO.getApiKey())))
+        return AmitySocialClient.newFeedRepository()
+            .getUserFeed(userId)
+            .dataTypes(listOf(AmityPost.DataType.VIDEO))
+            .feedSources(filter)
+            .includeDeleted(false)
+            .build()
+            .query()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .asFlow()
+            .catch {}
+    }
+
+    fun getUserClipPosts(): Flow<PagingData<AmityPost>> {
+        return AmitySocialClient.newFeedRepository()
+            .getUserFeed(userId)
+            .dataTypes(listOf(AmityPost.DataType.CLIP))
+            .feedSources(filter)
             .includeDeleted(false)
             .build()
             .query()
@@ -291,19 +321,23 @@ class AmityUserProfilePageViewModel(val userId: String) : AmityBaseViewModel() {
     }
 
     private fun getMyFollowInfo(): Flowable<AmityMyFollowInfo> {
-        return AmityCoreClient.newUserRepository()
-            .relationship()
-            .getMyFollowInfo()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
+        return if (AmityCoreClient.isSignedIn()) {
+            AmityCoreClient.newUserRepository()
+                .relationship()
+                .getMyFollowInfo()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+        } else {
+            Flowable.never()
+        }
     }
 
     private fun getUserFollowInfo(): Flowable<AmityUserFollowInfo> {
         return AmityCoreClient.newUserRepository()
-            .relationship()
-            .getFollowInfo(userId)
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
+                .relationship()
+                .getFollowInfo(userId)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
     }
 
 

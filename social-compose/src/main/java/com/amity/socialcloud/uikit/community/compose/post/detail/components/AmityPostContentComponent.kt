@@ -1,12 +1,12 @@
 package com.amity.socialcloud.uikit.community.compose.post.detail.components
 
 import android.app.Activity
-import androidx.activity.result.ActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,8 +28,10 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.api.social.AmitySocialClient
 import com.amity.socialcloud.sdk.helper.core.coroutines.await
+import com.amity.socialcloud.sdk.model.social.comment.AmityCommentReferenceType
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
@@ -39,10 +41,13 @@ import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.closePageWithResult
+import com.amity.socialcloud.uikit.common.utils.isSignedIn
 import com.amity.socialcloud.uikit.common.utils.isVisible
+import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.common.utils.shimmerBackground
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.comment.query.AmityCommentView
 import com.amity.socialcloud.uikit.community.compose.post.composer.AmityPostComposerHelper
 import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostCategory
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostContentElement
@@ -68,6 +73,8 @@ fun AmityPostContentComponent(
     boldedText: String? = null,
     hideMenuButton: Boolean,
     hideTarget: Boolean = false,
+    isEventHost: Boolean = false,
+    onClipClick: (childPost: AmityPost) -> Unit = {},
     onTapAction: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -86,7 +93,15 @@ fun AmityPostContentComponent(
 
     val dialogState by viewModel.dialogUIState.collectAsState()
 
+    val sheetState by viewModel.sheetUIState.collectAsState()
+
     var scope = rememberCoroutineScope()
+
+    val commentBehavior = remember {
+        AmitySocialBehaviorHelper.notificationTrayPageBehavior
+    }
+
+    val previewCommentMaxLines = 3
 
     when (dialogState) {
         is AmityPostMenuDialogUIState.OpenConfirmDeleteDialog -> {
@@ -94,7 +109,7 @@ fun AmityPostContentComponent(
             if (data.postId == post.getPostId()) {
                 AmityAlertDialog(
                     dialogTitle = context.getString(R.string.amity_delete_post_title),
-                    dialogText = context.getString(R.string.amity_v4_delete_post_warning_message),
+                    dialogText = context.getString(R.string.amity_delete_post_warning_message),
                     confirmText = context.getString(R.string.amity_delete),
                     dismissText = context.getString(R.string.amity_cancel),
                     onConfirmation = {
@@ -107,16 +122,16 @@ fun AmityPostContentComponent(
                                 }
                                 AmityUIKitSnackbar.publishSnackbarMessage(
                                     message = "Post deleted",
-                                    offsetFromBottom = 52
+                                    offsetFromBottom = 52,
                                 )
                                 viewModel.updateDialogUIState(AmityPostMenuDialogUIState.CloseDialog)
                             },
                             onError = {
                                 val text =
-                                    "Failed to delete post. Please try again."
+                                    "Delete post not successful. Please try again."
                                 AmityUIKitSnackbar.publishSnackbarErrorMessage(
                                     message = text,
-                                            offsetFromBottom = 52
+                                    offsetFromBottom = 52,
                                 )
                                 viewModel.updateDialogUIState(AmityPostMenuDialogUIState.CloseDialog)
                             }
@@ -192,7 +207,7 @@ fun AmityPostContentComponent(
     }
 
     LaunchedEffect(isVisible) {
-        if (!isPostDetailPage && isVisible) {
+        if (!isPostDetailPage && isVisible && AmityCoreClient.isSignedIn()) {
             post
                 .analytics()
                 .markAsViewed()
@@ -220,11 +235,12 @@ fun AmityPostContentComponent(
                 style = style,
                 category = category,
                 hideTarget = hideTarget,
+                isEventHost = isEventHost,
                 onMenuClick = {
                     viewModel.updateSheetUIState(AmityPostMenuSheetUIState.OpenSheet(it.getPostId()))
                 }
             )
-            if (post.getChildren().any { it.getData() is AmityPost.Data.LIVE_STREAM }) {
+            if (post.getChildren().any { it.getData() is AmityPost.Data.LIVE_STREAM } || post.getChildren().any { it.getData() is AmityPost.Data.ROOM }) {
                 AmityPostLivestreamElement(
                     modifier = modifier,
                     post = post
@@ -233,9 +249,11 @@ fun AmityPostContentComponent(
 
                 AmityPostPollElement(
                     modifier = modifier,
+                    pageScope = pageScope,
                     componentScope = getComponentScope(),
                     post = post,
                     style = style,
+                    boldedText = boldedText,
                     onClick = {
                         if (!isPostDetailPage) {
                             onTapAction()
@@ -247,6 +265,51 @@ fun AmityPostContentComponent(
                             userId = it,
                         )
                     },
+                    onHashtagClick = {
+                        behavior.goToGlobalSearchPage(
+                            context = context,
+                            prefilledText = it
+                        )
+                    }
+                )
+            } else if (post.getChildren().any { it.getData() is AmityPost.Data.CLIP }) {
+                AmityPostContentElement(
+                    modifier = modifier,
+                    post = post,
+                    style = style,
+                    boldedText = boldedText,
+                    onClick = {
+                        if (!isPostDetailPage) {
+                            onTapAction()
+                        }
+                    },
+                    onMentionedUserClick = {
+                        behavior.goToUserProfilePage(
+                            context = context,
+                            userId = it,
+                        )
+                    },
+                    onHashtagClick = {
+                        behavior.goToGlobalSearchPage(
+                            context = context,
+                            prefilledText = it
+                        )
+                    }
+                )
+                AmityPostPreviewLinkView(
+                    modifier = modifier,
+                    post = post,
+                )
+                AmityPostMediaElement(
+                    modifier = Modifier,
+                    post = post,
+                    clipClick = {
+                        if (isPostDetailPage) {
+                            behavior.goToClipFeedPage(context, it.getPostId())
+                        } else {
+                            onClipClick(it)
+                        }
+                    }
                 )
             } else {
                 AmityPostContentElement(
@@ -265,6 +328,12 @@ fun AmityPostContentComponent(
                             userId = it,
                         )
                     },
+                    onHashtagClick = {
+                        behavior.goToGlobalSearchPage(
+                            context = context,
+                            prefilledText = it
+                        )
+                    }
                 )
                 AmityPostPreviewLinkView(
                     modifier = modifier,
@@ -275,28 +344,87 @@ fun AmityPostContentComponent(
                     post = post
                 )
             }
-            if (viewModel.isNotMember(post)) {
-                AmityPostNonMemberSection()
-            } else {
-                AmityPostEngagementView(
-                    modifier = modifier,
-                    componentScope = getComponentScope(),
-                    post = post,
-                    isPostDetailPage = isPostDetailPage,
-                )
+            AmityPostEngagementView(
+                modifier = modifier,
+                pageScope = pageScope,
+                componentScope = getComponentScope(),
+                post = post,
+                isPostDetailPage = isPostDetailPage,
+                shareButtonClick = { postId ->
+                    viewModel.updateSheetUIState(AmityPostMenuSheetUIState.OpenShareSheet(postId))
+                },
+                onCommentAction = {
+                    onTapAction()
+                }
+            )
+
+            if (!isPostDetailPage && post.getCommentCount() > 0) {
+                post.getLatestComments()
+                    .firstOrNull { !it.isDeleted() && it.getFlagCount() == 0 }
+                    ?.let { latestComment ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(1.dp)
+                                .background(AmityTheme.colors.baseShade4)
+                        ) {
+
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        AmityCommentView(
+                            modifier = Modifier.clickableWithoutRipple {
+                                commentBehavior.goToPostDetailPage(
+                                    context = context,
+                                    postId = post.getPostId(),
+                                    category = category,
+                                    commentId = latestComment.getCommentId(),
+                                    eventHostId = if (isEventHost) post.getCreator()?.getUserId() else null,
+                                )
+                            },
+                            componentScope = getComponentScope(),
+                            referenceId = post.getPostId(),
+                            referenceType = AmityCommentReferenceType.POST,
+                            currentUserId = AmityCoreClient.getUserId(),
+                            editingCommentId = null,
+                            comment = latestComment,
+                            allowInteraction = true,
+                            isEventHost = isEventHost,
+                            onReply = {
+                                commentBehavior.goToPostDetailPage(
+                                    context = context,
+                                    postId = post.getPostId(),
+                                    category = category,
+                                    commentId = latestComment.getCommentId(),
+                                    replyTo = latestComment.getCommentId(),
+                                    eventHostId = if (isEventHost) post.getCreator()?.getUserId() else null,
+                                )
+                            },
+                            onEdit = {},
+                            replyTargetId = null,
+                            showBounceEffect = false,
+                            previewLines = previewCommentMaxLines,
+                            allowAction = false,
+                            showEngagementRow = true,
+                            fromNonMemberCommunity = (post.getTarget() as? AmityPost.Target.COMMUNITY)?.getCommunity()?.isJoined() == false,
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
             }
 
-            AmityPostMenuBottomSheet(
-                post = post,
-                category = category
-            )
+            // Replace the current bottom sheet with this conditional display
+            if (sheetState !is AmityPostMenuSheetUIState.CloseSheet) {
+                AmityPostMenuBottomSheet(
+                    post = post,
+                    category = category
+                )
+            }
         }
     }
 }
 
 @Composable
 fun AmityPostShimmer(
-	modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier,
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -374,7 +502,7 @@ fun AmityPostShimmer(
 
 @Composable
 fun AmityMediaPostShimmer(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),

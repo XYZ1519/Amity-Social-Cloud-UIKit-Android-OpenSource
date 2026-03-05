@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
+import com.amity.socialcloud.sdk.model.social.community.AmityJoinRequest
 import com.amity.socialcloud.uikit.common.common.readableNumber
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.elements.AmityCommunityAvatarWithLabelView
@@ -165,6 +166,7 @@ fun AmityJoinCommunityView(
     pageScope: AmityComposePageScope? = null,
     componentScope: AmityComposeComponentScope? = null,
     community: AmityCommunity,
+    joinRequest: AmityJoinRequest? = null,
     label: String? = null,
     onClick: (AmityCommunity) -> Unit,
 ) {
@@ -201,6 +203,13 @@ fun AmityJoinCommunityView(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Text(
+                    text = label ?: "",
+                    style = AmityTheme.typography.bodyBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+
                 if (!community.isPublic()) {
                     AmityBaseElement(
                         pageScope = pageScope,
@@ -296,15 +305,17 @@ fun AmityJoinCommunityView(
                     }
                 }
 
-                Column(
+                if (pageScope?.getId() != "communities_by_category_page") {
+                    Column(
 
-                ) {
-                    Spacer(modifier = Modifier.weight(1f))
-                    AmityCommunityJoinButton(
-                        community = community
-                    )
+                    ) {
+                        Spacer(modifier = Modifier.weight(1f))
+                        AmityCommunityJoinButton(
+                            community = community,
+                            joinRequest = joinRequest
+                        )
+                    }
                 }
-
             }
         }
     }

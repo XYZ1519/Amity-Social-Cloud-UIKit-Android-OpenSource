@@ -6,17 +6,23 @@ import android.os.Looper
 import android.util.Log
 import android.view.View
 import androidx.core.net.toUri
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.amity.socialcloud.uikit.chat.R
 import com.amity.socialcloud.uikit.chat.messages.viewHolder.AmityAudioMsgBaseViewHolder
 import com.amity.socialcloud.uikit.common.common.showSnackBar
 import com.amity.socialcloud.uikit.common.utils.AmityDateUtils
-import com.google.android.exoplayer2.*
-import com.google.android.exoplayer2.audio.AudioAttributes
-import com.google.android.exoplayer2.ext.okhttp.OkHttpDataSource
-import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.material.snackbar.Snackbar
 import okhttp3.OkHttpClient
 
+@UnstableApi
 class AmityAudioMessageHelper(
     private val context: Context
 ) {
@@ -31,7 +37,7 @@ class AmityAudioMessageHelper(
 
     private val uAmpAudioAttributes: AudioAttributes =
         AudioAttributes.Builder()
-            .setContentType(C.CONTENT_TYPE_MUSIC)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .setUsage(C.USAGE_MEDIA)
             .build()
 
@@ -59,6 +65,7 @@ class AmityAudioMessageHelper(
         }
     }
 
+    @UnstableApi
     fun playAudio(vh: AmityAudioMsgBaseViewHolder) {
         if (!vh.audioMsgBaseViewModel.isPlaying.get()) {
             resetMediaPlayer()
@@ -153,7 +160,7 @@ class AmityAudioMessageHelper(
         override fun run() {
             val timeElapsed = exoPlayer.currentPosition
             playingAmityAudioHolder?.audioMsgBaseViewModel?.duration?.set(
-                AmityDateUtils.getFormattedTimeForChat(timeElapsed.toInt())
+                AmityDateUtils.getFormattedElapsedTime(timeElapsed.toInt())
             )
             uiUpdateHandler.postDelayed(this, 400L)
         }
@@ -161,7 +168,7 @@ class AmityAudioMessageHelper(
 
     private fun updatePlayingState() {
         playingAmityAudioHolder?.audioMsgBaseViewModel?.duration?.set(
-            AmityDateUtils.getFormattedTimeForChat(exoPlayer.duration.toInt())
+            AmityDateUtils.getFormattedElapsedTime(exoPlayer.duration.toInt())
         )
         playingAmityAudioHolder?.audioMsgBaseViewModel?.buffering?.set(false)
         playingAmityAudioHolder?.audioMsgBaseViewModel?.isPlaying?.set(true)

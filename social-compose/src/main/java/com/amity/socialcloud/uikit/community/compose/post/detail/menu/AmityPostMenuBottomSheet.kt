@@ -1,14 +1,19 @@
 package com.amity.socialcloud.uikit.community.compose.post.detail.menu
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.waterfall
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -16,59 +21,68 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rxjava3.subscribeAsState
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.api.social.post.review.AmityReviewStatus
+import com.amity.socialcloud.sdk.model.core.error.AmityError
+import com.amity.socialcloud.sdk.model.core.error.AmityException
+import com.amity.socialcloud.sdk.model.core.flag.AmityContentFlagReason
 import com.amity.socialcloud.sdk.model.core.permission.AmityPermission
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunityPostSettings
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
+import com.amity.socialcloud.uikit.common.common.isNotEmptyOrBlank
+import com.amity.socialcloud.uikit.common.config.AmityUIKitConfigController
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
+import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.elements.AmityBottomSheetActionItem
+import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostCategory
-import io.reactivex.rxjava3.core.Flowable
+import com.amity.socialcloud.uikit.community.compose.utils.sharePost
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun AmityPostMenuBottomSheet(
     modifier: Modifier = Modifier,
     post: AmityPost,
-    category: AmityPostCategory = AmityPostCategory.GENERAL
+    category: AmityPostCategory = AmityPostCategory.GENERAL,
 ) {
     val context = LocalContext.current
     val behavior by lazy {
         AmitySocialBehaviorHelper.postContentComponentBehavior
     }
 
+    val clipboardManager = LocalClipboardManager.current
+
     val viewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
         "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
     }
     val viewModel = viewModel<AmityPostMenuViewModel>(viewModelStoreOwner = viewModelStoreOwner)
 
-    val hasDeleteCommunityPostPermission by remember(viewModel, post.getPostId()) {
+    LaunchedEffect(viewModel, post.getPostId()) {
         if (post.getTarget() is AmityPost.Target.COMMUNITY) {
             val communityId = (post.getTarget() as AmityPost.Target.COMMUNITY).getCommunityId()
             viewModel.checkDeleteCommunityPostPermission(communityId)
-        } else {
-            Flowable.just(false)
-        }
-    }.subscribeAsState(false)
-
-    val hasDeleteUserFeedPostPermission by remember(viewModel, post.getPostId()) {
-        if (post.getTarget() is AmityPost.Target.USER) {
+        } else if (post.getTarget() is AmityPost.Target.USER) {
             viewModel.checkDeleteUserFeedPostPermission()
-        } else {
-            Flowable.just(false)
         }
-    }.subscribeAsState(false)
+    }
+
+    val postLink = AmityUIKitConfigController.getPostLink(post)
+    val hasDeleteCommunityPostPermission by viewModel.hasDeleteCommunityPostPermission.collectAsState()
+
+    val hasDeleteUserFeedPostPermission by viewModel.hasDeleteUserFeedPostPermission.collectAsState()
 
     val shouldShowDeletePostOption by remember(post.getPostId()) {
         derivedStateOf {
@@ -80,7 +94,7 @@ fun AmityPostMenuBottomSheet(
                 if (isCommunityTarget) {
                     hasDeleteCommunityPostPermission
                 } else {
-                    hasDeleteUserFeedPostPermission
+                    false //hasDeleteUserFeedPostPermission
                 }
             }
         }
@@ -88,6 +102,23 @@ fun AmityPostMenuBottomSheet(
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetUIState by viewModel.sheetUIState.collectAsState()
+
+    val sheetModifier = modifier.navigationBarsPadding().semantics {
+        testTagsAsResourceId = true
+    }.let { baseModifier ->
+        when (sheetUIState) {
+            is AmityPostMenuSheetUIState.OpenReportSheet,
+            is AmityPostMenuSheetUIState.OpenReportOtherReasonSheet,
+            is AmityPostMenuSheetUIState.OpenErrorSheet,
+                -> {
+                baseModifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+            }
+
+            else -> baseModifier
+        }
+    }
 
     val showSheet by remember(viewModel) {
         derivedStateOf {
@@ -104,10 +135,7 @@ fun AmityPostMenuBottomSheet(
             sheetState = sheetState,
             containerColor = AmityTheme.colors.background,
             contentWindowInsets = { WindowInsets.waterfall },
-            modifier = modifier
-                .semantics {
-                    testTagsAsResourceId = true
-                },
+            modifier = sheetModifier,
         ) {
             when (sheetUIState) {
                 is AmityPostMenuSheetUIState.OpenSheet -> {
@@ -116,10 +144,14 @@ fun AmityPostMenuBottomSheet(
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = modifier
-                            .padding(start = 16.dp, end = 16.dp, bottom = 64.dp)
+                            .background(AmityTheme.colors.background)
+                            .padding(start = 16.dp, end = 16.dp, bottom = 32.dp)
+                            .navigationBarsPadding()
                     ) {
-                        val isPollPost = post.getChildren().any { it.getData() is AmityPost.Data.POLL }
-                        val isLiveStreamPost = post.getChildren().any { it.getData() is AmityPost.Data.LIVE_STREAM }
+                        val isPollPost =
+                            post.getChildren().any { it.getData() is AmityPost.Data.POLL }
+                        val isLiveStreamPost =
+                            post.getChildren().any { it.getData() is AmityPost.Data.LIVE_STREAM }
 
                         if (post.getCreatorId() == AmityCoreClient.getUserId() && !isPollPost && !isLiveStreamPost) {
                             AmityBottomSheetActionItem(
@@ -129,11 +161,15 @@ fun AmityPostMenuBottomSheet(
                             ) {
                                 viewModel.updateSheetUIState(AmityPostMenuSheetUIState.CloseSheet)
                                 val target = post.getTarget()
-                                if(category == AmityPostCategory.GLOBAL
+                                if (category == AmityPostCategory.GLOBAL
                                     && target is AmityPost.Target.COMMUNITY
-                                    && target.getCommunity()?.getPostSettings() == AmityCommunityPostSettings.ADMIN_REVIEW_POST_REQUIRED
-                                    && !AmityCoreClient.hasPermission(AmityPermission.EDIT_COMMUNITY_POST).atCommunity(target.getCommunityId()).check().blockingFirst()
-                                    && post.getReviewStatus() == AmityReviewStatus.PUBLISHED) {
+                                    && target.getCommunity()
+                                        ?.getPostSettings() == AmityCommunityPostSettings.ADMIN_REVIEW_POST_REQUIRED
+                                    && !AmityCoreClient.hasPermission(AmityPermission.EDIT_COMMUNITY_POST)
+                                        .atCommunity(target.getCommunityId()).check()
+                                        .blockingFirst()
+                                    && post.getReviewStatus() == AmityReviewStatus.PUBLISHED
+                                ) {
                                     viewModel.updateDialogUIState(
                                         AmityPostMenuDialogUIState.OpenConfirmEditDialog(postId = post.getPostId())
                                     )
@@ -146,7 +182,8 @@ fun AmityPostMenuBottomSheet(
                             }
                         }
 
-                        val postData = post.getChildren().firstOrNull()?.getData() as? AmityPost.Data.POLL
+                        val postData =
+                            post.getChildren().firstOrNull()?.getData() as? AmityPost.Data.POLL
                         val poll = postData?.getPoll()?.blockingFirst()
                         val isPollActive = poll?.getClosedAt()?.isAfterNow ?: false
                         if (post.getCreatorId() == AmityCoreClient.getUserId() && post.getReviewStatus() != AmityReviewStatus.UNDER_REVIEW && isPollActive) {
@@ -164,32 +201,58 @@ fun AmityPostMenuBottomSheet(
 
                         if (post.getCreatorId() != AmityCoreClient.getUserId()) {
                             AmityBottomSheetActionItem(
-                                icon = R.drawable.amity_ic_report_comment,
+                                icon = if (isFlaggedByMe) R.drawable.amity_ic_unreport else R.drawable.amity_ic_report_comment,
                                 text = if (isFlaggedByMe) "Unreport post" else "Report post",
                                 modifier = modifier.testTag("bottom_sheet_report_button"),
                             ) {
+                                val target = post.getTarget()
                                 viewModel.updateSheetUIState(AmityPostMenuSheetUIState.CloseSheet)
-                                if (isFlaggedByMe) {
-                                    viewModel.unflagPost(
-                                        postId = post.getPostId(),
-                                        onSuccess = {
-                                            AmityUIKitSnackbar.publishSnackbarMessage("Post unreported")
-                                        },
-                                        onError = {
-                                            AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to unreport post. Please try again.")
-                                        }
-                                    )
+                                if (AmityCoreClient.isVisitor()) {
+                                    behavior.handleVisitorUserAction()
+                                } else if ((target as? AmityPost.Target.COMMUNITY)?.getCommunity()?.isJoined() == false) {
+                                    behavior.handleNonMemberAction()
                                 } else {
-                                    viewModel.flagPost(
-                                        postId = post.getPostId(),
-                                        onSuccess = {
-                                            AmityUIKitSnackbar.publishSnackbarMessage("Post reported")
-                                        },
-                                        onError = {
-                                            AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to report post. Please try again.")
-                                        }
-                                    )
+                                    if (isFlaggedByMe) {
+                                        viewModel.unflagPost(
+                                            postId = post.getPostId(),
+                                            onSuccess = {
+                                                AmityUIKitSnackbar.publishSnackbarMessage("Post unreported")
+                                            },
+                                            onError = {
+                                                AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to unreport post. Please try again.")
+                                            }
+                                        )
+                                    } else {
+                                        // Navigate to report screen instead of direct flagging
+                                        viewModel.updateSheetUIState(
+                                            AmityPostMenuSheetUIState.OpenReportSheet(post.getPostId())
+                                        )
+                                    }
                                 }
+                            }
+                        }
+
+                        if (viewModel.isNotMember(post) && AmityUIKitConfigController.getPostLink(post).isNotEmptyOrBlank()) {
+                            AmityBottomSheetActionItem(
+                                icon = R.drawable.amity_v4_link_icon,
+                                text = "Copy post link",
+                                modifier = modifier.testTag("bottom_sheet_copy_link_button"),
+                            ) {
+                                viewModel.updateSheetUIState(AmityPostMenuSheetUIState.CloseSheet)
+                                // Generate the post link URL (adjust the URL format according to your app's deep linking structure)
+                                // Copy to clipboard
+                                clipboardManager.setText(AnnotatedString(postLink))
+                                AmityUIKitSnackbar.publishSnackbarMessage("Link copied")
+                            }
+
+                            AmityBottomSheetActionItem(
+                                icon = R.drawable.amity_v4_share_icon,
+                                text = "Share to",
+                                modifier = modifier.testTag("bottom_sheet_share_to_button"),
+                            ) {
+                                viewModel.updateSheetUIState(AmityPostMenuSheetUIState.CloseSheet)
+                                // Open native Android share sheet
+                                sharePost(context, postLink)
                             }
                         }
 
@@ -209,8 +272,133 @@ fun AmityPostMenuBottomSheet(
                     }
                 }
 
+                is AmityPostMenuSheetUIState.OpenShareSheet -> {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = modifier
+                            .padding(start = 16.dp, end = 16.dp, bottom = 32.dp)
+                    ) {
+                        AmityBottomSheetActionItem(
+                            icon = R.drawable.amity_v4_link_icon,
+                            text = "Copy post link",
+                            modifier = modifier.testTag("bottom_sheet_copy_link_button"),
+                        ) {
+                            viewModel.updateSheetUIState(AmityPostMenuSheetUIState.CloseSheet)
+                            // Generate the post link URL (adjust the URL format according to your app's deep linking structure)
+                            // Copy to clipboard
+                            clipboardManager.setText(AnnotatedString(postLink))
+                            AmityUIKitSnackbar.publishSnackbarMessage("Link copied")
+                        }
+
+                        AmityBottomSheetActionItem(
+                            icon = R.drawable.amity_v4_share_icon,
+                            text = "Share to",
+                            modifier = modifier.testTag("bottom_sheet_share_to_button"),
+                        ) {
+                            viewModel.updateSheetUIState(AmityPostMenuSheetUIState.CloseSheet)
+                            // Open native Android share sheet
+                            sharePost(context, postLink)
+                        }
+                    }
+                }
+
+                is AmityPostMenuSheetUIState.OpenReportSheet -> {
+                    AmityBaseComponent(
+                        componentId = "",
+                        needScaffold = true
+                    ) {
+                        AmityReportReasonListScreen(
+                            onCloseSheetClick = {
+                                viewModel.updateSheetUIState(
+                                    AmityPostMenuSheetUIState.CloseSheet
+                                )
+                            },
+                            onOtherClick = {
+                                viewModel.updateSheetUIState(
+                                    AmityPostMenuSheetUIState.OpenReportOtherReasonSheet(post.getPostId())
+                                )
+                            },
+                            onSubmitClick = { reason, enableButtonCallback ->
+                                submitReport(
+                                    viewModel = viewModel,
+                                    postId = post.getPostId(),
+                                    reason = reason,
+                                    onError = enableButtonCallback
+                                )
+                            }
+                        )
+                    }
+                }
+
+                is AmityPostMenuSheetUIState.OpenReportOtherReasonSheet -> {
+                    AmityBaseComponent(
+                        componentId = "",
+                        needScaffold = true
+                    ) {
+                        AmityReportOtherReasonScreen(
+                            onBackClick = {
+                                viewModel.updateSheetUIState(
+                                    AmityPostMenuSheetUIState.OpenReportSheet(post.getPostId())
+                                )
+                            },
+                            onSubmitClick = { detail, enableButtonCallback ->
+                                submitReport(
+                                    viewModel = viewModel,
+                                    postId = post.getPostId(),
+                                    reason = AmityContentFlagReason.Others(detail),
+                                    onError = enableButtonCallback
+                                )
+                            },
+                            onCloseSheetClick = {
+                                viewModel.updateSheetUIState(
+                                    AmityPostMenuSheetUIState.CloseSheet
+                                )
+                            }
+                        )
+                    }
+                }
+
+                is AmityPostMenuSheetUIState.OpenErrorSheet -> {
+                    AmityReportErrorScreen(
+                        onCloseSheetClick = {
+                            viewModel.updateSheetUIState(
+                                AmityPostMenuSheetUIState.CloseSheet
+                            )
+                        }
+                    )
+                }
+
                 AmityPostMenuSheetUIState.CloseSheet -> {}
             }
         }
     }
+}
+
+// Helper function to submit reports
+private fun submitReport(
+    viewModel: AmityPostMenuViewModel,
+    postId: String,
+    reason: AmityContentFlagReason,
+    onError: () -> Unit = {},  // Add new parameter with default value
+) {
+    viewModel.flagPost(
+        postId = postId,
+        reason = reason,
+        onSuccess = {
+            AmityUIKitSnackbar.publishSnackbarMessage("Post reported")
+            viewModel.updateSheetUIState(AmityPostMenuSheetUIState.CloseSheet)
+        },
+        onError = { error ->
+            onError()
+            if (error is AmityException) {
+                if (error.code == AmityError.ITEM_NOT_FOUND.code) {
+                    viewModel.updateSheetUIState(AmityPostMenuSheetUIState.OpenErrorSheet(postId))
+                } else {
+                    AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to report post. Please try again.")
+                }
+            } else {
+                AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to report post. Please try again.")
+            }
+        }
+    )
 }

@@ -20,8 +20,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.model.core.reaction.AmityReaction
+import com.amity.socialcloud.sdk.model.core.reaction.AmityReactionReferenceType
 import com.amity.socialcloud.uikit.common.compose.R
 import com.amity.socialcloud.uikit.common.model.AmityMessageReactions
+import com.amity.socialcloud.uikit.common.model.AmitySocialReactions
 import com.amity.socialcloud.uikit.common.ui.elements.AmityUserAvatarView
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
@@ -30,6 +32,7 @@ import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 fun AmityReactionListItem(
     modifier: Modifier = Modifier,
     reaction: AmityReaction,
+    referenceType: AmityReactionReferenceType,
     onRemoveReaction: (AmityReaction) -> Unit = {},
     onUserClick: (String) -> Unit = {},
 ) {
@@ -62,16 +65,30 @@ fun AmityReactionListItem(
                 .padding(start = 12.dp)
                 .fillMaxHeight()
         ) {
-            Text(
-                text = displayName,
-                style = AmityTheme.typography.bodyLegacy.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    color = AmityTheme.colors.base
-                ),
-                modifier = modifier.clickableWithoutRipple {
-                    onUserClick(reaction.getCreatorId())
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = displayName,
+                    style = AmityTheme.typography.bodyLegacy.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = AmityTheme.colors.base
+                    ),
+                    modifier = modifier
+                        .weight(1f, fill = false)
+                        .clickableWithoutRipple {
+                            onUserClick(reaction.getCreatorId())
+                        }
+                )
+                if (reaction.getCreator()?.isBrand() == true) {
+                    Image(
+                        imageVector = ImageVector.vectorResource(id = R.drawable.amity_ic_brand_badge),
+                        contentDescription = "Brand badge",
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
-            )
+            }
 
             if (isMyReaction) {
                 Text(
@@ -86,7 +103,10 @@ fun AmityReactionListItem(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        val iconId = AmityMessageReactions.getList()
+        val iconId = when (referenceType) {
+            AmityReactionReferenceType.MESSAGE -> AmityMessageReactions.getList()
+            else -> AmitySocialReactions.getList()
+        }
             .find { reaction ->
                 reaction.name == reactionName
             }?.icon ?: R.drawable.amity_ic_message_reaction_missing
@@ -99,12 +119,4 @@ fun AmityReactionListItem(
         )
 
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun AmityReactionListItemPreview() {
-    AmityReactionListItem(
-        reaction = AmityReaction::class.java.newInstance()
-    )
 }

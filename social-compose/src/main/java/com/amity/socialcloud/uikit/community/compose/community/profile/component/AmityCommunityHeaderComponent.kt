@@ -6,15 +6,28 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rxjava3.subscribeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.amity.socialcloud.sdk.api.core.AmityCoreClient
+import com.amity.socialcloud.sdk.helper.core.coroutines.asFlow
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
 import com.amity.socialcloud.uikit.common.common.isNotEmptyOrBlank
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.elements.AmityExpandableText
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.utils.isSignedIn
+import com.amity.socialcloud.uikit.community.compose.community.profile.AmityCommunityProfileViewModel
 import com.amity.socialcloud.uikit.community.compose.community.profile.element.AmityCommunityCategoryListElement
 import com.amity.socialcloud.uikit.community.compose.community.profile.element.AmityCommunityCoverView
 import com.amity.socialcloud.uikit.community.compose.community.profile.element.AmityCommunityInfoView
@@ -23,6 +36,7 @@ import com.amity.socialcloud.uikit.community.compose.community.profile.element.A
 import com.amity.socialcloud.uikit.community.compose.community.profile.element.AmityCommunityProfileTitleView
 import com.amity.socialcloud.uikit.community.compose.story.target.AmityStoryTabComponent
 import com.amity.socialcloud.uikit.community.compose.story.target.AmityStoryTabComponentType
+import kotlinx.coroutines.flow.catch
 
 @Composable
 fun AmityCommunityHeaderComponent(
@@ -31,6 +45,27 @@ fun AmityCommunityHeaderComponent(
 	community: AmityCommunity,
 	style: AmityCommunityHeaderStyle = AmityCommunityHeaderStyle.EXPANDED,
 ) {
+	val viewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
+		"No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
+	}
+	val viewModel =
+		viewModel<AmityCommunityProfileViewModel>(viewModelStoreOwner = viewModelStoreOwner, factory =
+			object : ViewModelProvider.Factory {
+				override fun <VM : androidx.lifecycle.ViewModel> create(
+					modelClass: Class<VM>
+				): VM {
+					return AmityCommunityProfileViewModel(community.getCommunityId()) as VM
+				}
+			}
+		)
+
+
+    val state by remember { viewModel.communityProfileState }.collectAsState()
+
+    LaunchedEffect(community.getCommunityId()) {
+        viewModel.getInvitation(community = community)
+    }
+
 	AmityBaseComponent(
 		pageScope = pageScope,
 		componentId = "community_header"
@@ -45,7 +80,8 @@ fun AmityCommunityHeaderComponent(
 					pageScope = pageScope,
 					componentScope = getComponentScope(),
 					community = community,
-					style = AmityCommunityHeaderStyle.EXPANDED
+					style = AmityCommunityHeaderStyle.EXPANDED,
+					viewModel = viewModel
 				)
 				Column(modifier = Modifier.padding(top = 16.dp)) {
 					AmityCommunityProfileTitleView(
@@ -73,14 +109,17 @@ fun AmityCommunityHeaderComponent(
 						community = community
 					)
 
-                    AmityCommunityJoinButton(
+                    state.invitation?.let { invitation ->
+                        AmityCommunityInvitationBanner(
+                            invitation = invitation
+                        )
+                    } ?: AmityCommunityJoinButton(
                         pageScope = pageScope,
                         componentScope = getComponentScope(),
                         community = community
                     )
 					Row(
 						modifier = Modifier
-                            .padding(bottom = 12.dp, start = 16.dp, end = 16.dp)
                             .fillMaxWidth()
                             .align(Alignment.Start)
 					) {
@@ -90,20 +129,26 @@ fun AmityCommunityHeaderComponent(
 							)
 						)
 					}
-                    AmityCommunityPendingPost(
-                        pageScope = pageScope,
-                        componentScope = getComponentScope(),
-                        community = community
-                    )
+					if (community.isJoined()) {
+						AmityCommunityPendingPost(
+							pageScope = pageScope,
+							componentScope = getComponentScope(),
+							community = community
+						)
+					}
 				}
 			}
 		} else {
-			Column {
+			Column(
+				modifier = modifier
+					.background(AmityTheme.colors.background)
+			) {
 				AmityCommunityCoverView(
 					pageScope = pageScope,
 					componentScope = getComponentScope(),
 					community = community,
-					style = AmityCommunityHeaderStyle.COLLAPSE
+					style = AmityCommunityHeaderStyle.COLLAPSE,
+					viewModel = viewModel
 				)
 				community.let {
 					if (!community.isJoined()) {

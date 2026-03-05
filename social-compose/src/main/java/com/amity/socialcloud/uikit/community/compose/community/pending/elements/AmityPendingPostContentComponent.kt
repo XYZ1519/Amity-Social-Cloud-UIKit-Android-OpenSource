@@ -35,6 +35,7 @@ fun AmityPendingPostContentComponent(
     modifier: Modifier = Modifier,
     pageScope: AmityComposePageScope? = null,
     post: AmityPost,
+    componentId: String? = null,
     onAcceptAction: (AmityPost) -> Unit,
     onDeclineAction: (AmityPost) -> Unit,
 ) {
@@ -108,7 +109,7 @@ fun AmityPendingPostContentComponent(
 
     AmityBaseComponent(
         pageScope = pageScope,
-        componentId = "pending_post_content"
+        componentId = "pending_post_list"
     ) {
         Column(
             modifier = modifier
@@ -135,11 +136,33 @@ fun AmityPendingPostContentComponent(
 
                 AmityPostPollElement(
                     modifier = modifier,
+                    pageScope = pageScope,
                     componentScope = getComponentScope(),
                     post = post,
                     style = AmityPostContentComponentStyle.FEED,
                     onClick = {},
                     onMentionedUserClick = {},
+                )
+            } else if (post.getChildren().any { it.getData() is AmityPost.Data.CLIP }) {
+                AmityPostContentElement(
+                    modifier = modifier,
+                    post = post,
+                    style = AmityPostContentComponentStyle.FEED,
+                    onClick = {},
+                    onMentionedUserClick = {
+                        behavior.goToUserProfilePage(context = context, userId = it)
+                    }
+                )
+                AmityPostPreviewLinkView(
+                    modifier = modifier,
+                    post = post,
+                )
+                AmityPostMediaElement(
+                    modifier = Modifier,
+                    post = post,
+                    clipClick = {
+                        behavior.goToClipFeedPage(context, it.getPostId())
+                    }
                 )
             } else {
                 AmityPostContentElement(

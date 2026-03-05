@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import com.amity.socialcloud.sdk.model.core.notificationtray.AmityNotificationTrayItem
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
 import com.amity.socialcloud.uikit.common.common.readableSocialTimeDiff
+import com.amity.socialcloud.uikit.common.ui.elements.AmityEventAvatarView
 import com.amity.socialcloud.uikit.common.ui.elements.AmityUserAvatarView
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 
@@ -46,11 +47,19 @@ fun AmityNotificationTrayItemView(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Avatar shimmer
-        data?.getUsers()?.firstOrNull()?.let {
-            AmityUserAvatarView(
-                user = it,
-            )
+        // Avatar - show event cover for event notifications, user avatar otherwise
+        if (data?.getActionType() == "event") {
+            data.getEvent()?.let { event ->
+                AmityEventAvatarView(
+                    eventCoverImage = event.getCoverImage()
+                )
+            }
+        } else {
+            data?.getUsers()?.firstOrNull()?.let {
+                AmityUserAvatarView(
+                    user = it,
+                )
+            }
         }
 
         Spacer(Modifier.width(12.dp))
@@ -66,7 +75,7 @@ fun AmityNotificationTrayItemView(
 
         Text(
             text = data?.getLastOccurredAt()?.readableSocialTimeDiff() ?: "",
-            style = AmityTheme.typography.caption,
+            style = AmityTheme.typography.caption.copy(fontSize = 13.sp),
             color = AmityTheme.colors.baseShade2
         )
 
@@ -134,14 +143,14 @@ fun HighlightText(
         Text(
             modifier = modifier,
             text = annotatedString,
-            style = AmityTheme.typography.body,
+            style = AmityTheme.typography.body.copy(fontSize = 15.sp),
             overflow = TextOverflow.Ellipsis,
             maxLines = 3
         )
     } else {
         Text(
             text = text,
-            style = AmityTheme.typography.body,
+            style = AmityTheme.typography.body.copy(fontSize = 15.sp),
             overflow = TextOverflow.Ellipsis,
             maxLines = 3,
             modifier = modifier

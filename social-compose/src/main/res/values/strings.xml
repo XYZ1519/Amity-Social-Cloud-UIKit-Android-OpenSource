@@ -15,17 +15,22 @@
     <string name="amity_delete_comment">Delete Comment</string>
     <string name="amity_comment_deleted_toast_message">Comment deleted</string>
     <string name="amity_edit_comment">Edit Comment</string>
-    <string name="amity_report_comment">Report comment</string>
-    <string name="amity_unreport_comment">Unreport comment</string>
-    <string name="amity_comment_reported_toast_message">Comment reported</string>
+    <string name="amity_report_comment">Report comment.</string>
+    <string name="amity_unreport_comment">Unreport comment.</string>
+    <string name="amity_unreport_reply">Unreport reply.</string>
+    <string name="amity_comment_reported_toast_message">Comment reported.</string>
     <string name="amity_comment_reported_failed_toast_message">Failed to report comment. Please try again.</string>
-    <string name="amity_comment_unreported_toast_message">Comment unreported</string>
+    <string name="amity_comment_unreported_toast_message">Comment unreported.</string>
     <string name="amity_comment_unreported_failed_toast_message">Failed to unreport comment. Please try again.</string>
     <string name="amity_undo_report">Undo Report</string>
     <string name="amity_edit_reply">Edit reply</string>
     <string name="amity_delete_reply">Delete reply</string>
-    <string name="amity_report_reply">Report reply</string>
+    <string name="amity_report_reply_v4">Report reply</string>
     <string name="amity_reply_deleted_message">This reply has been deleted</string>
+    <string name="amity_reply_reported_toast_message">Reply reported.</string>
+    <string name="amity_reply_reported_failed_toast_message">Failed to report reply. Please try again.</string>
+    <string name="amity_reply_unreported_toast_message">Reply unreported.</string>
+    <string name="amity_reply_unreported_failed_toast_message">Failed to unreport reply. Please try again.</string>
     <string name="amity_comment_deleted_message">This comment has been deleted</string>
     <string name="amity_comment_delete_failed_toast_message">Failed to delete comment. Please try again.</string>
     <string name="amity_view_more_replies">View more replies</string>
@@ -44,6 +49,7 @@
 
     <string name="amity_cancel">Cancel</string>
     <string name="amity_delete">Delete</string>
+    <string name="amity_decline">Decline</string>
 
     <plurals name="amity_feed_reaction_count">
         <item quantity="one">%s like</item>
@@ -59,6 +65,20 @@
     <string name="amity_v4_delete_post_warning_message">This post will be permanently deleted.</string>
     <string name="amity_delete_post_warning_message">This post will be permanently deleted. You’ll no longer to see and find this post.</string>
 
+    <string name="amity_delete_story_title">Delete story?</string>
+    <string name="amity_delete_story_warning_message">The story will be permanently deleted. It cannot be undone.</string>
+
+    <string name="amity_delete_story_success">Story deleted</string>
+    <string name="amity_delete_story_fail">Failed to delete story</string>
+
+    <string name="amity_deleted_post_dialog_title">This post has been deleted.</string>
+    <string name="amity_deleted_user_dialog_title">This user has been deleted.</string>
+    <string name="amity_deleted_group_dialog_title">This group has been deleted.</string>
+    <string name="amity_invalid_user_dialog_title">This user is invalid.</string>
+    <string name="amity_invalid_post_dialog_title">This post is invalid.</string>
+    <string name="amity_invalid_group_dialog_title">This group is invalid.</string>
+
+
     <string name="amity_post_to">Post to</string>
     <string name="amity_story_to">Story to</string>
 
@@ -69,6 +89,17 @@
     <string name="amity_post_text_exceed_error_message">Your post wasn\'t posted because it exceeds the %1$d characters limit</string>
     <string name="amity_post_create_generic_error_message">Failed to create post. Please try again.</string>
     <string name="amity_post_edit_generic_error_message">Failed to edit post. Please try again.</string>
+
+
+    <!-- Alt text-->
+    <string name="amity_image_add_alt_text_generic_error_message">Failed to add alt text. Please try again.</string>
+    <string name="amity_image_edit_alt_text_generic_error_message">Failed to edit alt text. Please try again.</string>
+    <string name="amity_image_alt_text_ban_word_error_message">Your alt text contains an inappropriate word.</string>
+    <string name="amity_image_alt_text_ban_url_error_message">Your alt text contains a link that is not allowed.</string>
+    <string name="amity_image_alt_text_updated_message">Alt text updated.</string>
+    <string name="amity_image_add_alt_text_title">Alt text</string>
+    <string name="amity_image_edit_alt_text_title">Edit alt text</string>
+    <string name="amity_image_alt_text_hint_message">Describe this photo briefly to help visually impaired users understand its content</string>
 
     <string name="amity_only_admin">Only admin can post</string>
     <string name="amity_add_members">Add members<font fgcolor='#FF0000'>*</font></string>
@@ -92,6 +123,7 @@
     <string name="amity_v4_dialog_leave_button">Leave</string>
     <string name="amity_v4_dialog_close_button">Close</string>
     <string name="amity_v4_dialog_save_button">Save</string>
+    <string name="amity_v4_dialog_done_button">Done</string>
     <string name="amity_v4_dialog_discard_button">Discard</string>
 
     <!--community setup page-->
@@ -108,8 +140,17 @@
     <string name="amity_v4_community_setup_privacy_public_title">Public</string>
     <string name="amity_v4_community_setup_privacy_public_description">Anyone can join, view, and search the posts in this community.</string>
     <string name="amity_v4_community_setup_privacy_private_title">Private</string>
+    <string name="amity_v4_community_setup_privacy_private_and_visible_title">Private &amp; visible</string>
+    <string name="amity_v4_community_setup_privacy_private_and_hidden_title">Private &amp; hidden</string>
     <string name="amity_v4_community_setup_privacy_private_description">Only members invited by the moderators can join, view, and search the posts in this community.</string>
+    <string name="amity_v4_community_setup_privacy_private_and_visible_description">Community is discoverable by anyone. Content is hidden from non-members.</string>
+    <string name="amity_v4_community_setup_privacy_private_and_hidden_description">Community and content are hidden from non-members, and cannot be discovered via search.</string>
+    <string name="amity_v4_community_setup_membership_title">Membership</string>
+    <string name="amity_v4_community_setup_membership_desc">Requires moderator approval</string>
+    <string name="amity_v4_community_setup_membership_sub_desc">Users will become members only when their join request is approved by a moderator of this community.</string>
     <string name="amity_v4_community_setup_create_button">Create community</string>
+    <string name="amity_v4_community_setup_invite_members_title">Invite members</string>
+    <string name="amity_v4_community_setup_invite_members_description">They will join as members after accepting your invitation.</string>
     <string name="amity_v4_community_setup_edit_button">Save</string>
 
     <!--community setup page toast-->
@@ -131,6 +172,10 @@
     <!--general community related pages dialog-->
     <string name="amity_v4_community_dialog_leave_title">Leave without finishing</string>
     <string name="amity_v4_community_dialog_leave_description">Your changes that you made may not be saved.</string>
+
+    <string name="amity_v4_user_profile_feed_option_all">Public community \&amp; profile posts</string>
+    <string name="amity_v4_user_profile_feed_option_community">Public community posts</string>
+    <string name="amity_v4_user_profile_feed_option_user">Profile posts</string>
 
     <!--create livestream pages-->
     <string name="amity_v4_create_livestream_target_title">Live on</string>
@@ -161,5 +206,33 @@
     <string name="amity_v4_create_livestream_no_internet_view_desc">Due to poor connection, this live stream has been\npaused. It will resume automatically\nonce the connection is stable.</string>
     <string name="amity_v4_livestream_deleted_page_title">Something went wrong</string>
     <string name="amity_v4_livestream_deleted_page_desc">The content you’re looking for is unavailable.</string>
+    <string name="amity_report_list_screen_description">Tell us why you\'re reporting this content. Your report will be reviewed by our moderators and kept confidential.</string>
+    <string name="amity_report_submit_button">Submit</string>
+    <string name="amity_report_other_reason_desc">Describe your reason</string>
+    <string name="amity_report_other_reason_optional">(Optional)</string>
+    <string name="amity_report_text_placeholder">Share more details about this issue</string>
 
+    <!--community invitation-->
+    <string name="amity_v4_community_information_title">Community information</string>
+    <string name="amity_v4_community_permission_title">Community permissions</string>
+    <string name="amity_v4_community_your_preferences_title">Your preferences</string>
+    <string name="amity_v4_community_invitation_accept_button">Join</string>
+    <string name="amity_v4_community_invitation_reject_button">Decline</string>
+    <string name="amity_v4_community_invitation_message_template">%s invited you to join %s.</string>
+    <string name="amity_v4_community_invitation_unavailable_error">This invitation is no longer available.</string>
+    <string name="amity_v4_community_invitation_accept_success">You joined %s.</string>
+    <string name="amity_v4_community_invitation_reject_success">Invitation declined.</string>
+    <string name="amity_v4_community_invitation_fail_to_accept">Failed to accept invitation. Please try again.</string>
+    <string name="amity_v4_community_invitation_fail_to_reject">Failed to decline invitation. Please try again.</string>
+    <string name="amity_v4_community_invitation_create_success">Successfully invited members to this community.</string>
+    <string name="amity_v4_community_invitation_create_failed">Failed to invite members. Please try again.</string>
+    <string name="amity_v4_community_add_member_success">Successfully added members to this community!</string>
+    <string name="amity_v4_community_add_member_failed">Failed to add members to this community. Please try again!</string>
+    <string name="amity_v4_community_search_placeholder">Start your search by typing\nat least 3 letters</string>
+    <string name="amity_v4_community_invitation_reject_dialog_title">Decline invitation?</string>
+    <string name="amity_v4_community_invitation_reject_dialog_subtitle">If you change your mind, you’ll have to request to join again.</string>
+
+
+    <!--- Generic error -->
+    <string name="amity_no_internet_error_message">No internet connection.</string>
 </resources>

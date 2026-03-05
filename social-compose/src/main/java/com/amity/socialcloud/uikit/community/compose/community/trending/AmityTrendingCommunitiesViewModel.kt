@@ -1,25 +1,43 @@
 package com.amity.socialcloud.uikit.community.compose.community.trending
 
 import androidx.paging.LoadState
+import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.api.social.AmitySocialClient
 import com.amity.socialcloud.sdk.helper.core.coroutines.asFlow
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
+import com.amity.socialcloud.sdk.model.social.community.AmityJoinRequest
 import com.amity.socialcloud.uikit.common.base.AmityBaseViewModel
+import com.amity.socialcloud.uikit.common.utils.isSignedIn
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.processors.PublishProcessor
 import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
 
 class AmityTrendingCommunitiesViewModel : AmityBaseViewModel() {
     private val _communityListState = MutableStateFlow<CommunityListState>(CommunityListState.EMPTY)
     val communityListState: StateFlow<CommunityListState> = _communityListState.asStateFlow()
 
+    private val _joinRequestList: MutableStateFlow<List<AmityJoinRequest>> = MutableStateFlow(emptyList())
+    val joinRequestList: StateFlow<List<AmityJoinRequest>> = _joinRequestList.asStateFlow()
+
+    private val getJoinRequestsRelay = PublishProcessor.create<List<String>>()
+
+
+    init {
+        observeJoinRequests()
+    }
+
     private val trendingCommunitiesFlow = AmitySocialClient.newCommunityRepository()
-        .getTrendingCommunities()
+        .getTrendingCommunities(includeDiscoverablePrivateCommunity = true)
         .map {
+            val communityIds = it.map { it.getCommunityId() }
+            getJoinRequestList(communityIds)
+
             if (it.size > 5) {
                 it.subList(0, 5)
             } else {
@@ -43,6 +61,31 @@ class AmityTrendingCommunitiesViewModel : AmityBaseViewModel() {
     fun getTrendingCommunities(): Flow<List<AmityCommunity>> {
         _communityListState.value = CommunityListState.LOADING
         return trendingCommunitiesFlow
+    }
+
+    fun getJoinRequestList(communityIds: List<String>) {
+        if (communityIds.isNotEmpty()) {
+            getJoinRequestsRelay.onNext(communityIds)
+        }
+    }
+
+    private fun observeJoinRequests() {
+        if (AmityCoreClient.isSignedIn()) {
+            getJoinRequestsRelay
+                .distinctUntilChanged()
+                .flatMap { communityIds ->
+                    AmitySocialClient.newCommunityRepository().getJoinRequestList(communityIds)
+                }
+                .doOnNext { requests ->
+                    _joinRequestList.update {
+                        requests
+                    }
+                }
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe()
+                .let(::addDisposable)
+        }
     }
 
     sealed class CommunityListState {

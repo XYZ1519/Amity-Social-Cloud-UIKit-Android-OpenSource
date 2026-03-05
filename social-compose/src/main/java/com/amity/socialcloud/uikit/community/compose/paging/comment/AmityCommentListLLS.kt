@@ -27,13 +27,19 @@ fun LazyListScope.amityCommentListLLS(
     referenceId: String,
     referenceType: AmityCommentReferenceType,
     editingCommentId: String?,
+    includeDeleted: Boolean = true,
     shouldAllowInteraction: Boolean,
+    showEngagementRow: Boolean,
+    eventHostId: String? = null,
     onReply: (String) -> Unit,
     onEdit: (String?) -> Unit,
     showBounceEffect: Boolean = false,
+    expandReplies: Boolean = false,
+    fromNonMemberCommunity: Boolean = false,
 ) {
-    commentTarget?.let {
-        item(key = "highlighted_comment_${it.getCommentId()}") {
+    commentTarget?.let { target ->
+        item(key = "highlighted_comment_${target.getCommentId()}") {
+            val isEventHost = eventHostId != null && target.getCreator()?.getUserId() == eventHostId
             AmityCommentView(
                 modifier = modifier
                     .let { if (showBounceEffect && replyTargetId == null) it.bounceEffect() else it },
@@ -42,12 +48,17 @@ fun LazyListScope.amityCommentListLLS(
                 referenceType = referenceType,
                 currentUserId = AmityCoreClient.getUserId(),
                 editingCommentId = editingCommentId,
-                comment = it,
+                includeDeleted = includeDeleted,
+                comment = target,
                 allowInteraction = shouldAllowInteraction,
+                isEventHost = isEventHost,
                 onReply = onReply,
                 onEdit = onEdit,
                 replyTargetId = replyTargetId,
-                showBounceEffect = showBounceEffect
+                showBounceEffect = showBounceEffect,
+                expandReplies = expandReplies,
+                showEngagementRow = showEngagementRow,
+                fromNonMemberCommunity = fromNonMemberCommunity,
             )
         }
     }
@@ -62,6 +73,7 @@ fun LazyListScope.amityCommentListLLS(
                     is AmityListItem.CommentItem -> {
                         // Skip this item if it matches our highlighted comment ID
                         if (commentTarget == null || data.comment.getCommentId() != commentTarget.getCommentId()) {
+                            val isEventHost = eventHostId != null && data.comment.getCreator()?.getUserId() == eventHostId
                             AmityCommentView(
                                 modifier = modifier,
                                 componentScope = componentScope,
@@ -69,10 +81,15 @@ fun LazyListScope.amityCommentListLLS(
                                 referenceType = referenceType,
                                 currentUserId = AmityCoreClient.getUserId(),
                                 editingCommentId = editingCommentId,
+                                includeDeleted = includeDeleted,
                                 comment = data.comment,
                                 allowInteraction = shouldAllowInteraction,
+                                showEngagementRow = showEngagementRow,
+                                isEventHost = isEventHost,
                                 onReply = onReply,
                                 onEdit = onEdit,
+                                expandReplies = expandReplies,
+                                fromNonMemberCommunity = fromNonMemberCommunity,
                             )
                         }
                     }

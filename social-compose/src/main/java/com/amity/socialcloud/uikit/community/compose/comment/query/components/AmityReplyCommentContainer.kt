@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.amity.socialcloud.sdk.model.social.comment.AmityComment
 import com.amity.socialcloud.sdk.model.social.comment.AmityCommentReferenceType
+import com.amity.socialcloud.uikit.common.ui.elements.EXPANDABLE_TEXT_MAX_LINES
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.community.compose.comment.query.AmityReplyCommentView
 import com.amity.socialcloud.uikit.community.compose.comment.query.elements.AmityCommentViewReplyBar
@@ -24,17 +25,22 @@ fun AmityReplyCommentContainer(
     currentUserId: String,
     commentId: String,
     editingCommentId: String?,
+    includeDeleted: Boolean = true,
     replyCount: Int,
     replyTargetId: String? = null,
+    showEngagementRow: Boolean,
     replies: List<AmityComment>,
     onEdit: (String?) -> Unit,
+    previewLines: Int = EXPANDABLE_TEXT_MAX_LINES,
     showBounceEffect: Boolean = false,
+    isExpanded: Boolean = false,
+    fromNonMemberCommunity: Boolean = false,
 ) {
-    var shouldShowReplies by rememberSaveable { mutableStateOf(false) }
+    var shouldShowReplies by rememberSaveable { mutableStateOf(isExpanded) }
 
     if (shouldShowReplies) {
         AmityReplyCommentListView(
-            modifier = modifier,
+            modifier = modifier.let { if (showBounceEffect) it.bounceEffect() else it },
             componentScope = componentScope,
             allowInteraction = allowInteraction,
             referenceId = referenceId,
@@ -42,10 +48,14 @@ fun AmityReplyCommentContainer(
             currentUserId = currentUserId,
             commentId = commentId,
             editingCommentId = editingCommentId,
+            includeDeleted = includeDeleted,
             replyCount = replyCount,
             replyTargetId = replyTargetId,
+            showEngagementRow = showEngagementRow,
             replies = replies,
+            previewLines = previewLines,
             onEdit = onEdit,
+            fromNonMemberCommunity = fromNonMemberCommunity,
         )
     } else if (replyCount > 0) {
         if (replyTargetId != null) {
@@ -62,9 +72,12 @@ fun AmityReplyCommentContainer(
                     comment = it,
                     onEdit = onEdit,
                     replyCount = replyCount,
+                    previewLines = previewLines,
+                    showEngagementRow = showEngagementRow,
                     shouldShowReplies = {
                         shouldShowReplies = it
-                    }
+                    },
+                    fromNonMemberCommunity = fromNonMemberCommunity,
                 )
             }
         } else {
@@ -77,20 +90,4 @@ fun AmityReplyCommentContainer(
             }
         }
     }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFFFFFFFF)
-@Composable
-fun AmityReplyCommentContainerPreview() {
-    AmityReplyCommentContainer(
-        allowInteraction = true,
-        referenceId = "",
-        referenceType = AmityCommentReferenceType.POST,
-        currentUserId = "",
-        commentId = "",
-        editingCommentId = null,
-        replyCount = 3,
-        replies = emptyList(),
-        onEdit = {},
-    )
 }

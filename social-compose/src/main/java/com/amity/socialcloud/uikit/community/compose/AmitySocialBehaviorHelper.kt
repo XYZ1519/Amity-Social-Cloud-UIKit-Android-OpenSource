@@ -1,13 +1,20 @@
 package com.amity.socialcloud.uikit.community.compose
 
+import com.amity.socialcloud.sdk.model.social.post.AmityPost
+import com.amity.socialcloud.uikit.common.behavior.AmityGlobalBehavior
+import com.amity.socialcloud.uikit.community.compose.clip.create.AmityCreateClipPageBehavior
+import com.amity.socialcloud.uikit.community.compose.clip.draft.AmityDraftClipPageBehavior
+import com.amity.socialcloud.uikit.community.compose.clip.view.AmityClipPageBehavior
 import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentBehavior
 import com.amity.socialcloud.uikit.community.compose.community.membership.list.AmityCommunityMembershipPageBehavior
 import com.amity.socialcloud.uikit.community.compose.community.pending.elements.AmityPendingPostContentComponentBehavior
+import com.amity.socialcloud.uikit.community.compose.community.pending.elements.AmityPendingRequestComponentBehavior
 import com.amity.socialcloud.uikit.community.compose.community.profile.AmityCommunityProfilePageBehavior
 import com.amity.socialcloud.uikit.community.compose.community.setting.AmityCommunitySettingPageBehavior
 import com.amity.socialcloud.uikit.community.compose.community.setting.notifications.AmityCommunityNotificationSettingPageBehavior
 import com.amity.socialcloud.uikit.community.compose.community.setup.AmityCommunitySetupPageBehavior
 import com.amity.socialcloud.uikit.community.compose.livestream.create.AmityCreateLivestreamPageBehavior
+import com.amity.socialcloud.uikit.community.compose.livestream.room.create.AmityCreateRoomPageBehavior
 import com.amity.socialcloud.uikit.community.compose.notificationtray.AmityNotificationTrayPageBehavior
 import com.amity.socialcloud.uikit.community.compose.post.composer.AmityPostComposerPageBehavior
 import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostDetailPageBehavior
@@ -26,6 +33,8 @@ import com.amity.socialcloud.uikit.community.compose.socialhome.components.Amity
 import com.amity.socialcloud.uikit.community.compose.story.create.AmityCreateStoryPageBehavior
 import com.amity.socialcloud.uikit.community.compose.story.target.AmityStoryTabComponentBehavior
 import com.amity.socialcloud.uikit.community.compose.story.view.AmityViewStoryPageBehavior
+import com.amity.socialcloud.uikit.community.compose.event.detail.AmityEventDetailPageBehavior
+import com.amity.socialcloud.uikit.community.compose.target.event.AmityEventTargetSelectionPageBehavior
 import com.amity.socialcloud.uikit.community.compose.target.livestream.AmityLivestreamPostTargetSelectionPageBehavior
 import com.amity.socialcloud.uikit.community.compose.target.poll.AmityPollTargetSelectionPageBehavior
 import com.amity.socialcloud.uikit.community.compose.target.post.AmityPostTargetSelectionPageBehavior
@@ -39,7 +48,30 @@ import com.amity.socialcloud.uikit.community.compose.user.relationship.AmityUser
 
 object AmitySocialBehaviorHelper {
 
+    val supportedPostTypes = listOf(
+        AmityPost.DataType.TEXT,
+        AmityPost.DataType.IMAGE,
+        AmityPost.DataType.VIDEO,
+        AmityPost.DataType.POLL,
+        AmityPost.DataType.LIVE_STREAM,
+        AmityPost.DataType.CLIP,
+        AmityPost.DataType.ROOM,
+    )
+
+    val supportedStructureTypes = listOf(
+        AmityPost.StructureType.TEXT,
+        AmityPost.StructureType.IMAGE,
+        AmityPost.StructureType.VIDEO,
+        AmityPost.StructureType.POLL,
+        AmityPost.StructureType.LIVESTREAM,
+        AmityPost.StructureType.CLIP,
+        AmityPost.StructureType.ROOM,
+    )
+
     var showPollResultInDetailFirst = false
+
+    var globalBehavior: AmityGlobalBehavior =
+        AmityGlobalBehavior()
 
     var createStoryPageBehavior: AmityCreateStoryPageBehavior =
         AmityCreateStoryPageBehavior()
@@ -65,8 +97,25 @@ object AmitySocialBehaviorHelper {
     var pollTargetSelectionPageBehavior: AmityPollTargetSelectionPageBehavior =
         AmityPollTargetSelectionPageBehavior()
 
+    var eventTargetSelectionPageBehavior: AmityEventTargetSelectionPageBehavior =
+        AmityEventTargetSelectionPageBehavior()
+
+    var eventDetailPageBehavior: AmityEventDetailPageBehavior =
+        AmityEventDetailPageBehavior()
+
     var createLivestreamPageBehavior: AmityCreateLivestreamPageBehavior =
         AmityCreateLivestreamPageBehavior()
+
+    var createRoomPageBehavior: AmityCreateRoomPageBehavior =
+        AmityCreateRoomPageBehavior()
+
+    var createClipPageBehavior: AmityCreateClipPageBehavior =
+        AmityCreateClipPageBehavior()
+
+    var clipDraftPageBehavior: AmityDraftClipPageBehavior = AmityDraftClipPageBehavior()
+
+    var viewClipPageBehavior: AmityClipPageBehavior =
+        AmityClipPageBehavior()
 
     var notificationTrayPageBehavior: AmityNotificationTrayPageBehavior =
         AmityNotificationTrayPageBehavior()
@@ -140,6 +189,9 @@ object AmitySocialBehaviorHelper {
 
     var pendingPostContentComponentBehavior: AmityPendingPostContentComponentBehavior =
         AmityPendingPostContentComponentBehavior()
+
+    var pendingRequestComponentBehavior: AmityPendingRequestComponentBehavior =
+        AmityPendingRequestComponentBehavior()
 
     var exploreComponentBehavior: AmityExploreComponentBehavior = AmityExploreComponentBehavior()
 

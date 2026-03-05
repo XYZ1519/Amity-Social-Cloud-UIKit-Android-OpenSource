@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -28,12 +30,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.graphics.drawable.toBitmap
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
@@ -41,8 +43,13 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.request.crossfade
 import coil3.toBitmap
+import com.amity.socialcloud.sdk.api.core.AmityCoreClient
+import com.amity.socialcloud.sdk.helper.core.coroutines.asFlow
 import com.amity.socialcloud.sdk.model.core.file.AmityImage
+import com.amity.socialcloud.sdk.model.core.permission.AmityPermission
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
+import com.amity.socialcloud.uikit.common.common.isNotEmptyOrBlank
+import com.amity.socialcloud.uikit.common.config.AmityUIKitConfigController
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.elements.AmityMenuButton
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
@@ -52,11 +59,12 @@ import com.amity.socialcloud.uikit.common.utils.closePage
 import com.amity.socialcloud.uikit.common.utils.getActivity
 import com.amity.socialcloud.uikit.common.utils.getIcon
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
+import com.amity.socialcloud.uikit.community.compose.community.profile.AmityCommunityModalSheetUIState
 import com.amity.socialcloud.uikit.community.compose.community.profile.AmityCommunityProfilePageBehavior
+import com.amity.socialcloud.uikit.community.compose.community.profile.AmityCommunityProfileViewModel
 import com.amity.socialcloud.uikit.community.compose.community.profile.component.AmityCommunityHeaderStyle
 import com.amity.socialcloud.uikit.community.compose.utils.BlurImage
 import com.amity.socialcloud.uikit.community.compose.utils.LegacyBlurImage
-import kotlinx.coroutines.Dispatchers
 
 @Composable
 fun AmityCommunityCoverView(
@@ -65,6 +73,7 @@ fun AmityCommunityCoverView(
     componentScope: AmityComposeComponentScope? = null,
     community: AmityCommunity,
     style: AmityCommunityHeaderStyle = AmityCommunityHeaderStyle.EXPANDED,
+    viewModel: AmityCommunityProfileViewModel,
 ) {
     AmityBaseElement(
         pageScope = pageScope,
@@ -77,7 +86,7 @@ fun AmityCommunityCoverView(
         val context = LocalContext.current
         val coverUrl by remember(community.getUpdatedAt()) {
             derivedStateOf {
-                community.getAvatar()?.getUrl(AmityImage.Size.LARGE)
+                community.getAvatar()?.getUrl(AmityImage.Size.MEDIUM)
             }
         }
         val painter = rememberAsyncImagePainter(
@@ -93,6 +102,17 @@ fun AmityCommunityCoverView(
                 .build(),
         )
         val painterState by painter.state.collectAsState()
+
+        val isModerator by AmityCoreClient.hasPermission(AmityPermission.EDIT_COMMUNITY)
+            .atCommunity(community.getCommunityId())
+            .check()
+            .asFlow()
+            .collectAsState(initial = false)
+
+        val isPrivateAndHidden =
+            !community.isPublic() && !community.isDiscoverable()
+        val communityLink = AmityUIKitConfigController.getCommunityLink(community)
+        val isSharable = communityLink.isNotEmptyOrBlank() && (community.isPublic() || (!community.isPublic() && community.isDiscoverable()) || (isPrivateAndHidden && isModerator))
 
         var bitmap: Bitmap? by remember {
             mutableStateOf(null)
@@ -145,36 +165,40 @@ fun AmityCommunityCoverView(
                         )
                     }
                     Spacer(modifier = Modifier.weight(1f))
-                    AmityBaseElement(
-                        pageScope = pageScope,
-                        elementId = "menu_button"
-                    ) {
-                        AmityMenuButton(
-                            icon = getConfig().getIcon(),
-                            size = 32.dp,
-                            iconPadding = 4.dp,
-                            modifier = Modifier.testTag(getAccessibilityId()),
-                            onClick = {
-                                behavior.goToCommunitySettingPage(
-                                    AmityCommunityProfilePageBehavior.Context(
-                                        pageContext = context,
-                                        community = community,
+
+                    if(isModerator || isSharable) {
+                        AmityBaseElement(
+                            pageScope = pageScope,
+                            elementId = "menu_button"
+                        ) {
+                            AmityMenuButton(
+                                icon = getConfig().getIcon(),
+                                size = 32.dp,
+                                iconPadding = 4.dp,
+                                modifier = Modifier.testTag(getAccessibilityId()),
+                                onClick = {
+                                    viewModel.updateSheetUIState(
+                                        AmityCommunityModalSheetUIState.OpenCommunityMenuSheet(
+                                            community = community
+                                        )
                                     )
-                                )
-                            }
-                        )
+                                }
+                            )
+                        }
                     }
                 }
             }
         } else {
-            Box(modifier .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        AmityTheme.colors.baseShade3,
-                        AmityTheme.colors.baseShade2,
+            Box(
+                modifier.background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            AmityTheme.colors.baseShade3,
+                            AmityTheme.colors.baseShade2,
+                        )
                     )
                 )
-            )) {
+            ) {
                 if (coverUrl == null) {
                     Box(
                         modifier = modifier
@@ -227,6 +251,7 @@ fun AmityCommunityCoverView(
                             .height(102.dp)
                             .padding(16.dp)
                     ) {
+                        // Back button - always anchored at start
                         AmityBaseElement(
                             pageScope = pageScope,
                             elementId = "back_button"
@@ -241,38 +266,90 @@ fun AmityCommunityCoverView(
                                 }
                             )
                         }
-                        Text(
-                            community.getDisplayName(),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = TextStyle(
-                                fontSize = 17.sp,
-                                lineHeight = 24.sp,
-                                fontWeight = FontWeight(600),
-                                color = Color.White,
-                            ),
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(bottom = 4.dp)
-                        )
-                        AmityBaseElement(
-                            pageScope = pageScope,
-                            elementId = "menu_button"
+                        
+                        // Community title with badges - fills available space between buttons
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
                         ) {
-                            AmityMenuButton(
-                                icon = getConfig().getIcon(),
-                                size = 32.dp,
-                                iconPadding = 4.dp,
-                                modifier = Modifier.padding(start = 12.dp),
-                                onClick = {
-                                    behavior.goToCommunitySettingPage(
-                                        AmityCommunityProfilePageBehavior.Context(
-                                            pageContext = context,
-                                            community = community,
+                            // Private badge - before community name
+                            if (!community.isPublic()) {
+                                Box(modifier = Modifier
+                                    .size(24.dp)
+                                    .padding(top = 4.dp, end = 8.dp)
+                                ) {
+                                    AmityBaseElement(
+                                        elementId = "community_private_badge"
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = getConfig().getIcon()),
+                                            contentDescription = "Private community icon",
+                                            modifier = Modifier
+                                                .width(20.dp)
+                                                .height(16.dp)
                                         )
-                                    )
+                                    }
                                 }
+                            }
+                            
+                            // Community name - flexible, will truncate to fit
+                            Text(
+                                community.getDisplayName(),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                style = TextStyle(
+                                    fontSize = 17.sp,
+                                    lineHeight = 24.sp,
+                                    fontWeight = FontWeight(600),
+                                    color = Color.White,
+                                ),
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .padding(bottom = 4.dp)
                             )
+
+                            // Official badge - after community name
+                            if (community.isOfficial()) {
+                                Box(modifier = Modifier
+                                    .size(24.dp)
+                                    .padding(top = 2.dp, start = 6.dp)
+                                ) {
+                                    AmityBaseElement(
+                                        pageScope = pageScope,
+                                        componentScope = componentScope,
+                                        elementId = "community_verify_badge"
+                                    ) {
+                                        Image(
+                                            painter = painterResource(id = getConfig().getIcon()),
+                                            contentDescription = "Verified community icon",
+                                            modifier = Modifier
+                                                .size(20.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Menu button - always anchored at far end
+                        if (community.isJoined() || isModerator || isSharable) {
+                            AmityBaseElement(
+                                pageScope = pageScope,
+                                elementId = "menu_button"
+                            ) {
+                                AmityMenuButton(
+                                    icon = getConfig().getIcon(),
+                                    size = 32.dp,
+                                    iconPadding = 4.dp,
+                                    modifier = Modifier.padding(start = 12.dp),
+                                    onClick = {
+                                        viewModel.updateSheetUIState(
+                                            AmityCommunityModalSheetUIState.OpenCommunityMenuSheet(
+                                                community = community
+                                            )
+                                        )
+                                    }
+                                )
+                            }
                         }
                     }
                 }

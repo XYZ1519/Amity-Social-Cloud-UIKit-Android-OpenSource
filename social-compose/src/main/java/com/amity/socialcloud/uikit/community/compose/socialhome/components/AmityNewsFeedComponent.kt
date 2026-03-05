@@ -144,7 +144,7 @@ fun AmityNewsFeedComponent(
                 item(key = "story_tab") {
                     LocalPinnableContainer.current?.pin()
                     if (!isRefreshing) {
-                        val storyTabHeight = if (isStoryTabVisible) 126.dp else 0.dp
+                        val storyTabHeight = if (isStoryTabVisible) 130.dp else 0.dp
                         Box(
                             modifier = Modifier.height(storyTabHeight)
                         ) {
@@ -181,6 +181,12 @@ fun AmityNewsFeedComponent(
                                     id = it.getPostId(),
                                     category = AmityPostCategory.GLOBAL
                                 )
+                            },
+                            onClipClicked = {
+                                behavior.goToClipFeedPage(
+                                    context = context,
+                                    postId = it.getPostId()
+                                )
                             }
                         )
                     }
@@ -196,6 +202,12 @@ fun AmityNewsFeedComponent(
                         behavior.goToPostDetailPage(
                             context = context,
                             id = it.getPostId()
+                        )
+                    },
+                    onClipClick = { childPost ->
+                        behavior.goToClipFeedPage(
+                            context = context,
+                            postId = childPost.getPostId()
                         )
                     },
                     onCreateCommunityClicked = {

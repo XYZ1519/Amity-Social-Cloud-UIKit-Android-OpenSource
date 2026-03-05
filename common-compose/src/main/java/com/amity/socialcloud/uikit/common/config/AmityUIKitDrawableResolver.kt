@@ -45,6 +45,7 @@ object AmityUIKitDrawableResolver {
         "communityPinBadge" to R.drawable.amity_ic_pin_badge,
         "privacyPrivateIcon" to R.drawable.amity_ic_lock1,
         "privacyPublicIcon" to R.drawable.amity_ic_globe,
+        "privacyAndVisibleIcon" to R.drawable.ic_community_private_and_visible,
         "addIcon" to R.drawable.amity_ic_add,
         "profileFeedIcon" to R.drawable.amity_ic_community_feed,
         "profileImageFeedIcon" to R.drawable.amity_ic_community_image_feed,
@@ -56,12 +57,18 @@ object AmityUIKitDrawableResolver {
         "lockIcon" to R.drawable.amity_ic_lock1,
         "emptyPhotoIcon" to R.drawable.amity_ic_photo_empty,
         "emptyVideoIcon" to R.drawable.amity_ic_video_empty,
+        "emptyClipIcon" to R.drawable.amity_ic_clip_empty,
         "startLivestream" to R.drawable.amity_start_live_stream_button_enable,
         "addThumbNail" to R.drawable.amity_ic_add_thumnail,
         "switchCamera" to R.drawable.amity_v4_switch_camera_button,
         "deleteThumbnail" to R.drawable.amity_v4_ic_trash,
         "notificationTrayButtonIcon" to R.drawable.amity_ic_notification_tray_default,
         "notificationTrayEmptyStateIcon" to R.drawable.amity_ic_notification_tray_empty,
+        "clockIcon" to R.drawable.amity_ic_clock,
+        "createClipIcon" to R.drawable.amity_ic_create_clip,
+        "muteButtonIcon" to R.drawable.amity_v4_ic_mute,
+        "unmuteButtonIcon" to R.drawable.amity_v4_ic_unmute,
+        "aspectRatioIcon" to R.drawable.amity_v4_ic_aspect_ratio,
     )
 
     @DrawableRes

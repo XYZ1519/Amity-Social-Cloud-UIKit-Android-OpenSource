@@ -1,6 +1,11 @@
 package com.amity.socialcloud.uikit
 
+import com.amity.socialcloud.uikit.chat.compose.AmityChatBehaviorHelper
+import com.amity.socialcloud.uikit.common.behavior.AmityGlobalBehavior
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
+import com.amity.socialcloud.uikit.community.compose.clip.draft.AmityDraftClipPageBehavior
+import com.amity.socialcloud.uikit.community.compose.clip.view.AmityClipPageBehavior
+import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentBehavior
 import com.amity.socialcloud.uikit.community.compose.community.membership.list.AmityCommunityMembershipPageBehavior
 import com.amity.socialcloud.uikit.community.compose.community.profile.AmityCommunityProfilePageBehavior
 import com.amity.socialcloud.uikit.community.compose.community.setting.AmityCommunitySettingPageBehavior
@@ -34,6 +39,12 @@ import com.amity.socialcloud.uikit.community.compose.user.profile.components.Ami
 import com.amity.socialcloud.uikit.community.compose.user.relationship.AmityUserRelationshipPageBehavior
 
 class AmityUIKit4Behavior {
+    var globalBehavior: AmityGlobalBehavior = AmitySocialBehaviorHelper.globalBehavior
+        set(value) {
+            field = value
+            AmitySocialBehaviorHelper.globalBehavior = value
+            AmityChatBehaviorHelper.globalBehavior = value
+        }
 
     var createStoryPageBehavior: AmityCreateStoryPageBehavior =
         AmitySocialBehaviorHelper.createStoryPageBehavior
@@ -250,5 +261,26 @@ class AmityUIKit4Behavior {
         set(value) {
             field = value
             AmitySocialBehaviorHelper.userRelationshipPageBehavior = value
+        }
+
+    var commentTrayComponentBehavior: AmityCommentTrayComponentBehavior =
+        AmitySocialBehaviorHelper.commentTrayComponentBehavior
+        set(value) {
+            field = value
+            AmitySocialBehaviorHelper.commentTrayComponentBehavior = value
+        }
+
+    var draftClipPageBehavior: AmityDraftClipPageBehavior =
+        AmitySocialBehaviorHelper.clipDraftPageBehavior
+        set(value) {
+            field = value
+            AmitySocialBehaviorHelper.clipDraftPageBehavior = value
+        }
+
+    var clipFeedPageBehavior: AmityClipPageBehavior =
+        AmitySocialBehaviorHelper.viewClipPageBehavior
+        set(value) {
+            field = value
+            AmitySocialBehaviorHelper.viewClipPageBehavior = value
         }
 }

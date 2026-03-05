@@ -76,7 +76,7 @@ class AmityGlobalSearchViewModel : AmityBaseViewModel() {
 
     fun searchCommunities(): Flow<PagingData<AmityCommunity>> {
         return AmitySocialClient.newCommunityRepository()
-            .searchCommunities(_keyword.value)
+            .searchCommunities(_keyword.value, includeDiscoverablePrivateCommunity = true)
             .run {
                 if (_searchType.value == AmityGlobalSearchType.MY_COMMUNITY) {
                     filter(AmityCommunityFilter.MEMBER)
@@ -110,18 +110,25 @@ class AmityGlobalSearchViewModel : AmityBaseViewModel() {
     }
 
     fun searchPosts(): Flow<PagingData<AmityPost>> {
-        return AmitySocialClient.newPostRepository()
-            .semanticSearchPosts(
-                query = _keyword.value,
-                targetId = null,
-                targetType = null
-            )
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .throttleLatest(300, TimeUnit.MILLISECONDS)
-            .asFlow()
-            .cachedIn(viewModelScope)
-            .catch {}
+        val keyword = _keyword.value.trim()
+        return if (keyword.firstOrNull() == '#' && keyword.length > 1) {
+            AmitySocialClient.newPostRepository()
+                .searchPostsByHashtag(listOf(keyword.removePrefix("#")))
+        } else {
+            AmitySocialClient.newPostRepository()
+                .semanticSearchPosts(
+                    query = _keyword.value,
+                    targetId = null,
+                    targetType = null
+                )
+        }
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .throttleLatest(300, TimeUnit.MILLISECONDS)
+                .asFlow()
+                .cachedIn(viewModelScope)
+                .catch {}
+
     }
 
     sealed class PostListState {
