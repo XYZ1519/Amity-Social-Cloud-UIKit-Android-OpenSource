@@ -327,9 +327,7 @@ fun AmityCreateLivestreamPage(
         if (targetType == AmityPost.TargetType.USER) {
             viewModel.setupScreen()
         } else {
-            targetCommunity?.let {
-                viewModel.setupScreen(it.getCommunityId())
-            }
+            viewModel.setupScreen(targetId)
         }
     }
 
@@ -1390,19 +1388,18 @@ private fun endLivestream(
 ) {
     if (durationDisposable?.isDisposed == false) {
         streamBroadcaster.stopPreview()
+
         if (errorType == LivestreamErrorScreenType.INTERNET) {
             streamBroadcaster.stopPublishWithNoInternet()
         } else {
             streamBroadcaster.stopPublish()
         }
+
         durationDisposable.dispose()
     }
-    behavior.goToPostDetailPage(
-        context = context,
-        id = uiState.createPostId ?: "",
-        category = AmityPostCategory.GENERAL,
-        showLivestreamPostExceeded = showLivestreamPostExceeded
-    )
+
+    // Instead of navigating to the post detail page
+    // simply close the livestream screen
     context.closePageWithResult(Activity.RESULT_OK)
 }
 

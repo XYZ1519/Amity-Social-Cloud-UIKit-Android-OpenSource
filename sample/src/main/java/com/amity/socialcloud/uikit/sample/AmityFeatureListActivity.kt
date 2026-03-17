@@ -16,6 +16,7 @@ import com.afollestad.materialdialogs.input.InputCallback
 import com.afollestad.materialdialogs.input.input
 import com.amity.socialcloud.sdk.api.chat.AmityChatClient
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
+import com.amity.socialcloud.uikit.community.livestream.LivestreamRoomPocActivity
 import com.amity.socialcloud.uikit.AmityUIKit4Manager
 import com.amity.socialcloud.uikit.chat.home.AmityChatHomePageActivity
 import com.amity.socialcloud.uikit.chat.messages.AmityMessageListActivity
@@ -29,6 +30,7 @@ import com.amity.socialcloud.uikit.sample.liveChat.AmityLiveChatListActivity
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.schedulers.Schedulers
+import kotlin.jvm.java
 
 class AmityFeatureListActivity : AppCompatActivity() {
 
@@ -120,6 +122,15 @@ class AmityFeatureListActivity : AppCompatActivity() {
                     Intent(
                         this@AmityFeatureListActivity,
                         AmityLiveChatListActivity::class.java
+                    )
+                )
+            }
+
+            livestreamRoom.setOnClickListener {
+                startActivity(
+                    Intent(
+                        this@AmityFeatureListActivity,
+                        LivestreamRoomPocActivity::class.java
                     )
                 )
             }

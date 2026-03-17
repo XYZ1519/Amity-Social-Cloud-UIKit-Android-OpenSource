@@ -49,6 +49,7 @@
             android:windowSoftInputMode="adjustResize"/>
         <activity android:name=".liveChat.AmityLiveChatListActivity" />
         <activity android:name=".env.EnvironmentActivity" />
+        <activity android:name="com.amity.socialcloud.uikit.community.livestream.LivestreamRoomPocActivity" />
         <activity
             android:name=".MainActivity"
             android:exported="true">
