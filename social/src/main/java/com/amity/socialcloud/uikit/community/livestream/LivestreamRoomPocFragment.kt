@@ -8,18 +8,20 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import com.amity.socialcloud.sdk.api.social.AmitySocialClient
 import com.amity.socialcloud.sdk.model.core.file.AmityImage
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
-import com.amity.socialcloud.sdk.model.video.stream.AmityStream
+import com.amity.socialcloud.sdk.model.video.room.AmityRoomStatus
 import com.amity.socialcloud.uikit.community.R
-import com.amity.socialcloud.uikit.community.compose.livestream.create.AmityCreateLivestreamPageActivity
-import com.amity.socialcloud.uikit.community.newsfeed.activity.AmityLivestreamVideoPlayerActivity
+import com.amity.socialcloud.uikit.community.compose.livestream.room.create.AmityCreateRoomPageActivity
+import com.amity.socialcloud.uikit.community.compose.livestream.room.view.AmityRoomPlayerPageActivity
 import com.bumptech.glide.Glide
 import com.google.android.material.button.MaterialButton
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import timber.log.Timber
 
@@ -28,6 +30,15 @@ class LivestreamRoomPocFragment : Fragment() {
     private val communityId = "699ef435f96492bdba2c8345"
 
     private val pocViewModel: LivestreamRoomPocViewModel by viewModels()
+
+    private var roomStateDisposable: Disposable? = null
+
+    private val createRoomLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            view?.let { currentView ->
+                observeLivestreamState(currentView)
+            }
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -47,11 +58,21 @@ class LivestreamRoomPocFragment : Fragment() {
         observeLivestreamState(view)
     }
 
+    override fun onResume() {
+        super.onResume()
+        view?.let { observeLivestreamState(it) }
+    }
+
+    override fun onDestroyView() {
+        roomStateDisposable?.dispose()
+        roomStateDisposable = null
+        super.onDestroyView()
+    }
+
     private fun loadCommunityData(view: View) {
         val headerBackground = view.findViewById<ImageView>(R.id.ivHeaderBackground)
         val titleView = view.findViewById<TextView>(R.id.tvTitle)
         val descriptionView = view.findViewById<TextView>(R.id.tvDescription)
-        val thumb2 = view.findViewById<ImageView>(R.id.ivThumb2)
 
         AmitySocialClient.newCommunityRepository()
             .getCommunity(communityId)
@@ -59,19 +80,11 @@ class LivestreamRoomPocFragment : Fragment() {
             .observeOn(AndroidSchedulers.mainThread())
             .doOnNext { community ->
                 val avatarUrl = community.getAvatar()?.getUrl(AmityImage.Size.LARGE) ?: ""
-                val smallAvatarUrl = community.getAvatar()?.getUrl(AmityImage.Size.MEDIUM) ?: ""
 
                 Glide.with(this)
                     .load(avatarUrl)
                     .centerCrop()
                     .into(headerBackground)
-
-                if (smallAvatarUrl.isNotBlank()) {
-                    Glide.with(this)
-                        .load(smallAvatarUrl)
-                        .circleCrop()
-                        .into(thumb2)
-                }
 
                 titleView.text = community.getDisplayName().trim()
 
@@ -106,10 +119,11 @@ class LivestreamRoomPocFragment : Fragment() {
         val dateView = view.findViewById<TextView>(R.id.tvDate)
         val joinButton = view.findViewById<MaterialButton>(R.id.btnJoinLivestream)
         val createButton = view.findViewById<MaterialButton>(R.id.btnCreateLivestream)
-        val titleView = view.findViewById<TextView>(R.id.tvTitle)
         val thumb1 = view.findViewById<ImageView>(R.id.ivThumb1)
+        val thumb2 = view.findViewById<ImageView>(R.id.ivThumb2)
 
-        pocViewModel.observeLivestreamPost(communityId) { state ->
+        roomStateDisposable?.dispose()
+        roomStateDisposable = pocViewModel.observeLivestreamPost(communityId) { state ->
             joinButton.isEnabled = state.canJoin
             createButton.isEnabled = state.canCreate
 
@@ -133,15 +147,22 @@ class LivestreamRoomPocFragment : Fragment() {
             }
 
             if (state.hasLivestream) {
-                if (state.creatorDisplayName.isNotBlank()) {
-                    titleView.text = state.creatorDisplayName
-                }
-
                 if (state.creatorAvatarUrl.isNotBlank()) {
                     Glide.with(this)
                         .load(state.creatorAvatarUrl)
                         .circleCrop()
                         .into(thumb1)
+                } else {
+                    thumb1.setImageDrawable(null)
+                }
+
+                if (state.cohostAvatarUrl.isNotBlank()) {
+                    Glide.with(this)
+                        .load(state.cohostAvatarUrl)
+                        .circleCrop()
+                        .into(thumb2)
+                } else {
+                    thumb2.setImageDrawable(null)
                 }
 
                 when {
@@ -150,7 +171,7 @@ class LivestreamRoomPocFragment : Fragment() {
                         joinButton.setBackgroundColor(Color.parseColor("#E45B62"))
                         joinButton.setTextColor(Color.WHITE)
                     }
-                    state.stream?.getStatus() == AmityStream.Status.LIVE -> {
+                    state.room?.getStatus() == AmityRoomStatus.LIVE -> {
                         joinButton.text = "Join Livestream"
                         joinButton.setBackgroundColor(Color.parseColor("#1E5BE0"))
                         joinButton.setTextColor(Color.WHITE)
@@ -163,18 +184,18 @@ class LivestreamRoomPocFragment : Fragment() {
                 }
 
                 joinButton.setOnClickListener {
-                    state.stream?.let { stream ->
-                        if (stream.getStatus() == AmityStream.Status.LIVE ||
-                            stream.getStatus() == AmityStream.Status.RECORDED ||
-                            stream.getStatus() == AmityStream.Status.ENDED
-                        ) {
-                            ensureJoinedThen {
-                                val intent = AmityLivestreamVideoPlayerActivity.newIntent(
-                                    context = requireContext(),
-                                    streamId = stream.getStreamId()
-                                )
-                                startActivity(intent)
-                            }
+                    val post = state.livestreamPost ?: return@setOnClickListener
+                    val room = state.room ?: return@setOnClickListener
+
+                    if (room.getStatus() == AmityRoomStatus.LIVE ||
+                        room.getStatus() == AmityRoomStatus.RECORDED
+                    ) {
+                        ensureJoinedThen {
+                            val intent = AmityRoomPlayerPageActivity.newIntent(
+                                context = requireContext(),
+                                post = post
+                            )
+                            startActivity(intent)
                         }
                     }
                 }
@@ -183,6 +204,9 @@ class LivestreamRoomPocFragment : Fragment() {
                 joinButton.setBackgroundColor(Color.parseColor("#B8C7F0"))
                 joinButton.setTextColor(Color.WHITE)
                 joinButton.setOnClickListener(null)
+
+                thumb1.setImageDrawable(null)
+                thumb2.setImageDrawable(null)
             }
 
             createButton.alpha = if (state.canCreate) 1f else 0.55f
@@ -191,18 +215,18 @@ class LivestreamRoomPocFragment : Fragment() {
                 ensureJoinedThen {
                     val intent = Intent(
                         requireContext(),
-                        AmityCreateLivestreamPageActivity::class.java
+                        AmityCreateRoomPageActivity::class.java
                     ).apply {
                         putExtra(
-                            AmityCreateLivestreamPageActivity.EXTRA_PARAM_TARGET_ID,
+                            AmityCreateRoomPageActivity.EXTRA_PARAM_TARGET_ID,
                             communityId
                         )
                         putExtra(
-                            AmityCreateLivestreamPageActivity.EXTRA_PARAM_TARGET_TYPE,
+                            AmityCreateRoomPageActivity.EXTRA_PARAM_TARGET_TYPE,
                             AmityPost.TargetType.COMMUNITY
                         )
                     }
-                    startActivity(intent)
+                    createRoomLauncher.launch(intent)
                 }
             }
         }
