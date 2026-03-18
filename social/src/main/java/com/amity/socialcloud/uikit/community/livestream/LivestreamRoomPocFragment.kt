@@ -27,7 +27,7 @@ import timber.log.Timber
 
 class LivestreamRoomPocFragment : Fragment() {
 
-    private val communityId = "699ef435f96492bdba2c8345"
+    private val communityId = "69baf27c2c3a9394ec9b76bc"
     private val pocViewModel: LivestreamRoomPocViewModel by viewModels()
 
     override fun onCreateView(
