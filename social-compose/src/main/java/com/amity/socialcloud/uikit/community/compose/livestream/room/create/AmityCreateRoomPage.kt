@@ -369,13 +369,12 @@ fun AmityCreateRoomPage(
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(targetType, targetId, targetCommunity) {
         if (targetType == AmityPost.TargetType.USER) {
             viewModel.setupScreen()
         } else {
-            targetCommunity?.let {
-                viewModel.setupScreen(it.getCommunityId())
-            }
+            val communityId = targetCommunity?.getCommunityId() ?: targetId
+            viewModel.setupScreen(communityId)
         }
     }
 

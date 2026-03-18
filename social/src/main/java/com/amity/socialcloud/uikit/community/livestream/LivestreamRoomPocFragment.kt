@@ -237,17 +237,15 @@ class LivestreamRoomPocFragment : Fragment() {
             }
 
             createButton.setOnClickListener {
-                ensureJoinedThen {
-                    startActivity(
-                        AmityCreateRoomPageActivity.newIntent(
-                            context = requireContext(),
-                            targetId = communityId,
-                            targetType = AmityPost.TargetType.COMMUNITY,
-                            community = null,
-                            postId = null
-                        )
+                startActivity(
+                    AmityCreateRoomPageActivity.newIntent(
+                        context = requireContext(),
+                        targetId = communityId,
+                        targetType = AmityPost.TargetType.COMMUNITY,
+                        community = null,   // OK to keep null
+                        postId = null
                     )
-                }
+                )
             }
         }
             .subscribeOn(Schedulers.io())
