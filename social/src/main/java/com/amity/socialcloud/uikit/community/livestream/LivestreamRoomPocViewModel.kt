@@ -46,7 +46,6 @@ class LivestreamRoomPocViewModel : AmityBaseViewModel() {
         onResult: (LivestreamRoomPocUiState) -> Unit
     ): Completable {
 
-        // Guaranteed visible log (even if Timber debug is off)
         Log.e(POC_TAG, "observeLivestreamPost() called communityId=$communityId")
 
         return AmitySocialClient.newFeedRepository()
@@ -84,91 +83,96 @@ class LivestreamRoomPocViewModel : AmityBaseViewModel() {
                     val items = differ.snapshot().items
                     Log.e(POC_TAG, "Pages updated. snapshotSize=${items.size}")
 
-                    // Print a few item child types to understand what's in the feed
-                    items.take(10).forEach { post ->
-                        val dataType = post.getChildren()
-                            .firstOrNull()
-                            ?.getData()
-                            ?.javaClass
-                            ?.name
-                        Log.e(POC_TAG, "postId=${post.getPostId()} childType=$dataType")
-                    }
-
-                    val eventPost = items.firstOrNull { post ->
+                    val eventPosts = items.filter { post ->
                         val data = post.getChildren().firstOrNull()?.getData()
                         data is AmityPost.Data.LIVE_STREAM || data is AmityPost.Data.ROOM
                     }
 
-                    Log.e(
-                        POC_TAG,
-                        "eventPost=${eventPost?.getPostId()} selectedChildType=${
-                            eventPost?.getChildren()?.firstOrNull()?.getData()?.javaClass?.name
-                        }"
-                    )
+                    Log.e(POC_TAG, "eventPostsCount=${eventPosts.size}")
 
-                    if (eventPost == null) {
+                    if (eventPosts.isEmpty()) {
                         Log.e(POC_TAG, "No LIVE_STREAM/ROOM post found -> emit default UPCOMING state")
                         onResult(LivestreamRoomPocUiState())
                         return@addOnPagesUpdatedListener
                     }
 
-                    val childData = eventPost.getChildren().firstOrNull()?.getData()
+                    // 1) Pick latest event by createdAt (fallback to stable ordering if createdAt null)
+                    val latestEventPost = eventPosts.maxWithOrNull(
+                        compareBy<AmityPost> { it.getCreatedAt()?.millis ?: Long.MIN_VALUE }
+                            .thenBy { it.getPostId() }
+                    )
 
-                    when (childData) {
+                    if (latestEventPost == null) {
+                        onResult(LivestreamRoomPocUiState())
+                        return@addOnPagesUpdatedListener
+                    }
+
+                    // 2) Determine if ANY event is currently LIVE (this gates Create button)
+                    val hasAnyLive = eventPosts.any { post ->
+                        when (val data = post.getChildren().firstOrNull()?.getData()) {
+                            is AmityPost.Data.ROOM -> data.getRoom()?.getStatus() == AmityRoomStatus.LIVE
+                            is AmityPost.Data.LIVE_STREAM -> {
+                                // LIVE_STREAM status is async; cannot be checked here reliably.
+                                // We'll treat LIVE_STREAM as "unknown" and compute live status only once stream is loaded for latest.
+                                false
+                            }
+                            else -> false
+                        }
+                    }
+
+                    Log.e(
+                        POC_TAG,
+                        "latestEventPost=${latestEventPost.getPostId()} hasAnyLiveFromRooms=$hasAnyLive"
+                    )
+
+                    val latestChildData = latestEventPost.getChildren().firstOrNull()?.getData()
+                    when (latestChildData) {
                         is AmityPost.Data.LIVE_STREAM -> {
-                            Log.e(POC_TAG, "Handling LIVE_STREAM postId=${eventPost.getPostId()}")
+                            Log.e(POC_TAG, "Handling LATEST LIVE_STREAM postId=${latestEventPost.getPostId()}")
 
-                            childData.getStream()
+                            latestChildData.getStream()
                                 .firstOrError()
                                 .subscribeOn(Schedulers.io())
                                 .observeOn(AndroidSchedulers.mainThread())
                                 .subscribe({ stream ->
-                                    Log.e(
-                                        POC_TAG,
-                                        "LIVE_STREAM streamId=${stream.getStreamId()} status=${stream.getStatus()} creatorId=${stream.getCreatorId()}"
-                                    )
+                                    val isLive = stream.getStatus() == AmityStream.Status.LIVE
+                                    val isReplayable =
+                                        stream.getStatus() == AmityStream.Status.RECORDED ||
+                                                stream.getStatus() == AmityStream.Status.ENDED
+
+                                    val canJoin = isLive || isReplayable
+                                    val statusLabel = when {
+                                        isLive -> "LIVE"
+                                        isReplayable -> "PAST EVENT"
+                                        else -> "UPCOMING"
+                                    }
+
+                                    val statusDate =
+                                        latestEventPost.getCreatedAt()?.toString("MMM d 'at' h:mm a") ?: ""
+
+                                    // If a LIVE_STREAM is live, it should also block create.
+                                    val finalHasAnyLive = hasAnyLive || isLive
 
                                     resolveCreator(
-                                        creatorId = stream.getCreatorId() ?: eventPost.getCreatorId(),
-                                        fallbackCreator = eventPost.getCreator()
+                                        creatorId = stream.getCreatorId() ?: latestEventPost.getCreatorId(),
+                                        fallbackCreator = latestEventPost.getCreator()
                                     ) { creator ->
                                         val currentUserId = AmityCoreClient.getUserId()
-                                        val creatorId = stream.getCreatorId() ?: eventPost.getCreatorId()
+                                        val creatorId = stream.getCreatorId() ?: latestEventPost.getCreatorId()
                                         val isCurrentUserCreator = creatorId == currentUserId
-
-                                        val isLive = stream.getStatus() == AmityStream.Status.LIVE
-                                        val isReplayable =
-                                            stream.getStatus() == AmityStream.Status.RECORDED ||
-                                                    stream.getStatus() == AmityStream.Status.ENDED
-
-                                        val canJoin = isLive || isReplayable
-
-                                        val statusLabel = when {
-                                            isLive -> "LIVE"
-                                            isReplayable -> "PAST EVENT"
-                                            else -> "UPCOMING"
-                                        }
-
-                                        val statusDate =
-                                            eventPost.getCreatedAt()?.toString("MMM d 'at' h:mm a") ?: ""
-
-                                        Log.e(
-                                            POC_TAG,
-                                            "LIVE_STREAM computed canJoin=$canJoin label=$statusLabel date=$statusDate"
-                                        )
 
                                         onResult(
                                             LivestreamRoomPocUiState(
-                                                livestreamPost = eventPost,
+                                                livestreamPost = latestEventPost,
                                                 stream = stream,
                                                 room = null,
                                                 creatorDisplayName = creator?.getDisplayName() ?: "",
-                                                creatorAvatarUrl = creator?.getAvatar()
-                                                    ?.getUrl(AmityImage.Size.MEDIUM) ?: "",
+                                                creatorAvatarUrl = creator?.getAvatar()?.getUrl(AmityImage.Size.MEDIUM) ?: "",
                                                 isCurrentUserCreator = isCurrentUserCreator,
                                                 hasLivestream = true,
                                                 canJoin = canJoin,
-                                                canCreate = false,
+                                                // ✅ Create enabled when nothing is LIVE
+                                                canCreate = !finalHasAnyLive,
                                                 shouldShowReplay = isReplayable,
                                                 statusLabel = statusLabel,
                                                 statusDate = statusDate
@@ -176,60 +180,63 @@ class LivestreamRoomPocViewModel : AmityBaseViewModel() {
                                         )
                                     }
                                 }, { error ->
-                                    Log.e(POC_TAG, "LIVE_STREAM getStream failed: ${error.message}", error)
-                                    onResult(LivestreamRoomPocUiState())
+                                    Log.e(POC_TAG, "LATEST LIVE_STREAM getStream failed: ${error.message}", error)
+                                    // If we can't load stream, still allow create unless a room is live.
+                                    onResult(
+                                        LivestreamRoomPocUiState(
+                                            livestreamPost = latestEventPost,
+                                            hasLivestream = true,
+                                            canCreate = !hasAnyLive
+                                        )
+                                    )
                                 })
                         }
 
                         is AmityPost.Data.ROOM -> {
-                            val room = childData.getRoom()
+                            val room = latestChildData.getRoom()
 
                             Log.e(
                                 POC_TAG,
-                                "Handling ROOM postId=${eventPost.getPostId()} roomId=${room?.getRoomId()} status=${room?.getStatus()} creatorId=${room?.getCreatorId()}"
+                                "Handling LATEST ROOM postId=${latestEventPost.getPostId()} roomId=${room?.getRoomId()} status=${room?.getStatus()}"
                             )
 
+                            val isLive = room?.getStatus() == AmityRoomStatus.LIVE
+                            val isReplayable =
+                                room?.getStatus() == AmityRoomStatus.RECORDED ||
+                                        room?.getStatus() == AmityRoomStatus.ENDED
+
+                            val canJoin = isLive || isReplayable
+                            val statusLabel = when {
+                                isLive -> "LIVE"
+                                isReplayable -> "PAST EVENT"
+                                else -> "UPCOMING"
+                            }
+
+                            val statusDate =
+                                latestEventPost.getCreatedAt()?.toString("MMM d 'at' h:mm a") ?: ""
+
+                            val finalHasAnyLive = hasAnyLive || isLive
+
                             resolveCreator(
-                                creatorId = room?.getCreatorId() ?: eventPost.getCreatorId(),
-                                fallbackCreator = eventPost.getCreator()
+                                creatorId = room?.getCreatorId() ?: latestEventPost.getCreatorId(),
+                                fallbackCreator = latestEventPost.getCreator()
                             ) { creator ->
                                 val currentUserId = AmityCoreClient.getUserId()
-                                val creatorId = room?.getCreatorId() ?: eventPost.getCreatorId()
+                                val creatorId = room?.getCreatorId() ?: latestEventPost.getCreatorId()
                                 val isCurrentUserCreator = creatorId == currentUserId
-
-                                val isLive = room?.getStatus() == AmityRoomStatus.LIVE
-                                val isReplayable =
-                                    room?.getStatus() == AmityRoomStatus.RECORDED ||
-                                            room?.getStatus() == AmityRoomStatus.ENDED
-
-                                val canJoin = isLive || isReplayable
-
-                                val statusLabel = when {
-                                    isLive -> "LIVE"
-                                    isReplayable -> "PAST EVENT"
-                                    else -> "UPCOMING"
-                                }
-
-                                val statusDate =
-                                    eventPost.getCreatedAt()?.toString("MMM d 'at' h:mm a") ?: ""
-
-                                Log.e(
-                                    POC_TAG,
-                                    "ROOM computed canJoin=$canJoin label=$statusLabel date=$statusDate"
-                                )
 
                                 onResult(
                                     LivestreamRoomPocUiState(
-                                        livestreamPost = eventPost,
+                                        livestreamPost = latestEventPost,
                                         stream = null,
                                         room = room,
                                         creatorDisplayName = creator?.getDisplayName() ?: "",
-                                        creatorAvatarUrl = creator?.getAvatar()
-                                            ?.getUrl(AmityImage.Size.MEDIUM) ?: "",
+                                        creatorAvatarUrl = creator?.getAvatar()?.getUrl(AmityImage.Size.MEDIUM) ?: "",
                                         isCurrentUserCreator = isCurrentUserCreator,
                                         hasLivestream = true,
                                         canJoin = canJoin,
-                                        canCreate = false,
+                                        // ✅ Create enabled when nothing is LIVE
+                                        canCreate = !finalHasAnyLive,
                                         shouldShowReplay = isReplayable,
                                         statusLabel = statusLabel,
                                         statusDate = statusDate
@@ -241,9 +248,16 @@ class LivestreamRoomPocViewModel : AmityBaseViewModel() {
                         else -> {
                             Log.e(
                                 POC_TAG,
-                                "Unsupported child data type=${childData?.javaClass?.name} for postId=${eventPost.getPostId()}"
+                                "Unsupported child data type=${latestChildData?.javaClass?.name} for postId=${latestEventPost.getPostId()}"
                             )
-                            onResult(LivestreamRoomPocUiState())
+                            // If there are event posts but latest child is weird, still allow create unless a room is live.
+                            onResult(
+                                LivestreamRoomPocUiState(
+                                    livestreamPost = latestEventPost,
+                                    hasLivestream = true,
+                                    canCreate = !hasAnyLive
+                                )
+                            )
                         }
                     }
                 }
