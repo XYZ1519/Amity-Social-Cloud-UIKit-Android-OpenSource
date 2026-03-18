@@ -439,7 +439,7 @@ fun AmityCreateRoomPage(
                 uiState = uiState,
                 viewModel = viewModel,
                 errorType = LivestreamErrorScreenType.INTERNET,
-                shouldNavigateToPostDetails = !fromEventPage,
+                shouldNavigateToPostDetails = false,
             )
         }
     }
@@ -827,7 +827,7 @@ fun AmityCreateRoomPage(
                                                     uiState = uiState,
                                                     viewModel = viewModel,
                                                     showLivestreamPostExceeded = true,
-                                                    shouldNavigateToPostDetails = !fromEventPage,
+                                                    shouldNavigateToPostDetails = false,
                                                 )
                                                 showCountdownEndingLivestream = false
                                             }
@@ -1487,7 +1487,7 @@ fun AmityCreateRoomPage(
                         behavior = behavior,
                         uiState = uiState,
                         viewModel = viewModel,
-                        shouldNavigateToPostDetails = !fromEventPage,
+                        shouldNavigateToPostDetails = false,
                     )
                 },
                 onDismissRequest = {
