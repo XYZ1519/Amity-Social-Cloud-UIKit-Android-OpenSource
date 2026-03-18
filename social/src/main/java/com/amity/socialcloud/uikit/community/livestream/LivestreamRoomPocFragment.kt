@@ -59,19 +59,17 @@ class LivestreamRoomPocFragment : Fragment() {
             .observeOn(AndroidSchedulers.mainThread())
             .doOnNext { community ->
                 val avatarUrl = community.getAvatar()?.getUrl(AmityImage.Size.LARGE) ?: ""
-                val smallAvatarUrl = community.getAvatar()?.getUrl(AmityImage.Size.MEDIUM) ?: ""
 
                 Glide.with(this)
                     .load(avatarUrl)
                     .centerCrop()
                     .into(headerBackground)
 
-                if (smallAvatarUrl.isNotBlank()) {
-                    Glide.with(this)
-                        .load(smallAvatarUrl)
-                        .circleCrop()
-                        .into(thumb2)
-                }
+                // Second speaker should always show the fixed placeholder avatar
+                Glide.with(this)
+                    .load(R.drawable.avatar)
+                    .circleCrop()
+                    .into(thumb2)
 
                 titleView.text = community.getDisplayName().trim()
 
@@ -101,13 +99,24 @@ class LivestreamRoomPocFragment : Fragment() {
             })
     }
 
+    private fun loadPlaceholderAvatar(target: ImageView) {
+        Glide.with(this)
+            .load(R.drawable.avatar)
+            .circleCrop()
+            .into(target)
+    }
+
     private fun observeLivestreamState(view: View) {
         val statusView = view.findViewById<TextView>(R.id.tvStatus)
         val dateView = view.findViewById<TextView>(R.id.tvDate)
         val joinButton = view.findViewById<MaterialButton>(R.id.btnJoinLivestream)
         val createButton = view.findViewById<MaterialButton>(R.id.btnCreateLivestream)
-        val titleView = view.findViewById<TextView>(R.id.tvTitle)
         val thumb1 = view.findViewById<ImageView>(R.id.ivThumb1)
+        val thumb2 = view.findViewById<ImageView>(R.id.ivThumb2)
+
+        // Ensure both avatars have a default placeholder immediately
+        loadPlaceholderAvatar(thumb1)
+        loadPlaceholderAvatar(thumb2)
 
         pocViewModel.observeLivestreamPost(communityId) { state ->
             joinButton.isEnabled = state.canJoin
@@ -132,32 +141,36 @@ class LivestreamRoomPocFragment : Fragment() {
                 }
             }
 
-            if (state.hasLivestream) {
-                if (state.creatorDisplayName.isNotBlank()) {
-                    titleView.text = state.creatorDisplayName
-                }
+            // Second speaker always remains the fixed placeholder avatar
+            loadPlaceholderAvatar(thumb2)
 
+            if (state.hasLivestream) {
                 if (state.creatorAvatarUrl.isNotBlank()) {
                     Glide.with(this)
                         .load(state.creatorAvatarUrl)
+                        .placeholder(R.drawable.avatar)
+                        .error(R.drawable.avatar)
+                        .fallback(R.drawable.avatar)
                         .circleCrop()
                         .into(thumb1)
+                } else {
+                    loadPlaceholderAvatar(thumb1)
                 }
 
                 when {
                     state.shouldShowReplay -> {
-                        joinButton.text = "▶  REPLAY"
+                        joinButton.text = "REPLAY"
                         joinButton.setBackgroundColor(Color.parseColor("#E45B62"))
                         joinButton.setTextColor(Color.WHITE)
                     }
                     state.stream?.getStatus() == AmityStream.Status.LIVE -> {
                         joinButton.text = "Join Livestream"
-                        joinButton.setBackgroundColor(Color.parseColor("#1E5BE0"))
+                        joinButton.setBackgroundColor(Color.parseColor("#E45B62"))
                         joinButton.setTextColor(Color.WHITE)
                     }
                     else -> {
                         joinButton.text = "Join Livestream"
-                        joinButton.setBackgroundColor(Color.parseColor("#B8C7F0"))
+                        joinButton.setBackgroundColor(Color.parseColor("#E45B62"))
                         joinButton.setTextColor(Color.WHITE)
                     }
                 }
@@ -179,6 +192,9 @@ class LivestreamRoomPocFragment : Fragment() {
                     }
                 }
             } else {
+                // No livestream -> first avatar should also be the placeholder
+                loadPlaceholderAvatar(thumb1)
+
                 joinButton.text = "Join Livestream"
                 joinButton.setBackgroundColor(Color.parseColor("#B8C7F0"))
                 joinButton.setTextColor(Color.WHITE)

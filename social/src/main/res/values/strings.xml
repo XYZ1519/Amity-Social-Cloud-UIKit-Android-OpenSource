@@ -150,6 +150,12 @@
     <string name="amity_story_reaction_description">Receive notifications when someone reacts to your story in this community.</string>
     <string name="amity_story_comments">Story comments</string>
     <string name="amity_story_comments_description">Receive notifications when someone comments on your story in this community.</string>
+    <string name="past_event">Past Event</string>
+    <string name="sample_event_date">May 28 at 7PM ET</string>
+    <string name="sample_event_title">Cook live with Joy Bauer</string>
+    <string name="replay">Replay</string>
+    <string name="create_livestream">Create Livestream</string>
+    <string name="sample_event_description">We are so excited to welcome Joy Bauer to the Start TODAY family! Join Joy for a live cooking demo where she will prepare 4 easy and delicious recipes from the app. Plus, ask Joy your questions and connect with other members for support. Join us for a lively conversation with Joy and lots of healthy eating tips!</string>
 
     <string name="amity_notification_settings">Notification Settings</string>
     <string name="amity_settings_error">There was an error fetching the data</string>

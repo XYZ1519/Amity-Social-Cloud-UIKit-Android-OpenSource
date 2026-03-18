@@ -1,15 +1,17 @@
 package com.amity.socialcloud.uikit.sample
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import android.view.View
+import android.widget.ArrayAdapter
+import androidx.core.view.WindowCompat
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.core.session.AccessTokenRenewal
 import com.amity.socialcloud.sdk.model.core.session.SessionHandler
 import com.amity.socialcloud.uikit.common.common.showSnackBar
+import com.amity.socialcloud.uikit.community.livestream.LivestreamRoomPocActivity
 import com.amity.socialcloud.uikit.sample.databinding.AmityActivityMainBinding
-import com.amity.socialcloud.uikit.sample.env.Environment
-import com.amity.socialcloud.uikit.sample.env.EnvironmentActivity
 import com.amity.socialcloud.uikit.sample.env.SamplePreferences
 import com.ekoapp.rxlifecycle.extension.untilLifecycleEnd
 import com.google.android.material.snackbar.Snackbar
@@ -23,8 +25,6 @@ import org.joda.time.DateTimeZone
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
 import retrofit2.http.Url
@@ -33,98 +33,190 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : RxAppCompatActivity() {
 
+    enum class RegionConfig(val httpUrl: String, val mqttBroker: String) {
+        EU("https://apix.eu.amity.co/", "ssq.eu.amity.co"),
+        US("https://apix.us.amity.co/", "ssq.us.amity.co"),
+        SG("https://apix.sg.amity.co/", "ssq.sg.amity.co")
+    }
+
     private val binding: AmityActivityMainBinding by lazy {
         AmityActivityMainBinding.inflate(layoutInflater)
     }
 
-    private val changeEnvContract = registerForActivityResult(
-        EnvironmentActivity.ChangeEnvironmentContract()
-    ) {
-        if (it != null) {
-            SamplePreferences.getApiKey().set(it.apiKey)
-            SamplePreferences.getHttpUrl().set(it.httpUrl)
-            SamplePreferences.getMqttBroker().set(it.mqttBroker)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        WindowCompat.setDecorFitsSystemWindows(window, true)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.BLACK
+
+        setContentView(binding.root)
+
+        setupEnvironmentDropdown()
+        setupInitialState()
+        setupListeners()
+    }
+
+    private fun setupInitialState() {
+        binding.etApiKey.setText(SamplePreferences.getApiKey().get())
+        binding.etSecureVisitorUrl.setText(
+            "https://472sfz2bt3cddangdvv5nlyjjq0pnshz.lambda-url.ap-southeast-1.on.aws"
+        )
+
+        binding.etHttpUrl.visibility = View.GONE
+        binding.etMqttBroker.visibility = View.GONE
+        binding.btnEnv.visibility = View.GONE
+        binding.btnVisitorLogin.visibility = View.GONE
+
+        // Hide the parent TextInputLayout from the new XML
+        binding.secureVisitorUrlLayout.visibility = View.GONE
+
+        val savedUserId = AmityCoreClient.getUserId()
+        if (savedUserId.isNotEmpty()) {
+            binding.etUserId.setText(savedUserId)
+
+            if (binding.etUserName.text.isNullOrBlank()) {
+                binding.etUserName.setText(savedUserId)
+            }
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(binding.root)
+    private fun setupListeners() {
+        binding.btnLogin.setOnClickListener {
+            if (!saveEnvironmentFromSelection(showSuccessMessage = false)) {
+                return@setOnClickListener
+            }
 
-        val userId = AmityCoreClient.getUserId()
-        if (userId.isNotEmpty()) {
-            binding.etUserId.setText(userId)
-            binding.etUserName.setText(userId)
+            val userId = binding.etUserId.text?.toString()?.trim().orEmpty()
+            val displayNameInput = binding.etUserName.text?.toString()?.trim().orEmpty()
 
-            registerDevice(userId)
+            if (userId.isEmpty()) {
+                findViewById<View>(android.R.id.content).showSnackBar(
+                    "Enter userId",
+                    Snackbar.LENGTH_SHORT
+                )
+                return@setOnClickListener
+            }
+
+            val finalDisplayName = if (displayNameInput.isNotEmpty()) {
+                displayNameInput
+            } else {
+                userId
+            }
+
+            registerDevice(
+                userId = userId,
+                displayName = finalDisplayName
+            )
         }
 
-        binding.apply {
-            btnLogin.setOnClickListener {
-                if (etUserId.text.isNotEmpty() && etUserName.text.isNotEmpty()) {
-                    registerDevice(
-                        etUserId.text.toString().trim(),
-                        etUserName.text.toString().trim()
-                    )
-                } else {
-                    findViewById<View>(android.R.id.content).showSnackBar(
-                        "Enter userId and Display Name",
-                        Snackbar.LENGTH_SHORT
-                    )
-                }
+        binding.btnVisitorLogin.setOnClickListener {
+            if (!saveEnvironmentFromSelection(showSuccessMessage = false)) {
+                return@setOnClickListener
             }
-            etSecureVisitorUrl.setText("https://472sfz2bt3cddangdvv5nlyjjq0pnshz.lambda-url.ap-southeast-1.on.aws")
-            btnVisitorLogin.setOnClickListener {
-                val secureVisitorUrl = etSecureVisitorUrl.text.toString().trim()
-                if (secureVisitorUrl.isNotEmpty()) {
-                    val retrofitInstance = SampleRetrofitProvider.getInstance(SamplePreferences.getHttpUrl().get())
-                    val api = retrofitInstance.create(SecureService::class.java)
-                    val visitorDeviceId = AmityCoreClient.getVisitorDeviceId()
-                    val expiresAt = DateTime.now().plusDays(30).toDateTime(DateTimeZone.UTC)
-                    api
-                        .getAuthSignature(
-                            url = secureVisitorUrl,
-                            deviceId = visitorDeviceId,
+
+            val displayNameInput = binding.etUserName.text?.toString()?.trim().orEmpty()
+            val secureVisitorUrl = binding.etSecureVisitorUrl.text?.toString()?.trim().orEmpty()
+
+            if (secureVisitorUrl.isNotEmpty()) {
+                val retrofitInstance =
+                    SampleRetrofitProvider.getInstance(SamplePreferences.getHttpUrl().get())
+                val api = retrofitInstance.create(SecureService::class.java)
+                val visitorDeviceId = AmityCoreClient.getVisitorDeviceId()
+                val expiresAt = DateTime.now().plusDays(30).toDateTime(DateTimeZone.UTC)
+
+                api.getAuthSignature(
+                    url = secureVisitorUrl,
+                    deviceId = visitorDeviceId,
+                    authSignatureExpiresAt = expiresAt
+                ).enqueue(object : Callback<JsonObject> {
+                    override fun onResponse(
+                        call: Call<JsonObject>,
+                        response: Response<JsonObject>
+                    ) {
+                        val json: JsonObject? = response.body()
+                        val authSignature = try {
+                            json?.get("signature")?.asString ?: ""
+                        } catch (e: Exception) {
+                            ""
+                        }
+
+                        registerDevice(
+                            userId = null,
+                            displayName = displayNameInput,
+                            authSignature = authSignature,
                             authSignatureExpiresAt = expiresAt
                         )
-                        .enqueue(object : Callback<JsonObject> {
-                        override fun onResponse(call: Call<JsonObject>, response: Response<JsonObject>) {
-                            val json: JsonObject? = response.body()
-                            val authSignature =  try {
-                                json?.get("signature")?.asString ?: ""
-                            } catch (e: Exception) {
-                                ""
-                            }
-                            registerDevice(
-                                null,
-                                etUserName.text.toString().trim(),
-                                authSignature = authSignature,
-                                authSignatureExpiresAt = expiresAt
-                            )
-                        }
+                    }
 
-                        override fun onFailure(call: Call<JsonObject>, t: Throwable) {
-                            Timber.e(t, "API call failed")
-                        }
-                    })
-                } else {
-                    registerDevice(
-                        null,
-                        etUserName.text.toString().trim()
-                    )
-                }
-            }
-
-            btnEnv.setOnClickListener {
-                val env = Environment(
-                    SamplePreferences.getApiKey().get(),
-                    SamplePreferences.getHttpUrl().get(),
-                    SamplePreferences.getMqttBroker().get()
+                    override fun onFailure(call: Call<JsonObject>, t: Throwable) {
+                        Timber.e(t, "API call failed")
+                        findViewById<View>(android.R.id.content).showSnackBar(
+                            "Failed to get visitor auth signature",
+                            Snackbar.LENGTH_SHORT
+                        )
+                    }
+                })
+            } else {
+                registerDevice(
+                    userId = null,
+                    displayName = displayNameInput
                 )
-                SampleRetrofitProvider.reset() // Reset Retrofit when environment changes
-                changeEnvContract.launch(env)
             }
         }
+    }
+
+    private fun setupEnvironmentDropdown() {
+        val regions = listOf("EU", "US", "SG")
+        val adapter = ArrayAdapter(
+            this,
+            R.layout.item_spinner_selected,
+            regions
+        )
+        adapter.setDropDownViewResource(R.layout.item_spinner_dropdown)
+        binding.spEnvironment.adapter = adapter
+
+        val savedHttpUrl = SamplePreferences.getHttpUrl().get()
+        val selectedIndex = when (savedHttpUrl) {
+            RegionConfig.US.httpUrl -> 1
+            RegionConfig.SG.httpUrl -> 2
+            else -> 0
+        }
+        binding.spEnvironment.setSelection(selectedIndex)
+    }
+
+    private fun saveEnvironmentFromSelection(showSuccessMessage: Boolean = true): Boolean {
+        val apiKey = binding.etApiKey.text?.toString()?.trim().orEmpty()
+        val selectedRegion = binding.spEnvironment.selectedItem?.toString() ?: "EU"
+
+        if (apiKey.isEmpty()) {
+            findViewById<View>(android.R.id.content).showSnackBar(
+                "API Key is required",
+                Snackbar.LENGTH_SHORT
+            )
+            return false
+        }
+
+        val config = when (selectedRegion) {
+            "US" -> RegionConfig.US
+            "SG" -> RegionConfig.SG
+            else -> RegionConfig.EU
+        }
+
+        SamplePreferences.getApiKey().set(apiKey)
+        SamplePreferences.getHttpUrl().set(config.httpUrl)
+        SamplePreferences.getMqttBroker().set(config.mqttBroker)
+
+        SampleRetrofitProvider.reset()
+
+        if (showSuccessMessage) {
+            findViewById<View>(android.R.id.content).showSnackBar(
+                "Environment updated: $selectedRegion",
+                Snackbar.LENGTH_SHORT
+            )
+        }
+
+        return true
     }
 
     private fun registerDevice(
@@ -133,7 +225,6 @@ class MainActivity : RxAppCompatActivity() {
         authSignature: String? = null,
         authSignatureExpiresAt: DateTime? = null,
     ) {
-        // Adding delay to avoid race condition when setup SDK and user is registered immediately
         Single.just(true)
             .delay(200, TimeUnit.MILLISECONDS)
             .flatMapCompletable {
@@ -142,16 +233,15 @@ class MainActivity : RxAppCompatActivity() {
                         override fun sessionWillRenewAccessToken(renewal: AccessTokenRenewal) {
                             renewal.renew()
                         }
-                    })
-                        .apply {
-                            if (!displayName.isNullOrEmpty()) {
-                                displayName(displayName)
-                            }
-                            if (!authSignature.isNullOrEmpty() && authSignatureExpiresAt != null) {
-                                authSignature(authSignature)
-                                authSignatureExpiresAt(authSignatureExpiresAt)
-                            }
+                    }).apply {
+                        if (!displayName.isNullOrEmpty()) {
+                            displayName(displayName)
                         }
+                        if (!authSignature.isNullOrEmpty() && authSignatureExpiresAt != null) {
+                            authSignature(authSignature)
+                            authSignatureExpiresAt(authSignatureExpiresAt)
+                        }
+                    }
                         .build()
                         .submit()
                 } else {
@@ -159,42 +249,50 @@ class MainActivity : RxAppCompatActivity() {
                         override fun sessionWillRenewAccessToken(renewal: AccessTokenRenewal) {
                             renewal.renew()
                         }
-                    })
-                        .apply {
-                            if (!displayName.isNullOrEmpty()) {
-                                displayName(displayName)
-                            }
+                    }).apply {
+                        if (!displayName.isNullOrEmpty()) {
+                            displayName(displayName)
                         }
+                    }
                         .build()
                         .submit()
                 }
             }
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .doOnComplete {
-                    registerForPushNotifications()
-                    val intent = Intent(this, AmitySettingActivity::class.java)
-                    startActivity(intent)
-                }
-                .doOnError {
-                    findViewById<View>(android.R.id.content).showSnackBar("Could not register user " + it.message)
-                }
-                .untilLifecycleEnd(this)
-                .subscribe()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .doOnComplete {
+                registerForPushNotifications()
+                val intent = Intent(this, LivestreamRoomPocActivity::class.java)
+                startActivity(intent)
+            }
+            .doOnError {
+                findViewById<View>(android.R.id.content).showSnackBar(
+                    "Could not register user ${it.message}",
+                    Snackbar.LENGTH_SHORT
+                )
+            }
+            .untilLifecycleEnd(this)
+            .subscribe()
     }
 
     private fun registerForPushNotifications() {
         AmityCoreClient.registerPushNotification()
             .subscribeOn(Schedulers.io())
             .doOnComplete {
-                Timber.e("registerForPushNotifications: success for userId ${AmityCoreClient.getUserId()}")
+                Timber.d("registerForPushNotifications: success for userId ${AmityCoreClient.getUserId()}")
+            }
+            .doOnError {
+                Timber.e(it, "registerForPushNotifications failed")
             }
             .subscribe()
     }
 
-    // Retrofit API interface
     interface SecureService {
         @GET
-        fun getAuthSignature(@Url url: String, @Query("deviceId") deviceId: String, @Query("authSignatureExpiresAt") authSignatureExpiresAt: DateTime): Call<JsonObject>
+        fun getAuthSignature(
+            @Url url: String,
+            @Query("deviceId") deviceId: String,
+            @Query("authSignatureExpiresAt") authSignatureExpiresAt: DateTime
+        ): Call<JsonObject>
     }
 }

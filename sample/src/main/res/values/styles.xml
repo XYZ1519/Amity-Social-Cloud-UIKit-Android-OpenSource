@@ -9,4 +9,24 @@
         <item name="android:background">@drawable/amity_live_chat_bottom_sheet_dark</item>
     </style>
 
+    <style name="AppTextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxBackgroundMode">outline</item>
+        <item name="boxBackgroundColor">#2E3443</item>
+        <item name="boxCornerRadiusTopStart">16dp</item>
+        <item name="boxCornerRadiusTopEnd">16dp</item>
+        <item name="boxCornerRadiusBottomStart">16dp</item>
+        <item name="boxCornerRadiusBottomEnd">16dp</item>
+        <item name="boxStrokeColor">#2E3443</item>
+        <item name="hintTextColor">#8F96A3</item>
+        <item name="android:textColorHint">#8F96A3</item>
+    </style>
+
+    <style name="AppEditText" parent="Widget.MaterialComponents.TextInputEditText.OutlinedBox">
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textColorHint">#8F96A3</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:paddingEnd">4dp</item>
+    </style>
+
 </resources>

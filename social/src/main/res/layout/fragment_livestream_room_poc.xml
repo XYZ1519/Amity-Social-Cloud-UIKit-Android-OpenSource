@@ -24,26 +24,28 @@
             android:layout_marginTop="-20dp"
             android:background="@drawable/content_card_bg"
             android:orientation="vertical"
-            android:paddingStart="14dp"
-            android:paddingTop="14dp"
-            android:paddingEnd="14dp"
+            android:paddingStart="16dp"
+            android:paddingTop="16dp"
+            android:paddingEnd="16dp"
             android:paddingBottom="24dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:gravity="center_vertical"
                 android:orientation="horizontal">
 
                 <TextView
                     android:id="@+id/tvStatus"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="#F9E3E3"
+                    android:background="@drawable/bg_status_pill"
                     android:paddingStart="10dp"
-                    android:paddingTop="5dp"
+                    android:paddingTop="6dp"
                     android:paddingEnd="10dp"
-                    android:paddingBottom="5dp"
-                    android:text="PAST EVENT"
+                    android:paddingBottom="6dp"
+                    android:text="@string/past_event"
+                    android:textAllCaps="true"
                     android:textColor="#CF6D6D"
                     android:textSize="10sp"
                     android:textStyle="bold" />
@@ -52,9 +54,8 @@
                     android:id="@+id/tvDate"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
                     android:layout_marginStart="12dp"
-                    android:text="May 28 at 7PM ET"
+                    android:text="@string/sample_event_date"
                     android:textColor="#333333"
                     android:textSize="11sp"
                     android:textStyle="bold" />
@@ -65,28 +66,53 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
-                android:text="Cook live with Joy Bauer"
+                android:text="@string/sample_event_title"
                 android:textColor="#222222"
                 android:textSize="20sp"
                 android:textStyle="bold" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnJoinLivestream"
-                style="@style/AmityMaterialButtonStyle"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="50dp"
                 android:layout_marginTop="18dp"
-                android:enabled="false"
-                android:text="▶  Join Livestream" />
+                android:elevation="6dp"
+                android:fontFamily="sans-serif-medium"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:stateListAnimator="@null"
+                android:text="@string/replay"
+                android:textAllCaps="true"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:backgroundTint="#E45F67"
+                app:cornerRadius="12dp"
+                app:icon="@drawable/ic_play_arrow_white"
+                app:iconGravity="textStart"
+                app:iconPadding="8dp"
+                app:iconTint="@android:color/white"
+                app:rippleColor="#33FFFFFF"
+                app:strokeWidth="0dp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnCreateLivestream"
-                style="@style/AmityOutlinedButtonStyle"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:enabled="true"
-                android:text="Create Livestream" />
+                android:layout_height="50dp"
+                android:layout_marginTop="12dp"
+                android:elevation="3dp"
+                android:fontFamily="sans-serif-medium"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:stateListAnimator="@null"
+                android:text="@string/create_livestream"
+                android:textAllCaps="false"
+                android:textColor="#7A7A7A"
+                android:textSize="16sp"
+                app:backgroundTint="#FFFFFF"
+                app:cornerRadius="12dp"
+                app:rippleColor="#14000000"
+                app:strokeColor="#D2D2D2"
+                app:strokeWidth="1dp" />
 
             <TextView
                 android:id="@+id/tvDescription"
@@ -95,7 +121,7 @@
                 android:layout_marginTop="22dp"
                 android:layout_marginBottom="18dp"
                 android:lineSpacingExtra="2dp"
-                android:text="We are so excited to welcome Joy Bauer to the Start TODAY family! Join Joy for a live cooking demo where she will prepare 4 easy and delicious recipes from the app. Plus, ask Joy your questions and connect with other members for support. Join us for a lively conversation with Joy and lots of healthy eating tips!"
+                android:text="@string/sample_event_description"
                 android:textColor="#444444"
                 android:textSize="14sp" />
 

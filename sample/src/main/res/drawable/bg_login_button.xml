@@ -1,0 +1,18 @@
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- HOVER (mouse over) -->
+    <item android:state_hovered="true"
+        android:drawable="@drawable/bg_login_button_active" />
+
+    <!-- PRESSED -->
+    <item android:state_pressed="true"
+        android:drawable="@drawable/bg_login_button_active" />
+
+    <!-- FOCUSED -->
+    <item android:state_focused="true"
+        android:drawable="@drawable/bg_login_button_active" />
+
+    <!-- DEFAULT -->
+    <item android:drawable="@drawable/bg_login_button_default" />
+
+</selector>
