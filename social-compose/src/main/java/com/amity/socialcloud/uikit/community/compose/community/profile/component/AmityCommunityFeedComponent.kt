@@ -95,13 +95,16 @@ fun AmityCommunityFeedComponent(
             pinPosts = pinPosts,
             announcementPosts = announcementPosts,
             onClick = { post, _ ->
+                val community = (post.getTarget() as? AmityPost.Target.COMMUNITY)?.getCommunity()
                 behavior.goToPostDetailPage(
                     AmityCommunityProfilePageBehavior.Context(
                         pageContext = context,
+                        community = community,
                     ),
                     postId = post.getPostId(),
-                    category = AmityPostCategory.PIN
-                )
+                    category = AmityPostCategory.PIN,
+                    autoFocusCommentInput = true,
+                    )
             }
         )
     }

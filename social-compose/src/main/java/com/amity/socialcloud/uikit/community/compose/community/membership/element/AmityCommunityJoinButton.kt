@@ -53,6 +53,9 @@ import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
+import com.amity.socialcloud.uikit.common.localization.amityCommonString
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 
 
 @Composable
@@ -83,6 +86,13 @@ fun AmityCommunityJoinButton(
     val coroutineScope = rememberCoroutineScope()
 
     val compositeDisposable = remember { CompositeDisposable() }
+
+    val joinedCommunityStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_joined_community")
+    val joinRequestSentStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_join_request_sent")
+    val joinFailedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_join_community_failed")
+    val cancelRequestFailedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_cancel_request_failed")
+    val leaveFailedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_leave_community_failed")
+    val leaveFailedPendingStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_leave_community_failed")
 
     LaunchedEffect(Unit) {
         AmitySocialClient.newCommunityRepository()
@@ -124,7 +134,7 @@ fun AmityCommunityJoinButton(
                                         isPending = false
                                         isJoined = true
                                         AmityUIKitSnackbar.publishSnackbarMessage(
-                                            message = "You joined ${community.getDisplayName()}.",
+                                            message = joinedCommunityStr.format(community.getDisplayName()),
                                         )
                                     }
 
@@ -134,7 +144,7 @@ fun AmityCommunityJoinButton(
                                         isPending = true
                                         isJoined = false
                                         AmityUIKitSnackbar.publishSnackbarMessage(
-                                            message = "Requested to join. You will be notified once your request is accepted.",
+                                            message = joinRequestSentStr,
                                         )
                                     }
                                 }
@@ -143,7 +153,7 @@ fun AmityCommunityJoinButton(
                                 isInProgress = false
                                 isJoined = false
                                 AmityUIKitSnackbar.publishSnackbarErrorMessage(
-                                    message = "Failed to join the community. Please try again.",
+                                    message = joinFailedStr,
                                 )
                             }
                             .subscribe()
@@ -155,17 +165,17 @@ fun AmityCommunityJoinButton(
         ) {
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Join",
+                contentDescription = amityCommonString("amity_common_button_join"),
                 modifier = Modifier
                     .size(22.dp)
                     .padding(start = 8.dp),
-                tint = Color.White
+                tint = amityColorWhite
             )
             Text(
                 modifier = Modifier.padding(end = 12.dp),
-                text = "Join",
+                text = amityCommonString("amity_common_button_join"),
                 style = AmityTheme.typography.captionLegacy.copy(
-                    color = Color.White,
+                    color = amityColorWhite,
                 ),
             )
         }
@@ -174,7 +184,7 @@ fun AmityCommunityJoinButton(
         // Pending button UI
         Row(
             modifier = Modifier
-                .background(Color.White, shape = RoundedCornerShape(6.dp))
+                .background(AmityTheme.colors.background, shape = RoundedCornerShape(6.dp))
                 .border(
                     width = 1.dp,
                     color = AmityTheme.colors.secondaryShade3,
@@ -199,7 +209,7 @@ fun AmityCommunityJoinButton(
                             .doOnError {
                                 isInProgress = false
                                 AmityUIKitSnackbar.publishSnackbarMessage(
-                                    message = "Failed to cancel your request. Please try again.",
+                                    message = cancelRequestFailedStr,
                                 )
                             }
                             .subscribe()
@@ -218,7 +228,7 @@ fun AmityCommunityJoinButton(
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = "Pending",
+                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_pending"),
                 style = AmityTheme.typography.bodyBold
             )
         }
@@ -241,10 +251,16 @@ fun AmityCommunityJoinButton(
                             isJoined = false
                             val isSuccess = leaveCommunity(community)
                             isInProgress = false
-                            if (!isSuccess) {
+                            if (isSuccess) {
+                                AmityUIKitSnackbar.publishSnackbarMessage(
+                                        message = DefaultAmitySocialStringProvider.getInstance()
+                                        .getString("amity_social_toast_unjoined_toast")
+                                        .format(community.getDisplayName())
+                                )
+                            } else {
                                 isJoined = true
                                 AmityUIKitSnackbar.publishSnackbarMessage(
-                                    message = "Failed to leave the community. Please try again.",
+                                    message = leaveFailedStr,
                                 )
                             }
                         }
@@ -263,7 +279,7 @@ fun AmityCommunityJoinButton(
             )
             Text(
                 modifier = Modifier.padding(end = 12.dp),
-                text = "Joined",
+                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_joined"),
                 style = AmityTheme.typography.captionLegacy
             )
         }
@@ -271,10 +287,10 @@ fun AmityCommunityJoinButton(
 
     if (showLeaveCommunityDialog) {
         AmityAlertDialog(
-            dialogTitle = "Leave community?",
-            dialogText = "If you change your mind, you'll have to request to join again.",
-            confirmText = "Leave",
-            dismissText = "Cancel",
+            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_leave_community"),
+            dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_leave_community_description"),
+            confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_leave"),
+            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
             confirmTextColor = AmityTheme.colors.alert,
             dismissTextColor = AmityTheme.colors.highlight,
             onConfirmation = {
@@ -284,10 +300,16 @@ fun AmityCommunityJoinButton(
                     isPending = false
                     val isSuccess = leaveCommunity(community)
                     isInProgress = false
-                    if (!isSuccess) {
+                    if (isSuccess) {
+                        AmityUIKitSnackbar.publishSnackbarMessage(
+                            message = DefaultAmitySocialStringProvider.getInstance()
+                                .getString("amity_social_toast_unjoined_toast")
+                                .format(community.getDisplayName())
+                        )
+                    } else {
                         isPending = true
                         AmityUIKitSnackbar.publishSnackbarMessage(
-                            message = "Failed to leave the community. Please try again.",
+                            message = leaveFailedStr,
                         )
                     }
                 }
@@ -300,20 +322,24 @@ fun AmityCommunityJoinButton(
 
 }
 
-suspend fun joinCommunity(community: AmityCommunity): Boolean {
+suspend fun joinCommunity(
+    community: AmityCommunity,
+    joinedStr: String,
+    joinFailedStr: String,
+): Boolean {
     try {
         AmitySocialClient.newCommunityRepository()
             .joinCommunity(community.getCommunityId())
             .await()
 
         AmityUIKitSnackbar.publishSnackbarMessage(
-            message = "You joined ${community.getDisplayName()}.",
+            message = joinedStr.format(community.getDisplayName()),
         )
         return true
     } catch (e: Exception) {
 
         AmityUIKitSnackbar.publishSnackbarErrorMessage(
-            message = "Failed to join the community. Please try again.",
+            message = joinFailedStr,
         )
         return false
     }
@@ -336,7 +362,7 @@ fun TestPendingButton() {
     // This is for when complete plug with sdk need to find param to check this condition
     Row(
         modifier = Modifier
-            .background(Color.White, shape = RoundedCornerShape(6.dp))
+            .background(AmityTheme.colors.background, shape = RoundedCornerShape(6.dp))
             .border(
                 width = 1.dp,
                 color = AmityTheme.colors.secondaryShade3,
@@ -355,7 +381,7 @@ fun TestPendingButton() {
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
-            text = "Pending",
+            text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_pending"),
             style = AmityTheme.typography.bodyBold
         )
     }

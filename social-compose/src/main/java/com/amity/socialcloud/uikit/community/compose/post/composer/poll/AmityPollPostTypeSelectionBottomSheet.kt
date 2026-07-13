@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 
 @Composable
 fun AmityPollPostTypeSelectionBottomSheet(
@@ -46,10 +48,10 @@ fun AmityPollPostTypeSelectionBottomSheet(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(AmityTheme.colors.background)
     ) {
         Text(
-            text = "Choose poll type",
+            text = amitySocialString("amity_social_label_choose_poll_type"),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 12.dp),
@@ -98,13 +100,13 @@ fun AmityPollPostTypeSelectionBottomSheet(
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = AmityTheme.colors.primary,
-                contentColor = Color.White
+                contentColor = amityColorWhite
             )
         ) {
             Text(
-                text = "Next",
+                text = amitySocialString("amity_social_button_next"),
                 style = AmityTheme.typography.bodyBold,
-                color = Color.White,
+                color = amityColorWhite,
                 textAlign = TextAlign.Center
             )
         }
@@ -139,7 +141,7 @@ fun AmityPollSelectionItem(
         modifier = finalModifier
             .aspectRatio(5f / 7f)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.White, shape = RoundedCornerShape(8.dp))
+            .background(AmityTheme.colors.background, shape = RoundedCornerShape(8.dp))
             .clickableWithoutRipple { onItemClick() },
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -163,10 +165,10 @@ fun AmityPollSelectionItem(
         Spacer(Modifier.weight(1f))
 
         Text(
-            text = if (type == "text") "Text-only poll" else "Image poll",
+            text = if (type == "text") amitySocialString("amity_social_button_text_only_poll") else amitySocialString("amity_social_button_image_poll"),
             modifier = Modifier,
             style = AmityTheme.typography.bodyBold,
-            color = if (isSelected) Color(0xFF292B32) else AmityTheme.colors.baseShade1,
+            color = if (isSelected) AmityTheme.colors.base else AmityTheme.colors.baseShade1,
             textAlign = TextAlign.Center
         )
 

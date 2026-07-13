@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 
 @Composable
 fun AmityClipLoadStateError(
@@ -25,7 +26,7 @@ fun AmityClipLoadStateError(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(AmityTheme.colors.baseShade1),
+            .background(AmityTheme.colors.secondaryShade1),
     ) {
         Column(
             modifier = Modifier.align(
@@ -43,9 +44,9 @@ fun AmityClipLoadStateError(
                     }
             )
             Text(
-                text = "Unable to load clip",
+                text = amitySocialString("amity_social_label_unable_to_load_clip"),
                 style = AmityTheme.typography.body,
-                color = Color.White,
+                color = AmityTheme.colors.baseInverse,
                 modifier = Modifier.padding(16.dp)
             )
 

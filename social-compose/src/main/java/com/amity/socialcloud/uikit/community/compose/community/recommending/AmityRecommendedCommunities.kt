@@ -58,6 +58,8 @@ import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.community.membership.element.AmityCommunityJoinButton
 import com.amity.socialcloud.uikit.community.compose.socialhome.elements.AmityCommunityCategoryView
 import com.amity.socialcloud.uikit.community.compose.ui.shimmer.AmityRecommendedCommunityShimmer
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 
 
 @Composable
@@ -100,7 +102,7 @@ fun AmityRecommendedCommunitiesComponent(
                         .fillMaxWidth()
                 ) {
                     Text(
-                        text = "Recommended for you",
+                        text = amitySocialString("amity_social_label_recommended_for_you"),
                         style = AmityTheme.typography.titleLegacy,
                         modifier = Modifier.padding(
                             start = 16.dp,
@@ -236,7 +238,7 @@ fun AmityRecommendedCommunityAvatarView(
                 Icon(
                     painter = painterResource(id = placeholder),
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = amityColorWhite,
                     modifier = Modifier
                         .align(Alignment.Center)
                         .size(60.dp)
@@ -370,7 +372,7 @@ fun AmityRecommendedCommunityView(
                         elementId = "community_members_count"
                     ) {
                         Text(
-                            text = "${community.getMemberCount().readableNumber()} members",
+                            text = "${community.getMemberCount().readableNumber()} ${amitySocialString("amity_social_label_community_members_label")}",
                             style = AmityTheme.typography.captionLegacy.copy(
                                 fontWeight = FontWeight.Normal,
                                 color = AmityTheme.colors.baseShade1,

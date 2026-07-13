@@ -17,14 +17,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import com.amity.socialcloud.uikit.chat.compose.localization.amityChatString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.compose.collectAsLazyPagingItems
-import com.amity.socialcloud.sdk.model.core.file.AmityImage
 import com.amity.socialcloud.uikit.chat.compose.R
+import com.amity.socialcloud.uikit.common.utils.resolvedAvatarUrl
 import com.amity.socialcloud.uikit.chat.compose.live.AmityLiveChatPageViewModel
 import com.amity.socialcloud.uikit.chat.compose.live.elements.AmityAvatarType
 import com.amity.socialcloud.uikit.chat.compose.live.elements.AmityMessageAvatarView
@@ -61,7 +62,7 @@ fun AmityMentionSuggestionView(
         ) {
             val suggestion = suggestions[it] ?: return@items
             val text = if(suggestion is AmityMentionSuggestion.USER) suggestion.user.getDisplayName() ?: "" else "All"
-            val avatarUrl = if(suggestion is AmityMentionSuggestion.USER) suggestion.user.getAvatar()?.getUrl(AmityImage.Size.SMALL) else null
+            val avatarUrl = if(suggestion is AmityMentionSuggestion.USER) suggestion.user.resolvedAvatarUrl() else null
             val isBrandUser = suggestion is AmityMentionSuggestion.USER && suggestion.user.isBrand()
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -75,6 +76,7 @@ fun AmityMentionSuggestionView(
             ) {
                 AmityMessageAvatarView(
                     avatarUrl = avatarUrl,
+                    displayName = text,
                     avatarType = if(suggestion is AmityMentionSuggestion.USER) AmityAvatarType.USER else AmityAvatarType.MENTION_ALL,
                     size = 32.dp,
                 )
@@ -105,7 +107,7 @@ fun AmityMentionSuggestionView(
 
                 if(suggestion is AmityMentionSuggestion.CHANNEL){
                     Text(
-                        text = "Notify everyone",
+                        text = amityChatString("chat.mention.everyone"),
                         overflow = TextOverflow.Ellipsis,
                         fontSize = 13.sp,
                         lineHeight = 18.sp,

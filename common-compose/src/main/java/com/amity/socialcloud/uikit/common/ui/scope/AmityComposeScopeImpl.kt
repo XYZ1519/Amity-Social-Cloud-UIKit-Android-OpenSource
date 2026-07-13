@@ -105,6 +105,10 @@ internal class AmityComposeComponentScopeImpl(
     override fun getSnackbarHostState(): SnackbarHostState {
         return snackbarHostState
     }
+
+    override fun getPageScope(): AmityComposePageScope? {
+        return pageScope
+    }
 }
 
 internal class AmityComposeElementScopeImpl(
@@ -179,6 +183,7 @@ interface SnackbarScope {
         message: String,
         @DrawableRes drawableRes: Int? = R.drawable.amity_ic_snack_bar_success,
         additionalHeight: Int = 0,
+        dismissable: Boolean = false
     ) {
         getCoroutineScope().launch {
             getSnackbarHostState().currentSnackbarData?.dismiss()
@@ -186,6 +191,7 @@ interface SnackbarScope {
                 AmitySnackbarVisuals(
                     message = message,
                     additionalHeight = additionalHeight,
+                    dismissable = dismissable
                 ).apply {
                     drawableRes?.let {
                         this.drawableRes = drawableRes

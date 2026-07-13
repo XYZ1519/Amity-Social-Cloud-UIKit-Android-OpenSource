@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,6 +24,7 @@ import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.community.compose.ui.shimmer.AmityEventCardListShimmer
 import com.amity.socialcloud.uikit.community.compose.ui.shimmer.AmityEventCardShimmer
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 
 @Composable
 fun AmityExploreEventFeedComponent(
@@ -52,7 +54,7 @@ fun AmityExploreEventFeedComponent(
         if (isLiveEventsLoading) {
             item {
                 Text(
-                    text = "Happening now",
+                    text = amitySocialString("amity_social_button_happening_now"),
                     style = AmityTheme.typography.title.copy(fontWeight = FontWeight.Bold),
                     color = AmityTheme.colors.base,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
@@ -70,7 +72,7 @@ fun AmityExploreEventFeedComponent(
         } else if (happeningNowEvents.isNotEmpty()) {
             item {
                 Text(
-                    text = "Happening now",
+                    text = amitySocialString("amity_social_button_happening_now"),
                     style = AmityTheme.typography.title.copy(fontWeight = FontWeight.Bold),
                     color = AmityTheme.colors.base,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
@@ -115,7 +117,7 @@ fun AmityExploreEventFeedComponent(
         // Recommended for you Section
         item {
             Text(
-                text = "Recommended for you",
+                text = amitySocialString("amity_social_label_recommended_for_you"),
                 style = AmityTheme.typography.title.copy(fontWeight = FontWeight.Bold),
                 color = AmityTheme.colors.base,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
@@ -142,11 +144,12 @@ fun AmityExploreEventFeedComponent(
                     Image(
                         painter = painterResource(id = com.amity.socialcloud.uikit.common.R.drawable.amity_ic_event_empty),
                         contentDescription = null,
-                        modifier = Modifier.size(80.dp)
+                        modifier = Modifier.size(80.dp),
+                        colorFilter = ColorFilter.tint(AmityTheme.colors.baseShade4)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "No events yet",
+                        text = amitySocialString("amity_social_label_no_events_yet"),
                         style = AmityTheme.typography.title.copy(fontWeight = FontWeight.Bold),
                         color = AmityTheme.colors.baseShade3
                     )
@@ -183,7 +186,7 @@ fun AmityExploreEventFeedComponent(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "View all",
+                        text = amitySocialString("amity_social_button_view_all"),
                         style = AmityTheme.typography.body.copy(fontWeight = FontWeight.Medium),
                         color = AmityTheme.colors.base
                     )

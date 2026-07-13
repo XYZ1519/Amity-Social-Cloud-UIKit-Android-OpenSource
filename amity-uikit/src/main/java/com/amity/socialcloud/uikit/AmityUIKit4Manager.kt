@@ -1,16 +1,21 @@
 package com.amity.socialcloud.uikit
 
+import android.util.Log
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.api.core.encryption.AmityDBEncryption
 import com.amity.socialcloud.sdk.api.core.endpoint.AmityEndpoint
 import com.amity.socialcloud.sdk.video.AmityStreamBroadcasterClient
 import com.amity.socialcloud.sdk.video.AmityStreamPlayerClient
+import com.amity.socialcloud.uikit.chat.compose.localization.DefaultAmityChatStringProvider
 import com.amity.socialcloud.uikit.common.ad.AmityAdEngine
 import com.amity.socialcloud.uikit.common.config.AmityUIKitConfigController
 import com.amity.socialcloud.uikit.common.eventbus.NetworkConnectionEventPublisher
 import com.amity.socialcloud.uikit.common.infra.db.AmityUIKitDB
 import com.amity.socialcloud.uikit.common.infra.initializer.AmityAppContext
 import com.amity.socialcloud.uikit.common.networkconfig.AmityNetworkConfigService
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
+import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostDetailPageBehavior
+import com.amity.socialcloud.uikit.community.compose.visitor.AmityVisitorUsageLimitObserver
 import io.reactivex.rxjava3.core.Completable
 
 object AmityUIKit4Manager {
@@ -28,21 +33,20 @@ object AmityUIKit4Manager {
             endpoint = endpoint,
             dbEncryption = dbEncryption
         )
+        AmityCoreClient.enableUnreadCount()
         AmityStreamBroadcasterClient.setup(AmityCoreClient.getConfiguration())
         AmityStreamPlayerClient.setup(AmityCoreClient.getConfiguration())
         AmityAdEngine.init()
+        AmityVisitorUsageLimitObserver.init()
         AmityNetworkConfigService.init(apiKey)
         AmityUIKitConfigController.setup(AmityAppContext.getContext())
         AmityUIKitConfigController.initializeShareableLinkPattern()
+        DefaultAmitySocialStringProvider.initialize(AmityAppContext.getContext())
+        DefaultAmityChatStringProvider.initialize(AmityAppContext.getContext())
         NetworkConnectionEventPublisher.initPublisher(context = AmityAppContext.getContext())
-        overrideCustomBehavior()
     }
 
     fun syncNetworkConfig(): Completable {
         return AmityNetworkConfigService.syncNetworkConfig()
-    }
-
-    private fun overrideCustomBehavior() {
-//        behavior.viewStoryPageBehavior = AmityCustomViewStoryPageBehavior()
     }
 }

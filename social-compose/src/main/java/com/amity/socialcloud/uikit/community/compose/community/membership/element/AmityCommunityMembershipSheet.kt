@@ -25,6 +25,7 @@ import com.amity.socialcloud.uikit.common.utils.isModerator
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.community.membership.list.AmityCommunityMembershipPageViewModel
 import com.amity.socialcloud.uikit.community.compose.community.membership.list.AmityCommunityMembershipSheetUIState
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +41,20 @@ fun AmityCommunityMembershipSheet(
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sheetUIState by viewModel.sheetUIState.collectAsState()
+
+    val demoteInProgressStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_member_demote_in_progress")
+    val demoteSuccessStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_member_demote_success_toast")
+    val demoteFailedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_demoted_failed")
+    val promoteInProgressStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_member_promote_in_progress")
+    val promoteSuccessStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_member_promoted")
+    val promoteFailedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_member_promote_failed")
+    val unreportedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_member_unreported")
+    val unreportFailedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_member_unreport_failed")
+    val reportedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_member_reported")
+    val reportFailedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_member_report_failed")
+    val removingInProgressStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_member_remove_in_progress")
+    val removedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_member_removed_toast")
+    val removeFailedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_member_remove_failed")
 
 
     val showSheet by remember(viewModel) {
@@ -73,7 +88,7 @@ fun AmityCommunityMembershipSheet(
                             if (member.isModerator()) {
                                 AmityBottomSheetActionItem(
                                     icon = R.drawable.amity_ic_demote_moderator,
-                                    text = "Demote to member",
+                                    text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_demote_to_member"),
                                     modifier = modifier.testTag(""),
                                 ) {
                                     viewModel.updateSheetUIState(
@@ -82,15 +97,22 @@ fun AmityCommunityMembershipSheet(
 
                                     viewModel.demoteModerator(
                                         userId = member.getUserId(),
+                                        onDemotingStarted = {
+                                            // Surfaces the "Demoting…" progress snackbar while we
+                                            // wait for the backend to reindex the role change.
+                                            pageScope?.showProgressSnackbar(demoteInProgressStr)
+                                        },
                                         onSuccess = {
+                                            pageScope?.dismissSnackbar()
                                             pageScope?.showSnackbar(
-                                                message = "Successfully demoted to member!",
+                                                message = demoteSuccessStr,
                                                 drawableRes = R.drawable.amity_ic_snack_bar_success,
                                             )
                                         },
                                         onError = {
+                                            pageScope?.dismissSnackbar()
                                             pageScope?.showSnackbar(
-                                                message = "Failed to demote member. Please try again.",
+                                                message = demoteFailedStr,
                                                 drawableRes = R.drawable.amity_ic_snack_bar_warning,
                                             )
                                         }
@@ -99,7 +121,7 @@ fun AmityCommunityMembershipSheet(
                             } else {
                                 AmityBottomSheetActionItem(
                                     icon = R.drawable.amity_ic_promote_moderator,
-                                    text = "Promote to moderator",
+                                    text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_promote_to_moderator"),
                                     modifier = modifier.testTag(""),
                                 ) {
                                     viewModel.updateSheetUIState(
@@ -108,15 +130,22 @@ fun AmityCommunityMembershipSheet(
 
                                     viewModel.promoteModerator(
                                         userId = member.getUserId(),
+                                        onPromotingStarted = {
+                                            // Surfaces the "Promoting…" progress snackbar while we
+                                            // wait for the backend to reindex the role change.
+                                            pageScope?.showProgressSnackbar(promoteInProgressStr)
+                                        },
                                         onSuccess = {
+                                            pageScope?.dismissSnackbar()
                                             pageScope?.showSnackbar(
-                                                message = "Successfully promoted to moderator!",
+                                                message = promoteSuccessStr,
                                                 drawableRes = R.drawable.amity_ic_snack_bar_success,
                                             )
                                         },
                                         onError = {
+                                            pageScope?.dismissSnackbar()
                                             pageScope?.showSnackbar(
-                                                message = "Failed to promote member. Please try again.",
+                                                message = promoteFailedStr,
                                                 drawableRes = R.drawable.amity_ic_snack_bar_warning,
                                             )
                                         }
@@ -128,7 +157,7 @@ fun AmityCommunityMembershipSheet(
                         if (isFlaggedByMe) {
                             AmityBottomSheetActionItem(
                                 icon = R.drawable.amity_ic_unreport,
-                                text = "Unreport member",
+                                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unreport_user"),
                                 modifier = modifier.testTag(""),
                             ) {
                                 viewModel.updateSheetUIState(AmityCommunityMembershipSheetUIState.CloseSheet)
@@ -136,13 +165,13 @@ fun AmityCommunityMembershipSheet(
                                     userId = member.getUserId(),
                                     onSuccess = {
                                         pageScope?.showSnackbar(
-                                            message = "Member unreported.",
+                                            message = unreportedStr,
                                             drawableRes = R.drawable.amity_ic_snack_bar_success,
                                         )
                                     },
                                     onError = {
                                         pageScope?.showSnackbar(
-                                            message = "Failed to unreport member. Please try again.",
+                                            message = unreportFailedStr,
                                             drawableRes = R.drawable.amity_ic_snack_bar_warning,
                                         )
                                     }
@@ -151,7 +180,7 @@ fun AmityCommunityMembershipSheet(
                         } else {
                             AmityBottomSheetActionItem(
                                 icon = R.drawable.amity_ic_report1,
-                                text = "Report member",
+                                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_report_user"),
                                 modifier = modifier.testTag(""),
                             ) {
                                 viewModel.updateSheetUIState(AmityCommunityMembershipSheetUIState.CloseSheet)
@@ -159,13 +188,13 @@ fun AmityCommunityMembershipSheet(
                                     userId = member.getUserId(),
                                     onSuccess = {
                                         pageScope?.showSnackbar(
-                                            message = "Member reported",
+                                            message = reportedStr,
                                             drawableRes = R.drawable.amity_ic_snack_bar_success,
                                         )
                                     },
                                     onError = {
                                         pageScope?.showSnackbar(
-                                            message = "Failed to report member. Please try again.",
+                                            message = reportFailedStr,
                                             drawableRes = R.drawable.amity_ic_snack_bar_warning,
                                         )
                                     }
@@ -176,22 +205,29 @@ fun AmityCommunityMembershipSheet(
                         if (hasRemovePermission) {
                             AmityBottomSheetActionItem(
                                 icon = R.drawable.amity_ic_delete1,
-                                text = "Remove from community",
+                                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_remove_from_community"),
                                 color = AmityTheme.colors.alert,
                                 modifier = modifier.testTag(""),
                             ) {
                                 viewModel.updateSheetUIState(AmityCommunityMembershipSheetUIState.CloseSheet)
                                 viewModel.removeMember(
                                     userId = member.getUserId(),
+                                    onRemovingStarted = {
+                                        // Surfaces the "Removing member…" progress snackbar while we
+                                        // wait for the backend to deindex the member.
+                                        pageScope?.showProgressSnackbar(removingInProgressStr)
+                                    },
                                     onSuccess = {
+                                        pageScope?.dismissSnackbar()
                                         pageScope?.showSnackbar(
-                                            message = "Member removed from this community.",
+                                            message = removedStr,
                                             drawableRes = R.drawable.amity_ic_snack_bar_success,
                                         )
                                     },
                                     onError = {
+                                        pageScope?.dismissSnackbar()
                                         pageScope?.showSnackbar(
-                                            message = "Failed to remove member. Please try again.",
+                                            message = removeFailedStr,
                                             drawableRes = R.drawable.amity_ic_snack_bar_warning,
                                         )
                                     }

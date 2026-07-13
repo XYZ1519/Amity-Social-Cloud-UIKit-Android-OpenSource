@@ -8,11 +8,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.waterfall
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -26,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rxjava3.subscribeAsState
 import androidx.compose.runtime.setValue
@@ -63,8 +67,11 @@ import com.amity.socialcloud.uikit.common.ui.elements.AmityMenuButton
 import com.amity.socialcloud.uikit.common.ui.image.rememberZoomState
 import com.amity.socialcloud.uikit.common.ui.image.zoomable
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBase
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBaseShade4
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.community.compose.post.composer.AmityPostComposerPageViewModel
 import com.amity.socialcloud.uikit.community.compose.post.composer.RenderAltTextConfigSheet
 import com.amity.socialcloud.uikit.community.compose.post.composer.components.AltTextMedia
@@ -73,13 +80,16 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.delay
+import com.amity.socialcloud.uikit.common.ui.theme.amityMediaSurface
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
 
 @androidx.annotation.OptIn(UnstableApi::class)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AmityPostMediaPreviewDialog(
     modifier: Modifier = Modifier,
-    childPosts: List<AmityPost.Data> = emptyList(),
+    childPosts: List<AmityPost> = emptyList(),
     isVideoPost: Boolean,
     selectedFileId: String,
     isPostCreator: Boolean = false,
@@ -107,7 +117,7 @@ fun AmityPostMediaPreviewDialog(
     }
 
     val videos by remember(childPosts.size) {
-        prepareVideoUrl(childPosts)
+        prepareVideoUrl(childPosts.map { it.getData() })
     }.subscribeAsState(initial = emptyList())
 
     val viewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
@@ -118,7 +128,7 @@ fun AmityPostMediaPreviewDialog(
 
     var openMenu by remember { mutableStateOf(false) }
     val onMenuClick: (Int) -> Unit = { index ->
-        childPosts.getOrNull(index)?.let { data ->
+        childPosts.getOrNull(index)?.getData()?.let { data ->
             if (data is AmityPost.Data.IMAGE) {
                 val image = data.getImage()
                 image?.let {
@@ -137,11 +147,7 @@ fun AmityPostMediaPreviewDialog(
 
     LaunchedEffect(selectedFileId) {
         pagerState.scrollToPage(childPosts.indexOfFirst {
-            when (it) {
-                is AmityPost.Data.IMAGE -> it.getPostId() == selectedFileId
-                is AmityPost.Data.VIDEO -> it.getPostId() == selectedFileId
-                else -> false
-            }
+            it.getPostId() == selectedFileId
         })
     }
 
@@ -168,90 +174,115 @@ fun AmityPostMediaPreviewDialog(
             componentId = "post_media_preview",
             needScaffold = true,
         ) {
-            HorizontalPager(
-                state = pagerState,
-                key = { it },
-                modifier = modifier
-                    .fillMaxSize()
-                    .background(Color.Black)
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures(
-                            onDragEnd = {
-                                if (verticalDragAmount > 0) {
-                                    onDismiss()
+            Box(modifier = Modifier.fillMaxSize()) {
+                HorizontalPager(
+                    state = pagerState,
+                    key = { it },
+                    modifier = modifier
+                        .fillMaxSize()
+                        .background(amityMediaSurface)
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragEnd = {
+                                    if (verticalDragAmount > 0) {
+                                        onDismiss()
+                                    }
+                                    verticalDragAmount = 0f
                                 }
-                                verticalDragAmount = 0f
-                            }
-                        ) { change, dragAmount ->
-                            change.consume()
-                            verticalDragAmount += dragAmount
-                        }
-                    }
-            ) { index ->
-                when (val data = childPosts[index]) {
-                    is AmityPost.Data.IMAGE -> {
-                        val image = data.getImage()
-                        image?.let {
-                            if (imageMap[image.getFileId()] == null) {
-                                imageMap[image.getFileId()] = image
+                            ) { change, dragAmount ->
+                                change.consume()
+                                verticalDragAmount += dragAmount
                             }
                         }
-                        val imageUrl = image?.getUrl(AmityImage.Size.MEDIUM)
+                ) { index ->
+                    val childPost = childPosts[index]
 
-                        Box(
-                            modifier = modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (imageUrl != null) {
-                                AsyncImage(
-                                    model = ImageRequest
-                                        .Builder(LocalContext.current)
-                                        .data(imageUrl)
-                                        .crossfade(true)
-                                        .networkCachePolicy(CachePolicy.ENABLED)
-                                        .diskCachePolicy(CachePolicy.ENABLED)
-                                        .memoryCachePolicy(CachePolicy.ENABLED)
-                                        .build(),
-                                    contentDescription = "Image Post",
-                                    contentScale = ContentScale.Fit,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .zoomable(rememberZoomState()),
-                                )
-                            } else {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(480.dp)
-                                        .background(AmityTheme.colors.baseShade4),
-                                )
+                    when (val data = childPost.getData()) {
+                        is AmityPost.Data.IMAGE -> {
+                            val image = data.getImage()
+                            image?.let {
+                                // Run exactly once per unique fileId — populates imageMap for the
+                                // delete confirmation dialog without mutating state during composition.
+                                LaunchedEffect(image.getFileId()) {
+                                    if (imageMap[image.getFileId()] == null) {
+                                        imageMap[image.getFileId()] = image
+                                    }
+                                }
                             }
-                        }
-                        if (openMenu) {
-                            ModalBottomSheet(
-                                onDismissRequest = {
-                                    openMenu = false
-                                },
-                                sheetState = rememberModalBottomSheetState(
-                                    skipPartiallyExpanded = true,
-                                ),
-                                containerColor = AmityTheme.colors.background,
-                                contentWindowInsets = { WindowInsets.waterfall },
+                            val imageUrl = image?.getUrl(AmityImage.Size.MEDIUM)
+                            var aspectRatio by remember { mutableStateOf<Float?>(null) }
+
+                            Box(
+                                modifier = modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = modifier
-                                        .padding(start = 16.dp, end = 16.dp, bottom = 64.dp)
+                                if (imageUrl != null) {
+                                    val imageBoxModifier = if (aspectRatio != null) {
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .aspectRatio(aspectRatio!!)
+                                    } else {
+                                        Modifier.fillMaxSize()
+                                    }
+
+                                    Box(modifier = imageBoxModifier) {
+                                        AsyncImage(
+                                            model = ImageRequest
+                                                .Builder(LocalContext.current)
+                                                .data(imageUrl)
+                                                .crossfade(true)
+                                                .networkCachePolicy(CachePolicy.ENABLED)
+                                                .diskCachePolicy(CachePolicy.ENABLED)
+                                                .memoryCachePolicy(CachePolicy.ENABLED)
+                                                .build(),
+                                            contentDescription = "Image Post",
+                                            contentScale = ContentScale.Fit,
+                                            onSuccess = { result ->
+                                                val size = result.painter.intrinsicSize
+                                                if (size.width > 0 && size.height > 0) {
+                                                    aspectRatio = size.width / size.height
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .zoomable(rememberZoomState()),
+                                        )
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(480.dp)
+                                            .background(AmityTheme.colors.baseShade4),
+                                    )
+                                }
+                            }
+                            if (openMenu) {
+                                ModalBottomSheet(
+                                    onDismissRequest = {
+                                        openMenu = false
+                                    },
+                                    sheetState = rememberModalBottomSheetState(
+                                        skipPartiallyExpanded = true,
+                                    ),
+                                    containerColor = AmityTheme.colors.background,
+                                    contentWindowInsets = { WindowInsets.waterfall },
                                 ) {
-                                    if (isPostCreator) {
-                                        AmityBottomSheetActionItem(
-                                            icon = R.drawable.amity_ic_edit_profile,
-                                            text = "Edit alt text",
-                                            modifier = modifier.testTag("bottom_sheet_edit_alt_text_button"),
-                                        ) {
-                                            image?.getFileId()?.let { fileId ->
-                                                imageMap[fileId]?.let {
-                                                    viewModel.showAltTextConfigSheet()
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        modifier = modifier
+                                            .padding(start = 16.dp, end = 16.dp, bottom = 64.dp)
+                                    ) {
+                                        if (isPostCreator) {
+                                            AmityBottomSheetActionItem(
+                                                icon = R.drawable.amity_ic_edit_profile,
+                                                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_image_edit_alt_text_title"),
+                                                modifier = modifier.testTag("bottom_sheet_edit_alt_text_button"),
+                                            ) {
+                                                image?.getFileId()?.let { fileId ->
+                                                    imageMap[fileId]?.let {
+                                                        viewModel.showAltTextConfigSheet()
+                                                    }
                                                 }
                                             }
                                         }
@@ -259,96 +290,118 @@ fun AmityPostMediaPreviewDialog(
                                 }
                             }
                         }
+
+                        is AmityPost.Data.VIDEO -> {
+                            Box(
+                                modifier = modifier.fillMaxSize(),
+                            ) {
+                                AmityPostMediaVideoPlayer(
+                                    exoPlayer = exoPlayer,
+                                    isVisible = pagerState.currentPage == index,
+                                )
+                            }
+                        }
+
+                        else -> {}
+                    }
+                }
+
+                ConstraintLayout(
+                    modifier = modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .background(amityColorBlack.copy(alpha = 0.5f)),
+                ) {
+                    val (closeBtn, muteBtn, counter, menuBtn) = createRefs()
+
+                    AmityMenuButton(
+                        size = 32.dp,
+                        iconPadding = 8.dp,
+                        background = amityColorBaseShade4,
+                        tint = amityColorBase,
+                        modifier = Modifier
+                            .zIndex(Float.MAX_VALUE).constrainAs(closeBtn) {
+                            top.linkTo(parent.top, margin = 16.dp)
+                            start.linkTo(parent.start, margin = 16.dp)
+                        },
+                    ) {
+                        onDismiss()
                     }
 
-                    is AmityPost.Data.VIDEO -> {
-                        AmityPostMediaVideoPlayer(
-                            exoPlayer = exoPlayer,
-                            isVisible = pagerState.currentPage == index,
+                    if (isVideoPost) {
+                        Image(
+                            painter = painterResource(
+                                id = if (isAudioMuted) R.drawable.amity_ic_story_audio_mute
+                                else R.drawable.amity_ic_story_audio_unmute
+                            ),
+                            contentDescription = "Video Audio",
+                            modifier = Modifier
+                                .size(32.dp)
+                                .constrainAs(muteBtn) {
+                                    top.linkTo(parent.top, margin = 64.dp)
+                                    start.linkTo(parent.start, margin = 16.dp)
+                                }
+                                .clickableWithoutRipple {
+                                    isAudioMuted = !isAudioMuted
+                                    exoPlayer.volume = if (isAudioMuted) 0f else 1f
+                                },
                         )
                     }
 
-                    else -> {}
-                }
-            }
-
-            ConstraintLayout(
-                modifier = modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .background(Color.Black.copy(alpha = 0.5f)),
-            ) {
-                val (closeBtn, muteBtn, counter, menuBtn) = createRefs()
-
-                AmityMenuButton(
-                    size = 32.dp,
-                    iconPadding = 8.dp,
-                    modifier = Modifier
-                        .zIndex(Float.MAX_VALUE).constrainAs(closeBtn) {
-                        top.linkTo(parent.top, margin = 16.dp)
-                        start.linkTo(parent.start, margin = 16.dp)
-                    },
-                ) {
-                    onDismiss()
-                }
-
-                if (isVideoPost) {
-                    Image(
-                        painter = painterResource(
-                            id = if (isAudioMuted) R.drawable.amity_ic_story_audio_mute
-                            else R.drawable.amity_ic_story_audio_unmute
+                    Text(
+                        text = "${pagerState.currentPage + 1} / ${childPosts.size}",
+                        style = AmityTheme.typography.titleLegacy.copy(
+                            fontWeight = FontWeight.Normal,
+                            color = amityColorWhite
                         ),
-                        contentDescription = "Video Audio",
-                        modifier = Modifier
-                            .size(32.dp)
-                            .constrainAs(muteBtn) {
-                                top.linkTo(parent.top, margin = 64.dp)
-                                start.linkTo(parent.start, margin = 16.dp)
+                        modifier = modifier
+                            .semantics {
+                                contentDescription = "Photo ${pagerState.currentPage + 1} of ${childPosts.size}"
                             }
-                            .clickableWithoutRipple {
-                                isAudioMuted = !isAudioMuted
-                                exoPlayer.volume = if (isAudioMuted) 0f else 1f
+                            .constrainAs(counter) {
+                            start.linkTo(parent.start)
+                            end.linkTo(parent.end)
+                            bottom.linkTo(closeBtn.bottom)
+                        }
+                    )
+
+                    if (isPostCreator && !isVideoPost) {
+                        AmityMenuButton(
+                            icon = R.drawable.amity_ic_more_horiz,
+                            size = 32.dp,
+                            iconPadding = 2.dp,
+                            modifier = Modifier.constrainAs(menuBtn) {
+                                top.linkTo(parent.top, margin = 16.dp)
+                                end.linkTo(parent.end, margin = 16.dp)
                             },
+                        ) {
+                            onMenuClick(pagerState.currentPage)
+                        }
+                    }
+                }
+
+                // Product Tag Badge at bottom-right of screen
+                val currentProductTagCount by remember {
+                    derivedStateOf {
+                        childPosts.getOrNull(pagerState.currentPage)?.let { getProductTagCount(it) } ?: 0
+                    }
+                }
+                if (currentProductTagCount > 0) {
+                    AmityProductTagBadge(
+                        count = currentProductTagCount,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 12.dp, bottom = 120.dp)
                     )
                 }
 
-                Text(
-                    text = "${pagerState.currentPage + 1} / ${childPosts.size}",
-                    style = AmityTheme.typography.titleLegacy.copy(
-                        fontWeight = FontWeight.Normal,
-                        color = Color.White
-                    ),
-                    modifier = modifier
-                        .semantics {
-                            contentDescription = "Photo ${pagerState.currentPage + 1} of ${childPosts.size}"
-                        }
-                        .constrainAs(counter) {
-                        start.linkTo(parent.start)
-                        end.linkTo(parent.end)
-                        bottom.linkTo(closeBtn.bottom)
-                    }
-                )
-
-                if (isPostCreator) {
-                    AmityMenuButton(
-                        icon = R.drawable.amity_ic_more_horiz,
-                        size = 32.dp,
-                        iconPadding = 2.dp,
-                        modifier = Modifier.constrainAs(menuBtn) {
-                            top.linkTo(parent.top, margin = 16.dp)
-                            end.linkTo(parent.end, margin = 16.dp)
-                        },
-                    ) {
-                        onMenuClick(pagerState.currentPage)
-                    }
-                }
-            }
+            } // End of Box wrapper
             RenderAltTextConfigSheet(
                 forcedEditMode = true,
                 onSuccess = { image ->
                     imageMap[image.getFileId()] = image
                     AmityUIKitSnackbar.publishSnackbarMessage(
-                        message = context.getString(R.string.amity_image_alt_text_updated_message),
+                        message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_image_alt_text_updated_message"),
                     )
                     },
                 onDismiss = {

@@ -43,6 +43,8 @@ import com.amity.socialcloud.uikit.common.utils.getText
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.search.global.AmityGlobalSearchType
 import com.amity.socialcloud.uikit.community.compose.search.global.AmityGlobalSearchViewModel
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 
 @Composable
 fun AmityTopSearchBarComponent(
@@ -58,12 +60,14 @@ fun AmityTopSearchBarComponent(
     }
     val searchType by viewModel.searchType.collectAsState()
     val focusRequester = remember { FocusRequester() }
-    val title by remember(searchType) {
+    val searchMyCommunitiesTitle = amitySocialString("amity_social_label_search_my_communities")
+    val searchTitle = amitySocialString("amity_social_button_search")
+    val title by remember(searchType, searchMyCommunitiesTitle, searchTitle) {
         derivedStateOf {
             if (searchType == AmityGlobalSearchType.MY_COMMUNITY) {
-                "Search my communities"
+                searchMyCommunitiesTitle
             } else {
-                "Search community and user"
+                searchTitle
             }
         }
     }
@@ -172,7 +176,7 @@ fun AmityTopSearchBarComponent(
                         ) {
                             Icon(
                                 painter = painterResource(id = R.drawable.amity_ic_close),
-                                tint = Color.White,
+                                tint = amityColorWhite,
                                 contentDescription = null,
                                 modifier = modifier
                                     .align(Alignment.Center)

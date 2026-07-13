@@ -1,9 +1,14 @@
 package com.amity.socialcloud.uikit.common.ui.elements
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.material3.Text
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,12 +30,18 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.dp
 import com.amity.socialcloud.sdk.helper.core.hashtag.AmityHashtag
 import com.amity.socialcloud.sdk.helper.core.hashtag.AmityHashtagMetadataGetter
 import com.amity.socialcloud.sdk.helper.core.mention.AmityMentionMetadataGetter
 import com.amity.socialcloud.sdk.helper.core.mention.AmityMentionee
+import com.amity.socialcloud.sdk.model.core.product.AmityProductStatus
+import com.amity.socialcloud.sdk.model.core.producttag.AmityProductTag
 import com.amity.socialcloud.uikit.common.common.views.text.AmityTextStyle
+import com.amity.socialcloud.uikit.common.extionsions.UrlPosition
 import com.amity.socialcloud.uikit.common.extionsions.extractUrls
+import com.amity.socialcloud.uikit.common.extionsions.parseUrls
+import com.amity.socialcloud.uikit.common.localization.amityCommonString
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -42,13 +53,19 @@ fun AmityExpandableText(
     mentionGetter: AmityMentionMetadataGetter = AmityMentionMetadataGetter(JsonObject()),
     mentionees: List<AmityMentionee> = emptyList(),
     hashtagGetter: AmityHashtagMetadataGetter = AmityHashtagMetadataGetter(JsonObject()),
+    productTags: List<AmityProductTag.Text> = emptyList(),
     boldWhenMatches: List<String> = emptyList(),
+    linkPositions: List<UrlPosition>? = null,
     style: TextStyle = AmityTheme.typography.body,
     previewLines: Int = EXPANDABLE_TEXT_MAX_LINES,
     intialExpand: Boolean = false,
+    readMoreText: String = amityCommonString("amity_common_button_see_more"),
+    readMoreUnderlined: Boolean = true,
+    readMoreInline: Boolean = false,
     onClick: () -> Unit = {},
     onMentionedUserClick: (String) -> Unit = {},
     onHashtagClick: (String) -> Unit = {},
+    onMentionedProductClick: (AmityProductTag.Text) -> Unit = {},
     onUrlClick: ((Context, String) -> Unit)? = null,
 ) {
     val uriHandler = LocalUriHandler.current
@@ -65,12 +82,14 @@ fun AmityExpandableText(
                 constraints = Constraints(maxWidth = this.constraints.maxWidth)
             )
         }
-        val trimmedText by rememberSaveable(text) {
+        val trimmedText by rememberSaveable(text, readMoreText) {
             mutableStateOf(
                 getTrimmedText(
                     text = text,
                     textLayoutResult = textLayoutResult,
                     visiblePreviewLines = previewLines,
+                    readMoreLength = readMoreText.length,
+                    inlineReadMore = readMoreInline,
                 )
             )
         }
@@ -132,7 +151,32 @@ fun AmityExpandableText(
                     end = end
                 )
             }
-            text.extractUrls().forEach {
+            // Highlight product tags (clickable only if not archived)
+            productTags.forEach { productTag ->
+                val start = productTag.index
+                val end = productTag.index + productTag.length
+                if (start < displayText.length) {
+                    val safeEnd = minOf(end, displayText.length)
+                    // Only add highlight and annotation if product is not archived
+                    val isArchived = productTag.product?.getStatus() == AmityProductStatus.ARCHIVED
+                    if (!isArchived) {
+                        addStyle(
+                            style = SpanStyle(AmityTheme.colors.highlight),
+                            start = start,
+                            end = safeEnd,
+                        )
+                        addStringAnnotation(
+                            tag = "PRODUCT_MENTION",
+                            annotation = productTag.productId,
+                            start = start,
+                            end = safeEnd
+                        )
+                    }
+                    // If archived, it will render as plain text (no style, no annotation)
+                }
+            }
+            val resolvedLinks = if (!linkPositions.isNullOrEmpty()) linkPositions else text.extractUrls()
+            resolvedLinks.forEach {
                 addStyle(
                     style = SpanStyle(
                         color = AmityTheme.colors.highlight
@@ -162,10 +206,6 @@ fun AmityExpandableText(
                 addStyle(
                     style = SpanStyle(
                         fontWeight = FontWeight.SemiBold,
-                        color = AmityTheme.colors.highlight,
-                        background = AmityTheme.colors.highlight.copy(
-                            alpha = 0.1f
-                        )
                     ),
                     start = match.first,
                     end = match.second,
@@ -181,16 +221,17 @@ fun AmityExpandableText(
             if (!isReadMoreClicked) {
                 withStyle(style = SpanStyle(
                     color = AmityTheme.colors.primary,
-                    textDecoration = TextDecoration.Underline
+                    textDecoration = if (readMoreUnderlined) TextDecoration.Underline else TextDecoration.None
                 )) {
-                    pushStringAnnotation(tag = readMore, annotation = readMore)
-                    append(readMore)
+                    pushStringAnnotation(tag = readMoreText, annotation = readMoreText)
+                    append(readMoreText)
                 }
             }
         }
 
+        val boldHighlightColor = AmityTheme.colors.primary.copy(alpha = 0.1f)
         val layoutResult = remember { mutableStateOf<TextLayoutResult?>(null) }
-        val pressIndicator = Modifier.pointerInput(annotatedString) {
+        val pressIndicator = Modifier.pointerInput(annotatedString, productTags) {
             detectTapGestures(
                 onTap = { offset ->
                     layoutResult.value?.let {
@@ -224,7 +265,7 @@ fun AmityExpandableText(
                             end = position
                         )
                         if (annotations.isNotEmpty()) {
-                            val url = annotations.first().item
+                            val url = annotations.first().item.parseUrls()
                             onUrlClick
                                 ?.invoke(context, url)
                                 ?: uriHandler.openUri(url)
@@ -232,13 +273,28 @@ fun AmityExpandableText(
                         }
 
                         val seeMoreAnnotation = annotatedString.getStringAnnotations(
-                            tag = readMore,
+                            tag = readMoreText,
                             start = position,
                             end = position
                         )
                         if (seeMoreAnnotation.isNotEmpty()) {
                             isReadMoreClicked = true
                             return@let
+                        }
+
+                        // Check for product mention clicks
+                        val productMention = annotatedString.getStringAnnotations(
+                            tag = "PRODUCT_MENTION",
+                            start = position,
+                            end = position
+                        )
+                        if (productMention.isNotEmpty()) {
+                            val productId = productMention.first().item
+                            val productTag = productTags.find { it.productId == productId }
+                            if (productTag != null) {
+                                onMentionedProductClick(productTag)
+                                return@let
+                            }
                         }
 
                         onClick()
@@ -250,7 +306,41 @@ fun AmityExpandableText(
         Text(
             text = annotatedString,
             style = style,
-            modifier = modifier.then(pressIndicator),
+            modifier = modifier
+                .drawBehind {
+                    layoutResult.value?.let { textLayout ->
+                        val hPadding = 5.dp.toPx()
+                        val vPadding = 3.dp.toPx()
+                        annotatedString
+                            .getStringAnnotations("BOLDED", 0, annotatedString.length)
+                            .forEach { annotation ->
+                                val startLine = textLayout.getLineForOffset(annotation.start)
+                                val endLine = textLayout.getLineForOffset(maxOf(annotation.end - 1, 0))
+
+                                for (line in startLine..endLine) {
+                                    val lineStart = if (line == startLine) annotation.start else textLayout.getLineStart(line)
+                                    val lineEnd = if (line == endLine) annotation.end else textLayout.getLineEnd(line)
+
+                                    val left = textLayout.getHorizontalPosition(lineStart, true)
+                                    val right = textLayout.getHorizontalPosition(lineEnd, true)
+                                    val top = textLayout.getLineTop(line)
+                                    val bottom = textLayout.getLineBottom(line)
+
+                                    val rectLeft = minOf(left, right) - hPadding
+                                    val rectTop = top - vPadding
+                                    val rectWidth = maxOf(left, right) - minOf(left, right) + hPadding * 2
+                                    val rectHeight = bottom - top + vPadding * 2
+
+                                    drawRoundRect(
+                                        color = boldHighlightColor,
+                                        topLeft = Offset(rectLeft, rectTop),
+                                        size = Size(rectWidth, rectHeight),
+                                    )
+                                }
+                            }
+                    }
+                }
+                .then(pressIndicator),
             onTextLayout = {
                 layoutResult.value = it
             }
@@ -294,6 +384,8 @@ private fun getTrimmedText(
     text: String,
     textLayoutResult: TextLayoutResult,
     visiblePreviewLines: Int,
+    readMoreLength: Int = 8,
+    inlineReadMore: Boolean = false,
 ): String {
     return if (textLayoutResult.lineCount >= visiblePreviewLines) {
         val startIndex = textLayoutResult.getLineStart(visiblePreviewLines - 1)
@@ -301,13 +393,16 @@ private fun getTrimmedText(
         val lastLine = text.substring(startIndex, endIndex)
 
         val newText = if (lastLine.length > 25) {
-            val lengthToReduce = readMore.length * 3 / 2
+            val lengthToReduce = readMoreLength * 3 / 2
             text.substring(0, endIndex - lengthToReduce)
         } else {
             text.substring(0, endIndex)
         }
 
-        if (newText.endsWith("\n")) {
+        if (inlineReadMore) {
+            val trimmed = newText.trimEnd()
+            if (trimmed.endsWith("…") || trimmed.endsWith("...")) "$trimmed " else "$trimmed… "
+        } else if (newText.endsWith("\n")) {
             newText
         } else {
             newText + "\n"
@@ -317,7 +412,6 @@ private fun getTrimmedText(
     }
 }
 
-private const val readMore = "See more"
 const val EXPANDABLE_TEXT_MAX_LINES = 8
 
 @Preview(showBackground = true)

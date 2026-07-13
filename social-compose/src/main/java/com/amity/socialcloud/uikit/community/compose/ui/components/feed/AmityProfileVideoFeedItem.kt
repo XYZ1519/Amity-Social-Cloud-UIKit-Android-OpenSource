@@ -56,6 +56,11 @@ import com.amity.socialcloud.uikit.common.utils.formatVideoDuration
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostVideoPlayerHelper
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostMediaVideoPlayer
+import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityProductTagBadge
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.ui.theme.amityMediaSurface
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,8 +69,11 @@ fun AmityProfileVideoFeedItem(
     data: AmityPost.Data.VIDEO,
     postId: String? = null,
     parentPostId: String? = null,
+    productTagCount: Int = 0,
     onPostClick: ((String) -> Unit)? = null,
-    openDialog: ((AmityPost.Data.VIDEO, String?, onBottomSheetRequest: (() -> Unit)?) -> Unit)? = null,
+    onProductTagClick: (() -> Unit)? = null,
+    openDialog: ((AmityPost.Data.VIDEO, String?, Int, onBottomSheetRequest: (() -> Unit)?) -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
 ) {
     val thumbnailUrl = remember(data) {
         data.getThumbnailImage()?.getUrl(AmityImage.Size.MEDIUM)
@@ -115,8 +123,12 @@ fun AmityProfileVideoFeedItem(
             modifier = Modifier
                 .fillMaxSize()
                 .clickableWithoutRipple {
-                    openDialog?.invoke(data, postId) {
-                        showBottomSheet = true
+                    if (onClick != null) {
+                        onClick()
+                    } else {
+                        openDialog?.invoke(data, postId, productTagCount) {
+                            showBottomSheet = true
+                        }
                     }
                 }
         )
@@ -132,17 +144,27 @@ fun AmityProfileVideoFeedItem(
         Text(
             text = videoDuration.formatVideoDuration(),
             style = AmityTheme.typography.caption.copy(
-                color = Color.White,
+                color = amityColorWhite,
             ),
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .offset(8.dp, (-8).dp)
                 .background(
-                    color = Color.Black.copy(alpha = 0.7f),
+                    color = amityColorBlack.copy(alpha = 0.7f),
                     shape = RoundedCornerShape(4.dp)
                 )
                 .padding(horizontal = 4.dp, vertical = 1.dp)
         )
+
+        if (productTagCount > 0) {
+            AmityProductTagBadge(
+                count = productTagCount,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 8.dp, bottom = 8.dp),
+                onClick = { onProductTagClick?.invoke() }
+            )
+        }
     }
 
     if (showBottomSheet && parentPostId != null) {
@@ -159,7 +181,7 @@ fun AmityProfileVideoFeedItem(
             ) {
                 AmityBottomSheetActionItem(
                     icon = R.drawable.amity_ic_view_post,
-                    text = "View original post",
+                    text = amitySocialString("amity_social_button_view_post"),
                     modifier = Modifier,
                     onClick = {
                         showBottomSheet = false
@@ -176,7 +198,9 @@ fun AmityProfileVideoFeedItem(
 fun AmityProfileVideoFeedItemPreviewDialog(
     modifier: Modifier = Modifier,
     data: AmityPost.Data.VIDEO,
+    showMenuButton: Boolean = true,
     postId: String? = null,
+    productTagCount: Int = 0,
     onPostClick: ((String) -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
@@ -217,60 +241,76 @@ fun AmityProfileVideoFeedItemPreviewDialog(
         ),
     ) {
         Box(
-            Modifier
-                .height(32.dp)
-                .offset(y = (-32).dp)
-                .fillMaxWidth()
-                .background(Color.Black)
-        )
-
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(Color.Black)
+            modifier = Modifier.fillMaxSize()
         ) {
-            AmityPostMediaVideoPlayer(
-                exoPlayer = exoPlayer,
-                isVisible = true,
+            Box(
+                Modifier
+                    .height(32.dp)
+                    .offset(y = (-32).dp)
+                    .fillMaxWidth()
+                    .background(amityMediaSurface)
             )
 
-            ConstraintLayout(
+            Box(
                 modifier = modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .background(Color.Black.copy(alpha = 0.5f)),
+                    .fillMaxSize()
+                    .background(amityMediaSurface)
             ) {
-                val (closeBtn, menuBtn) = createRefs()
-
-                AmityMenuButton(
-                    icon = R.drawable.amity_ic_close2,
-                    size = 32.dp,
-                    iconPadding = 8.dp,
-                    modifier = Modifier
-                        .zIndex(Float.MAX_VALUE).constrainAs(closeBtn) {
-                            top.linkTo(parent.top, margin = 16.dp)
-                            start.linkTo(parent.start, margin = 16.dp)
-                        },
-                    onClick = {
-                        onDismiss()
-                    }
+                AmityPostMediaVideoPlayer(
+                    exoPlayer = exoPlayer,
+                    isVisible = true,
                 )
 
-                AmityMenuButton(
-                    icon = R.drawable.amity_ic_more_horiz,
-                    size = 32.dp,
-                    iconPadding = 2.dp,
-                    modifier = Modifier.constrainAs(menuBtn) {
-                        top.linkTo(parent.top, margin = 16.dp)
-                        end.linkTo(parent.end, margin = 16.dp)
-                    },
-                    onClick = {
-                        if (postId != null && onPostClick != null) {
-                            onPostClick(postId)
+                ConstraintLayout(
+                    modifier = modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .background(amityColorBlack.copy(alpha = 0.5f)),
+                ) {
+                    val (closeBtn, menuBtn) = createRefs()
+
+                    AmityMenuButton(
+                        icon = R.drawable.amity_ic_close2,
+                        size = 32.dp,
+                        iconPadding = 8.dp,
+                        modifier = Modifier
+                            .zIndex(Float.MAX_VALUE).constrainAs(closeBtn) {
+                                top.linkTo(parent.top, margin = 16.dp)
+                                start.linkTo(parent.start, margin = 16.dp)
+                            },
+                        onClick = {
+                            onDismiss()
                         }
+                    )
+
+                    if (showMenuButton) {
+                        AmityMenuButton(
+                            icon = R.drawable.amity_ic_more_horiz,
+                            size = 32.dp,
+                            iconPadding = 2.dp,
+                            modifier = Modifier.constrainAs(menuBtn) {
+                                top.linkTo(parent.top, margin = 16.dp)
+                                end.linkTo(parent.end, margin = 16.dp)
+                            },
+                            onClick = {
+                                if (postId != null && onPostClick != null) {
+                                    onPostClick(postId)
+                                }
+                            }
+                        )
                     }
+                } // closes ConstraintLayout
+
+            // Product Tag Badge at bottom-right of screen
+            if (productTagCount > 0) {
+                AmityProductTagBadge(
+                    count = productTagCount,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 12.dp, bottom = 12.dp)
                 )
             }
-        }
-    }
+            } // closes inner Box(fillMaxSize)
+        } // closes outer Box(fillMaxSize)
+    } // closes Dialog
 }

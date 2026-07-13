@@ -26,6 +26,7 @@ import com.amity.socialcloud.sdk.helper.core.mention.AmityMentionMetadataGetter
 import com.amity.socialcloud.sdk.helper.core.mention.AmityMentionee
 import com.amity.socialcloud.uikit.common.extionsions.extractUrls
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 import com.google.gson.JsonObject
 
 @Composable
@@ -35,9 +36,10 @@ fun AmityClipExpandableText(
     mentionGetter: AmityMentionMetadataGetter = AmityMentionMetadataGetter(JsonObject()),
     mentionees: List<AmityMentionee> = emptyList(),
     boldWhenMatches: List<String> = emptyList(),
-    style: TextStyle = AmityTheme.typography.body.copy(color = Color.White),
+    style: TextStyle = AmityTheme.typography.body.copy(color = AmityTheme.colors.baseInverse),
     previewLines: Int = 8,
     intialExpand: Boolean = false,
+    readMoreText: String = amitySocialString("amity_social_button_see_more"),
     onClick: () -> Unit = {},
     seeMoreClick: () -> Unit = {},
     onMentionedUserClick: (String) -> Unit = {},
@@ -55,12 +57,13 @@ fun AmityClipExpandableText(
                 constraints = Constraints(maxWidth = this.constraints.maxWidth)
             )
         }
-        val trimmedText by rememberSaveable(text) {
+        val trimmedText by rememberSaveable(text, readMoreText) {
             mutableStateOf(
                 getTrimmedText(
                     text = text,
                     textLayoutResult = textLayoutResult,
                     visiblePreviewLines = previewLines,
+                    readMoreLength = readMoreText.length,
                 )
             )
         }
@@ -77,7 +80,7 @@ fun AmityClipExpandableText(
                     val start = mentionItem.getIndex()
                     val end = mentionItem.getIndex().plus(mentionItem.getLength()).inc()
                     addStyle(
-                        style = SpanStyle(Color.White),
+                        style = SpanStyle(AmityTheme.colors.baseInverse),
                         start = start,
                         end = end,
                     )
@@ -93,7 +96,7 @@ fun AmityClipExpandableText(
                 val start = mentionItem.getIndex()
                 val end = mentionItem.getIndex().plus(mentionItem.getLength()).inc()
                 addStyle(
-                    style = SpanStyle(Color.White),
+                    style = SpanStyle(AmityTheme.colors.baseInverse),
                     start = start,
                     end = end,
                 )
@@ -107,7 +110,7 @@ fun AmityClipExpandableText(
             text.extractUrls().forEach {
                 addStyle(
                     style = SpanStyle(
-                        color = Color.White
+                        color = AmityTheme.colors.baseInverse
                     ),
                     start = it.start,
                     end = it.end,
@@ -126,7 +129,7 @@ fun AmityClipExpandableText(
                     addStyle(
                         style = SpanStyle(
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White
+                            color = AmityTheme.colors.baseInverse
                         ),
                         start = match.first,
                         end = match.second,
@@ -143,11 +146,11 @@ fun AmityClipExpandableText(
             if (shouldShowSeeMore) {
                 append("...")
                 withStyle(style = SpanStyle(
-                    color = Color.White,
+                    color = AmityTheme.colors.baseInverse,
                     fontWeight = FontWeight.SemiBold
                 )) {
-                    pushStringAnnotation(tag = readMore, annotation = readMore)
-                    append(readMore)
+                    pushStringAnnotation(tag = readMoreText, annotation = readMoreText)
+                    append(readMoreText)
                 }
             }
         }
@@ -182,7 +185,7 @@ fun AmityClipExpandableText(
                         }
 
                         val seeMoreAnnotation = annotatedString.getStringAnnotations(
-                            tag = readMore,
+                            tag = readMoreText,
                             start = position,
                             end = position
                         )
@@ -218,7 +221,8 @@ private fun findMatchIndices(input: String, pattern: String): List<Pair<Int, Int
 private fun getTrimmedText(
     text: String,
     textLayoutResult: TextLayoutResult,
-    visiblePreviewLines: Int
+    visiblePreviewLines: Int,
+    readMoreLength: Int = 8,
 ): String {
     return if (textLayoutResult.lineCount >= visiblePreviewLines) {
         val startIndex = textLayoutResult.getLineStart(visiblePreviewLines - 1)
@@ -226,7 +230,7 @@ private fun getTrimmedText(
         val lastLine = text.substring(startIndex, endIndex)
 
         val newText = if (lastLine.length > 25) {
-            val lengthToReduce = readMore.length * 3 / 2
+            val lengthToReduce = readMoreLength * 3 / 2
             text.substring(0, endIndex - lengthToReduce)
         } else {
             text.substring(0, endIndex)
@@ -242,8 +246,6 @@ private fun getTrimmedText(
     }
 }
 
-private const val readMore = "See more"
-
 @Preview()
 @Composable
 fun AmityExpandableTextPreview() {
@@ -251,7 +253,7 @@ fun AmityExpandableTextPreview() {
         text = "www.google.com Lorem ipsum dolor sit amet, consectetur adipiscing elit. Curabitur neque urna, malesuada sit amet mattis sit amet, fringilla vitae eros. Phasellus tristique dolor ut nulla tincidunt sollicitudin. Sed eu bibendum nibh. Cras sed ligula nunc. Fusce mollis hendrerit erat, in tempus nisl rhoncus nec. Vivamus vel dictum lectus. Sed suscipit ante sit amet nulla hendrerit, at tincidunt odio suscipit. Nam cursus malesuada eros, et aliquet sem. Quisque ligula nunc, aliquet sit amet scelerisque eleifend, cursus ut nisl. Sed condimentum eleifend sollicitudin. Nam nec magna egestas, ullamcorper diam in, eleifend justo. Quisque aliquam elit sollicitudin, viverra ex non, ultrices erat. Morbi fermentum, turpis et accumsan ultrices, felis metus posuere sem, at feugiat mi velit quis risus.",
         mentionGetter = AmityMentionMetadataGetter(JsonObject()),
         mentionees = emptyList(),
-        style = AmityTheme.typography.body.copy(color = Color.White),
+        style = AmityTheme.typography.body.copy(color = AmityTheme.colors.baseInverse),
         onClick = {},
         seeMoreClick = {
             // Handle see more click in parent

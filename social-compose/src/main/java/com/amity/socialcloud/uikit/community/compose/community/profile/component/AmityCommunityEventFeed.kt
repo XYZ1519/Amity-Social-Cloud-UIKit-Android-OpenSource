@@ -12,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -29,6 +31,8 @@ import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.community.compose.ui.shimmer.AmityEventCardShimmer
 import org.joda.time.format.DateTimeFormat
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 
 fun LazyListScope.amityCommunityEventFeed(
     modifier: Modifier = Modifier,
@@ -62,7 +66,7 @@ fun LazyListScope.amityCommunityEventFeed(
     } else if (happeningNowEvents.isNotEmpty()) {
         item {
             Text(
-                text = "Happening now",
+                text = amitySocialString("amity_social_button_happening_now"),
                 style = AmityTheme.typography.title.copy(fontWeight = FontWeight.Bold),
                 color = AmityTheme.colors.base,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
@@ -116,12 +120,12 @@ fun LazyListScope.amityCommunityEventFeed(
                 .padding(horizontal = 16.dp)
         ) {
             FilterChip(
-                label = "Upcoming",
+                label = amitySocialString("amity_social_status_event_detail_header_status_upcoming"),
                 isSelected = selectedFilter == "Upcoming",
                 onClick = { onFilterChange("Upcoming") }
             )
             FilterChip(
-                label = "Past",
+                label = amitySocialString("amity_social_button_event_feed_past"),
                 isSelected = selectedFilter == "Past",
                 onClick = { onFilterChange("Past") }
             )
@@ -150,11 +154,12 @@ fun LazyListScope.amityCommunityEventFeed(
                 Image(
                     painter = painterResource(id = com.amity.socialcloud.uikit.common.R.drawable.amity_ic_event_empty),
                     contentDescription = null,
-                    modifier = Modifier.size(80.dp)
+                    modifier = Modifier.size(80.dp),
+                    colorFilter = ColorFilter.tint(AmityTheme.colors.baseShade4)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "No events yet",
+                    text = amitySocialString("amity_social_label_no_events_yet"),
                     style = AmityTheme.typography.title.copy(fontWeight = FontWeight.Bold),
                     color = AmityTheme.colors.baseShade3
                 )
@@ -191,7 +196,7 @@ private fun FilterChip(
         Text(
             text = label,
             style = if (isSelected) AmityTheme.typography.body.copy(fontWeight = FontWeight.Bold) else AmityTheme.typography.body,
-            color = if (isSelected) AmityTheme.colors.background else AmityTheme.colors.baseShade1
+            color = if (isSelected) amityColorWhite else AmityTheme.colors.baseShade1
         )
     }
 }

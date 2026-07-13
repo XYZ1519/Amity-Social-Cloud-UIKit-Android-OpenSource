@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -63,8 +64,8 @@ import com.amity.socialcloud.sdk.model.social.poll.AmityPoll
 import com.amity.socialcloud.sdk.model.social.poll.AmityPollAnswer
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
 import com.amity.socialcloud.uikit.common.common.isNotEmptyOrBlank
+import com.amity.socialcloud.uikit.common.extionsions.UrlPosition
 import com.amity.socialcloud.uikit.common.common.readableNumber
-import com.amity.socialcloud.uikit.common.common.readableTimeLeft
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
 import com.amity.socialcloud.uikit.common.ui.elements.AmityExpandableText
 import com.amity.socialcloud.uikit.common.ui.elements.AmityRoundCheckbox
@@ -82,6 +83,7 @@ import com.amity.socialcloud.uikit.community.compose.post.detail.components.Amit
 import com.google.gson.JsonObject
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.schedulers.Schedulers
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import org.joda.time.DateTime
 import org.joda.time.format.DateTimeFormat
@@ -106,6 +108,9 @@ import kotlin.math.log
 import kotlin.math.pow
 import kotlin.text.format
 import kotlin.text.isNotEmpty
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityDisabledColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,7 +132,7 @@ fun AmityPostPollElement(
         factory = AmityPostPollElementViewModel.create(post.getPostId()),
         viewModelStoreOwner = viewModelStoreOwner
     )
-    val behavior by lazy {
+    val behavior = remember {
         AmitySocialBehaviorHelper.postContentComponentBehavior
     }
 
@@ -144,8 +149,8 @@ fun AmityPostPollElement(
     val isPollPost = (data is AmityPost.Data.POLL)
     if (!isPollPost) return
 
-    val mentionGetter = AmityMentionMetadataGetter(post.getMetadata() ?: JsonObject())
-    val hashtagGetter = AmityHashtagMetadataGetter(post.getMetadata() ?: JsonObject())
+    val mentionGetter = remember(post.getPostId(), post.getUpdatedAt()) { AmityMentionMetadataGetter(post.getMetadata() ?: JsonObject()) }
+    val hashtagGetter = remember(post.getPostId(), post.getUpdatedAt()) { AmityHashtagMetadataGetter(post.getMetadata() ?: JsonObject()) }
     // Use more specific keys and avoid unnecessary recompositions
     val pollData by remember(post.getPostId()) {
         (data as? AmityPost.Data.POLL)!!.getPoll().asFlow()
@@ -183,15 +188,24 @@ fun AmityPostPollElement(
 
     val poll = pollData!!
 
+    val currentUser by produceState<AmityUser?>(initialValue = null) {
+        val userId = AmityCoreClient.getUserId()
+        if (userId.isNotEmpty()) {
+            AmityCoreClient.getCurrentUser().asFlow()
+                .catch {  }
+                .collect { value = it }
+        }
+    }
+
     val textTypePoll = poll.getAnswers().any { it.dataType == "text" }
 
-    val isEndedState = mutableStateOf(
-        poll.getClosedAt().isBefore(DateTime.now()) || poll.getStatus() == AmityPoll.Status.CLOSED
-    )
-
-    val isEnded by remember {
-        isEndedState
-    }
+    // Optimistic closed flag — survives poll data refreshes. Set to true when server returns
+    // BAD_REQUEST_ERROR (poll just closed server-side before local data propagates).
+    var isEndedByError by remember { mutableStateOf(false) }
+    // Pure derived value — recalculated every recomposition, no remember needed.
+    val isEnded = isEndedByError
+        || poll.getClosedAt().isBefore(DateTime.now())
+        || poll.getStatus() == AmityPoll.Status.CLOSED
 
     var isResultState by remember {
         mutableStateOf(
@@ -251,9 +265,28 @@ fun AmityPostPollElement(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
+        val questionText = (post.getData() as? AmityPost.Data.TEXT)?.getText() ?: poll.getQuestion()
+        val links = remember(post.getPostId(), post.getEditedAt()) {
+            post.getLinks()?.mapNotNull { link ->
+                val index = link.getIndex()
+                val length = link.getLength()
+                val url = link.getUrl()
+                if (index != null && length != null) {
+                    UrlPosition(
+                        url = url,
+                        start = index,
+                        end = index + length,
+                        originalText = questionText.substring(
+                            index.coerceAtMost(questionText.length),
+                            (index + length).coerceAtMost(questionText.length)
+                        )
+                    )
+                } else null
+            }?.takeIf { it.isNotEmpty() }
+        }
         AmityExpandableText(
             modifier = modifier,
-            text = (post.getData() as? AmityPost.Data.TEXT)?.getText() ?: poll.getQuestion(),
+            text = questionText,
             mentionGetter = mentionGetter,
             mentionees = post.getMentionees(),
             hashtagGetter = hashtagGetter,
@@ -263,6 +296,7 @@ fun AmityPostPollElement(
             onClick = onClick,
             onMentionedUserClick = onMentionedUserClick,
             onHashtagClick = onHashtagClick,
+            linkPositions = links,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -274,7 +308,7 @@ fun AmityPostPollElement(
                     color = AmityTheme.colors.baseShade2,
                     fontWeight = FontWeight.SemiBold
                 ),
-                text = if (poll.getAnswerType() == AmityPoll.AnswerType.SINGLE) "Select one option" else "Select one or more options",
+                text = if (poll.getAnswerType() == AmityPoll.AnswerType.SINGLE) DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_select_one_option") else DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_select_multiple_options"),
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -317,7 +351,7 @@ fun AmityPostPollElement(
                                     post.getPostId(),
                                     isExpanded = isOptionsExpanded,
                                     isResultMode = isResultState,
-                                    selectedOption = selectedIndices,
+                                    selectedOption = selectedIndices.toMutableList(),
                                 )
                             }
                             .border(
@@ -345,7 +379,7 @@ fun AmityPostPollElement(
                                 RadioButton(
                                     modifier = modifier.testTag(text),
                                     enabled = canVote,
-                                    selected = isOptionSelected,//selectedIndices.contains(index),
+                                    selected = isOptionSelected,
                                     colors = RadioButtonDefaults.colors(
                                         selectedColor = AmityTheme.colors.primary,
                                         unselectedColor = AmityTheme.colors.baseShade2,
@@ -359,7 +393,7 @@ fun AmityPostPollElement(
                         } else {
                             AmityRoundCheckbox(
                                 enabled = canVote,
-                                isChecked = isOptionSelected,//selectedIndices.contains(index),
+                                isChecked = isOptionSelected,
                                 onValueChange = {
                                     if (selectedIndices.contains(index)) {
                                         selectedIndices.remove(index)
@@ -396,7 +430,7 @@ fun AmityPostPollElement(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = "See ${poll.getAnswers().size - MAX_OPTION_PREVIEWS} more options",//getConfig().getText(),
+                            text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_see_more_options").format(poll.getAnswers().size - MAX_OPTION_PREVIEWS),
                             style = AmityTheme.typography.captionLegacy.copy(
                                 color = AmityTheme.colors.secondary,
                             ),
@@ -412,7 +446,7 @@ fun AmityPostPollElement(
                     isExpanded = isOptionsExpanded,
                     isSingleSelected = poll.getAnswerType() == AmityPoll.AnswerType.SINGLE,
                     selectedIndex = pollStateUiState.find { it.postId == post.getPostId() }?.selectedOption
-                        ?: selectedIndices,//selectedIndices,
+                        ?: selectedIndices,
                     selectedVote = { index ->
                         if (canVote) {
                             if (poll.getAnswerType() == AmityPoll.AnswerType.SINGLE) {
@@ -432,7 +466,7 @@ fun AmityPostPollElement(
                             post.getPostId(),
                             isExpanded = isOptionsExpanded,
                             isResultMode = isResultState,
-                            selectedOption = selectedIndices,
+                            selectedOption = selectedIndices.toMutableList(),
                         )
                     },
                     imagePreviewClick = {
@@ -452,14 +486,16 @@ fun AmityPostPollElement(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            val isVoteEnabled = canVote && selectedIndices.isNotEmpty() || pollStateUiState.find { it.postId == post.getPostId() }?.selectedOption?.isNotEmpty() == true
             Button(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = AmityTheme.colors.primary,
-                    disabledContainerColor = AmityTheme.colors.primaryShade2,
+                    disabledContainerColor = AmityTheme.colors.primary.copy(alpha = 0.3f),
+                    disabledContentColor = amityDisabledColor(amityColorWhite),
                 ),
                 shape = RoundedCornerShape(8.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                enabled = canVote && selectedIndices.isNotEmpty() || pollStateUiState.find { it.postId == post.getPostId() }?.selectedOption?.isNotEmpty() == true,
+                enabled = isVoteEnabled,
                 modifier = Modifier
                     .height(40.dp)
                     .fillMaxWidth(),
@@ -488,15 +524,15 @@ fun AmityPostPollElement(
                                 } catch (e: Exception) {
                                 if (e is AmityException) {
                                     if (e.code == AmityError.BAD_REQUEST_ERROR.code) {
-                                        isEndedState.value = true
+                                        isEndedByError = true
                                         AmityUIKitSnackbar.publishSnackbarErrorMessage(
-                                            message = "Poll ended.",
+                                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_poll_ended"),
                                             offsetFromBottom = 52,
                                         )
                                         return@launch
                                     } else {
                                         AmityUIKitSnackbar.publishSnackbarErrorMessage(
-                                            message = "Oops, something went wrong.",
+                                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_something_went_wrong"),
                                             offsetFromBottom = 52,
                                         )
                                     }
@@ -510,10 +546,9 @@ fun AmityPostPollElement(
                 }
             ) {
                 Text(
-                    text = "Vote",
-                    style = AmityTheme.typography.captionLegacy.copy(
-                        color = Color.White,
-                    ),
+                    text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_vote"),
+                    style = AmityTheme.typography.captionLegacy,
+                    color = if (isVoteEnabled) amityColorWhite else amityDisabledColor(amityColorWhite),
                     textAlign = TextAlign.Center,
                 )
             }
@@ -521,11 +556,12 @@ fun AmityPostPollElement(
             Spacer(modifier = Modifier.height(12.dp))
 
         } else { // result state
-            val answersOrder = poll.getAnswers()
-            val (votedOptions, noVoteOptions) = answersOrder.partition { it.voteCount > 0 }
-            val results =
+            val results = remember(poll.getAnswers()) {
+                val answersOrder = poll.getAnswers()
+                val (votedOptions, noVoteOptions) = answersOrder.partition { it.voteCount > 0 }
                 votedOptions.sortedWith(compareByDescending<AmityPollAnswer> { it.voteCount }
                     .thenBy { answersOrder.indexOf(it) }) + noVoteOptions
+            }
 
             if (textTypePoll) {
                 results.forEachIndexed { index, answer ->
@@ -601,15 +637,15 @@ fun AmityPostPollElement(
 
                             val votedBy = when {
                                 voteCount == 0 -> {
-                                    "No votes"
+                                    DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_no_votes")
                                 }
 
                                 voteCount == 1 && answer.isVotedByUser -> {
-                                    "Voted by you"
+                                    DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_voted_by_you")
                                 }
 
                                 voteCount == 1 -> {
-                                    "Voted by 1 participant"
+                                    DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_voted_by_1_participant")
                                 }
 
                                 else -> {
@@ -626,14 +662,14 @@ fun AmityPostPollElement(
                                     }
 
                                     // Construct the base text
-                                    var text = "Voted by $displayVoteCount${plusSign} participants"
+                                    var text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_voted_by_participants").format("$displayVoteCount${plusSign}")
                                     if (displayVoteCount == "1") {
-                                        text = "Voted by 1 participant"
+                                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_voted_by_1_participant")
                                     }
 
                                     // Append "and you" if the current user is also a voter
                                     if (answer.isVotedByUser) {
-                                        text += " and you"
+                                        text += " ${DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_poll_answer_result_voted_by_and_you")}"
                                     }
                                     text
                                 }
@@ -649,15 +685,9 @@ fun AmityPostPollElement(
                             Spacer(modifier = Modifier.width(4.dp))
 
                             if (answer.isVotedByUser) {
-                                var user: AmityUser? = null
-                                try {
-                                    user = AmityCoreClient.getCurrentUser().blockingFirst()
-                                } catch (e: Exception) {
-                                    // missing user
-                                }
                                 AmityUserAvatarView(
                                     size = 16.dp,
-                                    user = user
+                                    user = currentUser
                                 )
                             }
                         }
@@ -726,7 +756,7 @@ fun AmityPostPollElement(
                         }
                     ) {
                         Text(
-                            text = "See full results",
+                            text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_see_full_results"),
                             style = AmityTheme.typography.captionLegacy.copy(
                                 color = AmityTheme.colors.secondary,
                             ),
@@ -767,15 +797,33 @@ fun AmityPostPollElement(
             val endText = if (post.getReviewStatus() == AmityReviewStatus.UNDER_REVIEW) {
                 val formatter = DateTimeFormat.forPattern("dd MMM 'at' h:mm a")
                     .withLocale(context.resources.configuration.locale)
-                "Ends on ${poll.getClosedAt().toString(formatter)}"
+                DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_poll_ends_on").format(poll.getClosedAt().toString(formatter))
             } else if (poll.getClosedAt()
                     .isBefore(DateTime.now()) || poll.getStatus() == AmityPoll.Status.CLOSED || isEnded
             ) {
-                "Ended"
+                DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_poll_ended")
             } else {
-                poll.getClosedAt().readableTimeLeft(DateTime.now())
+                run {
+                    val startTime = DateTime.now()
+                    val closedAt = poll.getClosedAt()
+                    if (closedAt.isBefore(startTime) || closedAt == startTime) {
+                        DefaultAmitySocialStringProvider.getInstance().getString("amity_social_time_time_left_zero")
+                    } else {
+                        val duration = org.joda.time.Duration(startTime, closedAt)
+                        when {
+                            duration.standardDays > 0 -> {
+                                val daysLeft = if (duration.standardHours % 24 > 0) duration.standardDays + 1 else duration.standardDays
+                                DefaultAmitySocialStringProvider.getInstance().getString("amity_social_time_time_left_days").format(daysLeft)
+                            }
+                            duration.standardHours > 0 -> DefaultAmitySocialStringProvider.getInstance().getString("amity_social_time_time_left_hours").format(duration.standardHours)
+                            duration.standardMinutes > 0 -> DefaultAmitySocialStringProvider.getInstance().getString("amity_social_time_time_left_minutes").format(duration.standardMinutes)
+                            else -> DefaultAmitySocialStringProvider.getInstance().getString("amity_social_time_time_left_minutes").format("0")
+                        }
+                    }
+                }
             }
             val totalVotes = NumberFormat.getNumberInstance(Locale.getDefault()).format(totalVote)
+            val voteText = if (totalVote == 1) DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_vote_singular") else DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_vote_plural")
 
             Text(
                 modifier = Modifier.weight(1f),
@@ -783,7 +831,7 @@ fun AmityPostPollElement(
                     color = AmityTheme.colors.baseShade2,
                     fontWeight = FontWeight.SemiBold
                 ),
-                text = "$totalVotes votes" + " • " + endText,
+                text = "$totalVotes $voteText" + " • " + endText,
             )
 
             if (poll.getStatus() != AmityPoll.Status.CLOSED
@@ -812,7 +860,7 @@ fun AmityPostPollElement(
                             color = AmityTheme.colors.primary,
                             fontWeight = FontWeight.SemiBold
                         ),
-                        text = if (!isResultState) "See results" else "Back to poll",
+                        text = if (!isResultState) DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_see_results") else DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_back_to_poll"),
                     )
                 } else if (poll.isVoted()) {
                     Text(
@@ -827,7 +875,7 @@ fun AmityPostPollElement(
                                         .doOnComplete {
                                             selectedIndices.clear()
                                             isResultState = false
-                                            val text = "Vote removed."
+                                            val text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_vote_removed")
                                             pageScope?.showSnackbar(
                                                 message = text,
                                                 drawableRes = R.drawable.amity_ic_snack_bar_success,
@@ -836,10 +884,10 @@ fun AmityPostPollElement(
                                         }
                                         .doOnError { e ->
                                             val text = if (e is AmityException && e.code == AmityError.BAD_REQUEST_ERROR.code) {
-                                                isEndedState.value = true
-                                                "Poll ended."
+                                                isEndedByError = true
+                                                DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_poll_ended")
                                             } else {
-                                                "Oops, something went wrong."
+                                                DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_something_went_wrong")
                                             }
                                             pageScope?.showSnackbar(
                                                 message = text,
@@ -865,7 +913,7 @@ fun AmityPostPollElement(
                             color = AmityTheme.colors.primary,
                             fontWeight = FontWeight.SemiBold
                         ),
-                        text = "Unvote",
+                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unvote"),
                     )
                 }
             }

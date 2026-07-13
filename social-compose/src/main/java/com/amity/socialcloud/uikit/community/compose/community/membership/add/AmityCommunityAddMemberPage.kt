@@ -54,6 +54,9 @@ import com.amity.socialcloud.uikit.community.compose.community.membership.elemen
 import com.amity.socialcloud.uikit.community.compose.search.components.AmityEmptySearchResultComponent
 import com.amity.socialcloud.uikit.community.compose.search.components.AmitySearchPlaceholderComponent
 import com.amity.socialcloud.uikit.community.compose.ui.shimmer.AmityUserListShimmer
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityDisabledColor
 
 @Composable
 fun AmityCommunityAddMemberPage(
@@ -98,6 +101,7 @@ fun AmityCommunityAddMemberPage(
                     Icon(
                         painter = painterResource(R.drawable.amity_ic_close),
                         contentDescription = "Close",
+                        tint = AmityTheme.colors.base,
                         modifier = modifier
                             .size(16.dp)
                             .align(Alignment.CenterStart)
@@ -107,7 +111,7 @@ fun AmityCommunityAddMemberPage(
                     )
 
                     Text(
-                        text = "Add member",
+                        text = amitySocialString("amity_social_button_add_member"),
                         style = AmityTheme.typography.titleLegacy,
                         modifier = modifier
                             .padding(vertical = 17.dp)
@@ -120,7 +124,7 @@ fun AmityCommunityAddMemberPage(
                 )
                 Spacer(modifier.height(4.dp))
 
-                AmitySearchBarView(hint = "Search user") {
+                AmitySearchBarView(hint = amitySocialString("amity_social_placeholder_search_user_hint")) {
                     keyword = it
                 }
 
@@ -228,10 +232,10 @@ fun AmityCommunityAddMemberPage(
                 Spacer(modifier = modifier.height(16.dp))
                 Button(
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = AmityTheme.colors.highlight,
-                        disabledContainerColor = AmityTheme.colors.highlight.shade(AmityColorShade.SHADE2),
+                        containerColor = AmityTheme.colors.primary,
+                        disabledContainerColor = AmityTheme.colors.primary.copy(alpha = 0.3f)
                     ),
-                    shape = RoundedCornerShape(4.dp),
+                    shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                     enabled = selectedUsers.isNotEmpty(),
                     modifier = modifier
@@ -243,9 +247,9 @@ fun AmityCommunityAddMemberPage(
                     }
                 ) {
                     Text(
-                        text = "Add member",
+                        text = amitySocialString("amity_social_button_add_member"),
                         style = AmityTheme.typography.captionLegacy.copy(
-                            Color.White
+                            if (selectedUsers.isNotEmpty()) amityColorWhite else amityDisabledColor(amityColorWhite)
                         ),
                     )
                 }

@@ -8,6 +8,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,18 +36,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,7 +71,6 @@ import com.amity.socialcloud.sdk.model.chat.settings.AmityMembershipAcceptanceTy
 import com.amity.socialcloud.sdk.model.core.file.AmityImage
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
 import com.amity.socialcloud.sdk.model.social.community.AmityJoinRequestStatus
-import com.amity.socialcloud.uikit.common.common.toDp
 import com.amity.socialcloud.uikit.common.common.views.AmityColorShade
 import com.amity.socialcloud.uikit.common.config.AmityUIKitConfigController
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
@@ -84,12 +81,10 @@ import com.amity.socialcloud.uikit.common.ui.elements.AmityTextField
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.AmityCameraUtil
-import com.amity.socialcloud.uikit.common.utils.amityStringResource
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.closePage
 import com.amity.socialcloud.uikit.common.utils.closePageWithResult
 import com.amity.socialcloud.uikit.common.utils.getIcon
-import com.amity.socialcloud.uikit.common.utils.getText
 import com.amity.socialcloud.uikit.common.utils.shade
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
@@ -101,6 +96,13 @@ import com.amity.socialcloud.uikit.community.compose.community.membership.elemen
 import com.amity.socialcloud.uikit.community.compose.community.membership.invite.AmityCommunityInviteMemberPageActivity
 import com.amity.socialcloud.uikit.community.compose.community.setup.elements.AmityMediaImageSelectionSheet
 import com.amity.socialcloud.uikit.community.compose.community.setup.elements.AmityMediaImageSelectionType
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialConfigString
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorPrimaryShade3
+import com.amity.socialcloud.uikit.common.ui.theme.amityDisabledColor
+import com.amity.socialcloud.uikit.community.compose.ui.components.radio.AmityFilledRadioIndicator
 
 @Composable
 fun AmityCommunitySetupPage(
@@ -291,11 +293,11 @@ fun AmityCommunitySetupPage(
             isCapturedImageReady = false
             isCameraPermissionGranted = permissions.entries.all { it.value }
             if (!isCameraPermissionGranted) {
-                AmityUIKitSnackbar.publishSnackbarErrorMessage("Camera permission not granted")
+                AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_permission_camera_access_denied"))
             } else {
                 val imageFile = AmityCameraUtil.createImageFile(context)
                 if (imageFile == null) {
-                    AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to create image file")
+                    AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_failed_create_image_file"))
 
                 } else {
                     avatarUri = AmityCameraUtil.createPhotoUri(context, imageFile)
@@ -409,11 +411,7 @@ fun AmityCommunitySetupPage(
                         elementId = if (isInEditMode) "community_edit_title" else "title"
                     ) {
                         Text(
-                            text = amityStringResource(
-                                configString = getConfig().getText(),
-                                id = if (isInEditMode) R.string.amity_v4_community_setup_edit_title
-                                else R.string.amity_v4_community_setup_create_title,
-                            ),
+                            text = amitySocialConfigString(if (isInEditMode) "amity_social_label_community_setup_edit_title" else "amity_social_label_community_setup_create_title"),
                             style = AmityTheme.typography.titleLegacy,
                             modifier = modifier
                                 .fillMaxWidth()
@@ -440,8 +438,8 @@ fun AmityCommunitySetupPage(
                 Box(
                     modifier = modifier
                         .aspectRatio(2f)
-                        .background(AmityTheme.colors.baseShade3)
-                        .background(Color.Black.copy(alpha = 0.5f))
+                        .background(amityColorPrimaryShade3)
+                        .background(amityColorBlack.copy(alpha = 0.5f))
                         .clickableWithoutRipple {
                             showMediaCameraSelectionSheet = true
                         }
@@ -461,12 +459,12 @@ fun AmityCommunitySetupPage(
                     Box(
                         modifier = modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.4f))
+                            .background(amityColorBlack.copy(alpha = 0.4f))
                     )
                     Icon(
                         painter = painterResource(R.drawable.amity_ic_camera2),
                         contentDescription = "Upload avatar",
-                        tint = Color.White,
+                        tint = amityColorWhite,
                         modifier = modifier
                             .size(28.dp)
                             .align(Alignment.Center)
@@ -486,10 +484,7 @@ fun AmityCommunitySetupPage(
                         elementId = "community_name_title"
                     ) {
                         Text(
-                            text = amityStringResource(
-                                configString = getConfig().getText(),
-                                id = R.string.amity_v4_community_setup_name_title
-                            ),
+                            text = amitySocialConfigString("amity_social_label_community_setup_name_title"),
                             style = AmityTheme.typography.titleLegacy,
                             modifier = modifier.testTag(getAccessibilityId())
                         )
@@ -507,7 +502,7 @@ fun AmityCommunitySetupPage(
                 AmityTextField(
                     maxCharacters = 30,
                     text = name,
-                    hint = amityStringResource(id = R.string.amity_v4_community_setup_name_description),
+                    hint = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_community_setup_name_description"),
                     onValueChange = { name = it },
                     innerPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                 )
@@ -533,17 +528,14 @@ fun AmityCommunitySetupPage(
                             elementId = "community_about_title"
                         ) {
                             Text(
-                                text = amityStringResource(
-                                    configString = getConfig().getText(),
-                                    id = R.string.amity_v4_community_setup_about_title,
-                                ),
+                                text = amitySocialConfigString("amity_social_label_community_setup_about_title"),
                                 style = AmityTheme.typography.titleLegacy,
                                 modifier = modifier.testTag(getAccessibilityId())
                             )
                         }
                         Text(
-                            text = " " + amityStringResource(
-                                id = R.string.amity_v4_community_setup_about_optional_title,
+                            text = " " + DefaultAmitySocialStringProvider.getInstance().getString(
+                                "amity_social_label_community_setup_about_optional_title",
                             ),
                             style = AmityTheme.typography.bodyLegacy.copy(
                                 color = AmityTheme.colors.baseShade3,
@@ -563,7 +555,7 @@ fun AmityCommunitySetupPage(
                 AmityTextField(
                     maxCharacters = 180,
                     text = description,
-                    hint = amityStringResource(id = R.string.amity_v4_community_setup_about_description),
+                    hint = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_community_setup_about_description"),
                     onValueChange = { description = it },
                     innerPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                 )
@@ -579,10 +571,7 @@ fun AmityCommunitySetupPage(
                     elementId = "community_category_title"
                 ) {
                     Text(
-                        text = amityStringResource(
-                            configString = getConfig().getText(),
-                            id = R.string.amity_v4_community_setup_categories_title,
-                        ),
+                        text = amitySocialConfigString("amity_social_label_community_setup_categories_title"),
                         style = AmityTheme.typography.titleLegacy,
                         modifier = modifier
                             .padding(horizontal = 16.dp)
@@ -597,7 +586,7 @@ fun AmityCommunitySetupPage(
                 ) {
                     if (selectedCategories.isEmpty()) {
                         Text(
-                            text = context.getString(R.string.amity_v4_community_setup_categories_description),
+                            text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_community_setup_categories_description"),
                             style = AmityTheme.typography.bodyLegacy.copy(
                                 color = AmityTheme.colors.baseShade3,
                             ),
@@ -622,7 +611,7 @@ fun AmityCommunitySetupPage(
                     }
                     Icon(
                         painter = painterResource(R.drawable.amity_ic_chevron_right),
-                        contentDescription = "Select category",
+                        contentDescription = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_community_setup_categories_description"),
                         tint = AmityTheme.colors.baseShade2,
                         modifier = modifier
                             .size(16.dp)
@@ -653,10 +642,7 @@ fun AmityCommunitySetupPage(
                     elementId = "community_privacy_title"
                 ) {
                     Text(
-                        text = amityStringResource(
-                            configString = getConfig().getText(),
-                            id = R.string.amity_v4_community_setup_privacy_title,
-                        ),
+                        text = amitySocialConfigString("amity_social_label_community_setup_privacy_title"),
                         style = AmityTheme.typography.titleLegacy,
                         modifier = modifier
                             .padding(horizontal = 16.dp)
@@ -686,9 +672,10 @@ fun AmityCommunitySetupPage(
                                 painter = painterResource(getConfig().getIcon()),
                                 contentDescription = "Public",
                                 modifier = modifier
-                                    .size(16.dp)
+                                    .size(20.dp)
                                     .align(Alignment.Center)
-                                    .testTag(getAccessibilityId())
+                                    .testTag(getAccessibilityId()),
+                                tint = AmityTheme.colors.base
                             )
                         }
                     }
@@ -706,10 +693,7 @@ fun AmityCommunitySetupPage(
                             elementId = "community_privacy_public_title"
                         ) {
                             Text(
-                                text = amityStringResource(
-                                    configString = getConfig().getText(),
-                                    id = R.string.amity_v4_community_setup_privacy_public_title,
-                                ),
+                                text = amitySocialConfigString("amity_social_label_community_setup_privacy_public_title"),
                                 style = AmityTheme.typography.bodyLegacy.copy(
                                     fontWeight = FontWeight.SemiBold
                                 ),
@@ -722,10 +706,7 @@ fun AmityCommunitySetupPage(
                             elementId = "community_privacy_public_description"
                         ) {
                             Text(
-                                text = amityStringResource(
-                                    configString = getConfig().getText(),
-                                    id = R.string.amity_v4_community_setup_privacy_public_description,
-                                ),
+                                text = amitySocialConfigString("amity_social_label_setup_privacy_public_description"),
                                 style = AmityTheme.typography.captionLegacy.copy(
                                     color = AmityTheme.colors.baseShade1,
                                     fontWeight = FontWeight.Normal,
@@ -734,12 +715,8 @@ fun AmityCommunitySetupPage(
                             )
                         }
                     }
-                    RadioButton(
+                    AmityFilledRadioIndicator(
                         selected = privacyMode == AmityCommunitySetupPrivacyMode.PUBLIC,
-                        colors = RadioButtonDefaults.colors(
-                            selectedColor = AmityTheme.colors.highlight,
-                            unselectedColor = AmityTheme.colors.baseShade2,
-                        ),
                         onClick = {
                             privacyMode = AmityCommunitySetupPrivacyMode.PUBLIC
                         }
@@ -766,9 +743,10 @@ fun AmityCommunitySetupPage(
                                 painter = painterResource(getConfig().getIcon()),
                                 contentDescription = "Private and visible",
                                 modifier = modifier
-                                    .size(16.dp)
+                                    .size(20.dp)
                                     .align(Alignment.Center)
-                                    .testTag(getAccessibilityId())
+                                    .testTag(getAccessibilityId()),
+                                tint = AmityTheme.colors.base
                             )
                         }
                     }
@@ -786,10 +764,7 @@ fun AmityCommunitySetupPage(
                             elementId = "community_privacy_private_and_visible_title"
                         ) {
                             Text(
-                                text = amityStringResource(
-                                    configString = getConfig().getText(),
-                                    id = R.string.amity_v4_community_setup_privacy_private_and_visible_title,
-                                ),
+                                text = amitySocialConfigString("amity_social_label_community_setup_privacy_private_and_visible_title"),
                                 style = AmityTheme.typography.bodyLegacy.copy(
                                     fontWeight = FontWeight.SemiBold
                                 ),
@@ -802,10 +777,7 @@ fun AmityCommunitySetupPage(
                             elementId = "community_privacy_private_and_visible_description"
                         ) {
                             Text(
-                                text = amityStringResource(
-                                    configString = getConfig().getText(),
-                                    id = R.string.amity_v4_community_setup_privacy_private_and_visible_description,
-                                ),
+                                text = amitySocialConfigString("amity_social_label_community_setup_privacy_private_and_visible_description"),
                                 style = AmityTheme.typography.captionLegacy.copy(
                                     color = AmityTheme.colors.baseShade1,
                                     fontWeight = FontWeight.Normal,
@@ -814,12 +786,8 @@ fun AmityCommunitySetupPage(
                             )
                         }
                     }
-                    RadioButton(
+                    AmityFilledRadioIndicator(
                         selected = privacyMode == AmityCommunitySetupPrivacyMode.PRIVATE_VISIBLE,
-                        colors = RadioButtonDefaults.colors(
-                            selectedColor = AmityTheme.colors.highlight,
-                            unselectedColor = AmityTheme.colors.baseShade2,
-                        ),
                         onClick = {
                             privacyMode = AmityCommunitySetupPrivacyMode.PRIVATE_VISIBLE
                         }
@@ -846,9 +814,10 @@ fun AmityCommunitySetupPage(
                                 painter = painterResource(getConfig().getIcon()),
                                 contentDescription = "Private and hidden",
                                 modifier = modifier
-                                    .size(16.dp)
+                                    .size(28.dp)
                                     .align(Alignment.Center)
-                                    .testTag(getAccessibilityId())
+                                    .testTag(getAccessibilityId()),
+                                tint = AmityTheme.colors.base
                             )
                         }
                     }
@@ -866,10 +835,7 @@ fun AmityCommunitySetupPage(
                             elementId = "community_privacy_private_and_hidden_title"
                         ) {
                             Text(
-                                text = amityStringResource(
-                                    configString = getConfig().getText(),
-                                    id = R.string.amity_v4_community_setup_privacy_private_and_hidden_title,
-                                ),
+                                text = amitySocialConfigString("amity_social_label_community_setup_privacy_private_and_hidden_title"),
                                 style = AmityTheme.typography.bodyLegacy.copy(
                                     fontWeight = FontWeight.SemiBold
                                 ),
@@ -882,10 +848,7 @@ fun AmityCommunitySetupPage(
                             elementId = "community_privacy_private_and_hidden_description"
                         ) {
                             Text(
-                                text = amityStringResource(
-                                    configString = getConfig().getText(),
-                                    id = R.string.amity_v4_community_setup_privacy_private_and_hidden_description,
-                                ),
+                                text = amitySocialConfigString("amity_social_label_community_setup_privacy_private_and_hidden_description"),
                                 style = AmityTheme.typography.captionLegacy.copy(
                                     color = AmityTheme.colors.baseShade1,
                                     fontWeight = FontWeight.Normal,
@@ -894,12 +857,8 @@ fun AmityCommunitySetupPage(
                             )
                         }
                     }
-                    RadioButton(
+                    AmityFilledRadioIndicator(
                         selected = privacyMode == AmityCommunitySetupPrivacyMode.PRIVATE_HIDDEN,
-                        colors = RadioButtonDefaults.colors(
-                            selectedColor = AmityTheme.colors.highlight,
-                            unselectedColor = AmityTheme.colors.baseShade2,
-                        ),
                         onClick = {
                             privacyMode = AmityCommunitySetupPrivacyMode.PRIVATE_HIDDEN
                         }
@@ -919,10 +878,7 @@ fun AmityCommunitySetupPage(
                     elementId = "community_membership_title"
                 ) {
                     Text(
-                        text = amityStringResource(
-                            configString = getConfig().getText(),
-                            id = R.string.amity_v4_community_setup_privacy_title,
-                        ),
+                        text = amitySocialConfigString("amity_social_label_community_setup_membership_title"),
                         style = AmityTheme.typography.titleLegacy,
                         modifier = modifier
                             .padding(horizontal = 16.dp)
@@ -949,10 +905,7 @@ fun AmityCommunitySetupPage(
                             elementId = "community_membership_description"
                         ) {
                             Text(
-                                text = amityStringResource(
-                                    configString = getConfig().getText(),
-                                    id = R.string.amity_v4_community_setup_membership_desc,
-                                ),
+                                text = amitySocialConfigString("amity_social_label_community_setup_membership_desc"),
                                 style = AmityTheme.typography.bodyBold,
                                 modifier = modifier.testTag(getAccessibilityId())
                             )
@@ -963,10 +916,7 @@ fun AmityCommunitySetupPage(
                             elementId = "community_membership_sub_description"
                         ) {
                             Text(
-                                text = amityStringResource(
-                                    configString = getConfig().getText(),
-                                    id = R.string.amity_v4_community_setup_membership_sub_desc,
-                                ),
+                                text = amitySocialConfigString("amity_social_label_community_setup_membership_sub_desc"),
                                 style = AmityTheme.typography.caption,
                                 color = AmityTheme.colors.baseShade1,
                                 modifier = modifier.testTag(getAccessibilityId())
@@ -982,12 +932,12 @@ fun AmityCommunitySetupPage(
                             isMembershipEnabled = it
                         },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
-                            uncheckedThumbColor = Color.White,
+                            checkedThumbColor = amityColorWhite,
+                            uncheckedThumbColor = amityColorWhite,
                             uncheckedBorderColor = AmityTheme.colors.baseShade3,
                             checkedTrackColor = AmityTheme.colors.primary,
                             uncheckedTrackColor = AmityTheme.colors.baseShade3,
-                            disabledCheckedThumbColor = Color.White,
+                            disabledCheckedThumbColor = amityColorWhite,
                             disabledCheckedTrackColor = AmityTheme.colors.primaryShade3,
                         ),
                         modifier = Modifier
@@ -1007,10 +957,7 @@ fun AmityCommunitySetupPage(
                             elementId = "community_invite_member_title"
                         ) {
                             Text(
-                                text = amityStringResource(
-                                    configString = getConfig().getText(),
-                                    id = R.string.amity_v4_community_setup_invite_members_title,
-                                ),
+                                text = amitySocialConfigString("amity_social_label_community_setup_invite_members_title"),
                                 style = AmityTheme.typography.titleLegacy,
                                 modifier = modifier
                                     .padding(horizontal = 16.dp)
@@ -1022,10 +969,7 @@ fun AmityCommunitySetupPage(
                             elementId = "community_invite_member_description"
                         ) {
                             Text(
-                                text = amityStringResource(
-                                    configString = getConfig().getText(),
-                                    id = R.string.amity_v4_community_setup_invite_members_description,
-                                ),
+                                text = amitySocialConfigString("amity_social_label_community_setup_invite_members_description"),
                                 style = AmityTheme.typography.caption,
                                 modifier = modifier
                                     .padding(horizontal = 16.dp)
@@ -1060,10 +1004,7 @@ fun AmityCommunitySetupPage(
                             elementId = "community_add_member_title"
                         ) {
                             Text(
-                                text = amityStringResource(
-                                    configString = getConfig().getText(),
-                                    id = R.string.amity_v4_community_setup_create_button,
-                                ),
+                                text = amitySocialConfigString("amity_social_label_member_label_singular"),
                                 style = AmityTheme.typography.titleLegacy,
                                 modifier = modifier
                                     .padding(horizontal = 16.dp)
@@ -1109,10 +1050,11 @@ fun AmityCommunitySetupPage(
                 Spacer(modifier = modifier.height(16.dp))
                 Button(
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = AmityTheme.colors.highlight,
-                        disabledContainerColor = AmityTheme.colors.highlight.shade(AmityColorShade.SHADE2),
+                        containerColor = AmityTheme.colors.primary,
+                        disabledContainerColor = AmityTheme.colors.primary.copy(alpha = 0.3f),
+                        disabledContentColor = amityDisabledColor(amityColorWhite),
                     ),
-                    shape = RoundedCornerShape(4.dp),
+                    shape = RoundedCornerShape(8.dp),
                     contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
                     enabled = shouldActionButtonEnable,
                     modifier = Modifier
@@ -1167,7 +1109,7 @@ fun AmityCommunitySetupPage(
                                     )
                                 },
                                 onError = {
-                                    AmityUIKitSnackbar.publishSnackbarMessage(context.getString(R.string.amity_v4_community_setup_toast_create_failed))
+                                    AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_community_setup_toast_create_failed"))
                                 }
                             )
                         }
@@ -1185,19 +1127,15 @@ fun AmityCommunitySetupPage(
                                 Icon(
                                     painter = painterResource(getConfig().getIcon()),
                                     contentDescription = "Create",
-                                    tint = Color.White,
+                                    tint = if (shouldActionButtonEnable) amityColorWhite else amityDisabledColor(amityColorWhite),
                                     modifier = modifier.size(16.dp)
                                 )
                                 Spacer(modifier = modifier.width(8.dp))
                             }
                             Text(
-                                text = context.amityStringResource(
-                                    configString = getConfig().getText(),
-                                    id = if (isInEditMode) R.string.amity_v4_community_setup_edit_button
-                                    else R.string.amity_v4_community_setup_create_button
-                                ),
+                                text = amitySocialConfigString(if (isInEditMode) "amity_social_button_community_setup_edit_button" else "amity_social_button_community_setup_create_button"),
                                 style = AmityTheme.typography.captionLegacy.copy(
-                                    color = Color.White,
+                                    color = if (shouldActionButtonEnable) amityColorWhite else amityDisabledColor(amityColorWhite),
                                 ),
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
@@ -1213,10 +1151,10 @@ fun AmityCommunitySetupPage(
 
         if (showPrivacyConfirmDialog) {
             AmityAlertDialog(
-                dialogTitle = context.amityStringResource(id = R.string.amity_v4_community_setup_dialog_change_privacy_title),
-                dialogText = context.amityStringResource(id = R.string.amity_v4_community_setup_dialog_change_privacy_message),
-                confirmText = context.amityStringResource(id = R.string.amity_v4_dialog_confirm_button),
-                dismissText = context.amityStringResource(id = R.string.amity_v4_dialog_cancel_button),
+                dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_community_setup_dialog_change_privacy_title"),
+                dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_community_setup_dialog_change_privacy_message"),
+                confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_confirm_button"),
+                dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_cancel_button"),
                 onConfirmation = {
                     showPrivacyConfirmDialog = false
                     updateCommunity(
@@ -1269,10 +1207,10 @@ fun AmityCommunitySetupPage(
                 // Case 1: User has made edits in edit mode
                 shouldActionButtonEnable && isInEditMode -> {
                     AmityAlertDialog(
-                        dialogTitle = context.amityStringResource(id = R.string.amity_v4_community_setup_dialog_leave_edit_title),
-                        dialogText = context.amityStringResource(id = R.string.amity_v4_community_setup_dialog_leave_edit_description),
-                        confirmText = context.amityStringResource(id = R.string.amity_v4_dialog_discard_button),
-                        dismissText = context.amityStringResource(id = R.string.amity_v4_dialog_cancel_button),
+                        dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_community_setup_dialog_leave_edit_title"),
+                        dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_community_setup_dialog_leave_edit_description"),
+                        confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_discard_button"),
+                        dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_cancel_button"),
                         confirmTextColor = AmityTheme.colors.alert,
                         onConfirmation = { context.closePage() },
                         onDismissRequest = { showLeaveConfirmDialog = false }
@@ -1281,10 +1219,10 @@ fun AmityCommunitySetupPage(
                 // Case 2: User has made progress in create mode
                 shouldActionButtonEnable || (!isInEditMode && hasEnteredContent) -> {
                     AmityAlertDialog(
-                        dialogTitle = context.amityStringResource(id = R.string.amity_v4_community_setup_dialog_leave_title),
-                        dialogText = context.amityStringResource(id = R.string.amity_v4_community_setup_dialog_leave_description),
-                        confirmText = context.amityStringResource(id = R.string.amity_v4_dialog_leave_button),
-                        dismissText = context.amityStringResource(id = R.string.amity_v4_dialog_cancel_button),
+                        dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_community_setup_dialog_leave_title"),
+                        dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_community_setup_dialog_leave_description"),
+                        confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_leave_button"),
+                        dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_cancel_button"),
                         confirmTextColor = AmityTheme.colors.alert,
                         onConfirmation = { context.closePage() },
                         onDismissRequest = { showLeaveConfirmDialog = false }
@@ -1297,15 +1235,14 @@ fun AmityCommunitySetupPage(
 
         if (showJoinRequestNotEmptyDialog) {
             AmityAlertDialog(
-                dialogTitle = "You have pending join requests",
-                dialogText = "Please address these requests before switching off membership approval.",
-                dismissText = "OK",
+                dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_pending_join_requests"),
+                dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_pending_requests_warning"),
+                dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
                 onDismissRequest = { showJoinRequestNotEmptyDialog = false },
             )
         }
     }
 }
-
 fun updateCommunity(
     communityId: String,
     avatarUri: Uri,
@@ -1319,7 +1256,7 @@ fun updateCommunity(
     pageScope: AmityComposePageScope,
     context: Context,
 ) {
-    pageScope.showProgressSnackbar(context.amityStringResource(id = R.string.amity_v4_community_setup_toast_updating))
+    pageScope.showProgressSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_community_setup_toast_updating"))
     viewModel.editCommunity(
         communityId = communityId,
         avatarUri = avatarUri,
@@ -1330,11 +1267,11 @@ fun updateCommunity(
         requiresJoinApproval = requiresJoinApproval,
         categoryIds = categoryIds,
         onSuccess = {
-            AmityUIKitSnackbar.publishSnackbarMessage(context.getString(R.string.amity_v4_community_setup_toast_update_success))
+            AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_community_setup_toast_update_success"))
             context.closePageWithResult(Activity.RESULT_OK)
         },
         onError = {
-            AmityUIKitSnackbar.publishSnackbarMessage(context.getString(R.string.amity_v4_community_setup_toast_update_failed))
+            AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_community_setup_toast_update_failed"))
             context.closePageWithResult(Activity.RESULT_OK)
         }
     )

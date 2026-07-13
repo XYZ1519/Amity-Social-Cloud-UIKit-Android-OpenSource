@@ -30,6 +30,7 @@ import com.amity.socialcloud.uikit.common.ui.elements.AmityToolBar
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.closePageWithResult
 import com.amity.socialcloud.uikit.community.compose.community.setting.AmityCommunitySettingPageViewModel
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 
 @Composable
 fun AmityCommunityStorySettingPage(
@@ -48,7 +49,7 @@ fun AmityCommunityStorySettingPage(
         Column(modifier.fillMaxSize()) {
             Spacer(modifier.height(24.dp))
             AmityToolBar(
-                title = "Story comments",
+                title = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_title_story_comments"),
                 onBackClick = {
                     context.closePageWithResult(Activity.RESULT_CANCELED)
                 }
@@ -64,13 +65,13 @@ fun AmityCommunityStorySettingPage(
                     modifier = modifier.weight(1f)
                 ) {
                     Text(
-                        text = "Allow comments on community stories",
+                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_allow_comments_on_community_stories"),
                         style = AmityTheme.typography.bodyLegacy.copy(
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Text(
-                        text = "Turn on to receive comments on stories in this community.",
+                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_turn_on_to_receive_comments_on_stories_in_this_communit"),
                         style = AmityTheme.typography.captionLegacy.copy(
                             fontWeight = FontWeight.Normal,
                             color = AmityTheme.colors.baseShade1,
@@ -83,7 +84,7 @@ fun AmityCommunityStorySettingPage(
                     colors = SwitchDefaults.colors(
                         checkedTrackColor = AmityTheme.colors.highlight,
                         uncheckedBorderColor = AmityTheme.colors.baseShade3,
-                        uncheckedThumbColor = Color.White,
+                        uncheckedThumbColor = AmityTheme.colors.baseInverse,
                         uncheckedTrackColor = AmityTheme.colors.baseShade3,
                     ),
                     onCheckedChange = {
@@ -92,11 +93,13 @@ fun AmityCommunityStorySettingPage(
                         viewModel.updateStorySetting(
                             setting = AmityCommunityStorySettings(allowComment = isChecked),
                             onSuccess = {
-                                context.closePageWithResult(Activity.RESULT_OK)
-                                AmityUIKitSnackbar.publishSnackbarMessage("Successfully updated community profile!")
+                                // PDT-2700: a silent toggle must not surface a toast and must not
+                                // navigate away — stay on the page so the user can keep toggling.
                             },
                             onError = {
-                                AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to update community profile")
+                                // Revert the optimistic toggle since the update failed.
+                                isChecked = !isChecked
+                                AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_community_profile_update_failed"))
                             }
                         )
                     }

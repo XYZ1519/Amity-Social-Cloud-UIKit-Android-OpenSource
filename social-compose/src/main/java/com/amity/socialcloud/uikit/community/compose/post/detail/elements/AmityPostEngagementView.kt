@@ -41,7 +41,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -58,6 +57,7 @@ import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.model.core.reaction.AmityReactionReferenceType
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
 import com.amity.socialcloud.uikit.common.common.readableNumber
+import com.amity.socialcloud.uikit.common.localization.amitySocialReactionDisplayName
 import com.amity.socialcloud.uikit.common.model.AmitySocialReactions
 import com.amity.socialcloud.uikit.common.reaction.AmityReactionList
 import com.amity.socialcloud.uikit.common.reaction.picker.AmityReactionPicker
@@ -67,15 +67,17 @@ import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.isUIKitInDarkTheme
 import com.amity.socialcloud.uikit.common.utils.AmityConstants.POST_REACTION
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.getIcon
-import com.amity.socialcloud.uikit.common.utils.getText
 import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
-import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostCategory
 import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostDetailPageViewModel
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialConfigString
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlin.math.roundToInt
 
@@ -90,9 +92,10 @@ fun AmityPostEngagementView(
     onCommentAction: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
-    val behavior by lazy {
+    val behavior = remember {
         AmitySocialBehaviorHelper.postContentComponentBehavior
     }
+
     val myReactionState = remember {
         val firstReaction = post.getMyReactions().firstOrNull()
         mutableStateOf(firstReaction ?: "")
@@ -117,14 +120,7 @@ fun AmityPostEngagementView(
     val isReacted = remember(myReaction, reacting) { myReaction.isNotEmpty() || reacting.first.isNotEmpty() }
 
     var reactionExpanded by remember { mutableStateOf(false) }
-
-    val reactionCount = (if (reacting.first.isNotEmpty()) reacting.second else localReactionCount).let { count ->
-        pluralStringResource(
-            id = R.plurals.amity_feed_reaction_count,
-            count = count,
-            count.readableNumber()
-        )
-    }
+    val reactionCount = (if (reacting.first.isNotEmpty()) reacting.second else localReactions.values.sum())
 
     val commentCount by remember(post.getUpdatedAt(), post.getCommentCount()) {
         mutableStateOf(post.getCommentCount())
@@ -195,18 +191,22 @@ fun AmityPostEngagementView(
                         componentScope = componentScope,
                         myReaction = myReaction,
                         reactions = localReactions,
-                        reactionCount = localReactionCount,
+                        reactionCount = reactionCount,
                     )
                 }
+            } else {
+                Box {}
             }
+
+
+
 
             if (commentCount > 0) {
                 Text(
-                    text = pluralStringResource(
-                        id = R.plurals.amity_feed_comment_count,
-                        count = commentCount,
-                        commentCount.readableNumber()
-                    ),
+                    text = if (commentCount == 1)
+                        amitySocialString("amity_social_button_feed_comment_count_singular").format(commentCount)
+                    else
+                        amitySocialString("amity_social_button_feed_comment_count_plural").format(commentCount),
                     style = AmityTheme.typography.captionLegacy.copy(
                         fontWeight = FontWeight.Normal,
                         color = AmityTheme.colors.baseShade2
@@ -273,11 +273,17 @@ fun AmityPostEngagementView(
                                                     change.consume()
                                                     if (!reactionExpanded) return@drag
 
-                                                    val idx = getReactionIndexByX(change.position.x, popupWidthPx, reactions.size)
+                                                    val idx = getReactionIndexByX(
+                                                        change.position.x,
+                                                        popupWidthPx,
+                                                        reactions.size
+                                                    )
                                                     if (idx != highlightedIndex) {
                                                         highlightedIndex = idx
                                                         if (idx != null && lastHapticIndex != idx) {
-                                                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                            haptics.performHapticFeedback(
+                                                                HapticFeedbackType.LongPress
+                                                            )
                                                             lastHapticIndex = idx
                                                         }
                                                     }
@@ -407,7 +413,8 @@ fun AmityPostEngagementView(
                                                 reactionName = if (myReactionState.value.isNotEmpty()) POST_REACTION else previousReaction,
                                                 isReacted = myReactionState.value.isNotEmpty(),
                                                 onError = {
-                                                    localReactionsState.value = post.getReactionMap()
+                                                    localReactionsState.value =
+                                                        post.getReactionMap()
                                                 }
                                             )
                                         }
@@ -436,17 +443,18 @@ fun AmityPostEngagementView(
 
                         )
                         Spacer(modifier = modifier.width(4.dp))
-                        Text(
-                            text = reacting
+                        val resolvedReactionKey = reacting
                                 .first
                                 .ifEmpty { myReaction }
                                 .ifEmpty { AmitySocialReactions.toReaction(POST_REACTION).name }
-                                .replaceFirstChar {
-                                    if (it.isLowerCase()) it.titlecase() else it.toString()
-                                },
+                        Text(
+                            text = amitySocialReactionDisplayName(resolvedReactionKey),
                             style = AmityTheme.typography.bodyLegacy.copy(
                                 fontWeight = FontWeight.SemiBold,
-                                color = if (isReacted) AmityTheme.colors.primary
+                                color = if (isReacted) {
+                                    if (isUIKitInDarkTheme()) amityColorWhite
+                                    else AmityTheme.colors.primary
+                                }
                                 else AmityTheme.colors.baseShade2
                             ),
                         )
@@ -491,7 +499,7 @@ fun AmityPostEngagementView(
                                 .testTag(getAccessibilityId())
                         )
                         Text(
-                            text = if (isPostDetailPage) getConfig().getText()
+                            text = if (isPostDetailPage) amitySocialConfigString("amity_social_button_post_content_comment_button")
                             else post.getCommentCount().readableNumber(),
                             style = AmityTheme.typography.bodyLegacy.copy(
                                 fontWeight = FontWeight.SemiBold,
@@ -562,7 +570,7 @@ fun AmityPostEngagementView(
                  */
         }
 
-        if (reactionExpanded && anchorInWindow != null) {
+        if (reactionExpanded && anchorInWindow != null && !fromNonMemberCommunity && !AmityCoreClient.isVisitor()) {
             val anchor = anchorInWindow!!
             Popup(
                 properties = PopupProperties(

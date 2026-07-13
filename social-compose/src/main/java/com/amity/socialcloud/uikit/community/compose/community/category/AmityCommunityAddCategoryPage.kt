@@ -48,6 +48,8 @@ import com.amity.socialcloud.uikit.common.utils.shade
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.community.category.element.AmityCommunityCategoryItem
 import com.amity.socialcloud.uikit.community.compose.community.category.element.AmityCommunityCategoryList
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 
 @Composable
 fun AmityCommunityAddCategoryPage(
@@ -94,6 +96,7 @@ fun AmityCommunityAddCategoryPage(
                     Icon(
                         painter = painterResource(R.drawable.amity_ic_close),
                         contentDescription = "Close",
+                        tint = AmityTheme.colors.base,
                         modifier = modifier
                             .size(16.dp)
                             .clickableWithoutRipple {
@@ -102,7 +105,7 @@ fun AmityCommunityAddCategoryPage(
                     )
 
                     Text(
-                        text = "Select category",
+                        text = amitySocialString("amity_social_button_community_setup_categories_description"),
                         style = AmityTheme.typography.titleLegacy,
                         modifier = modifier.padding(vertical = 17.dp)
                     )
@@ -194,8 +197,8 @@ fun AmityCommunityAddCategoryPage(
                 Spacer(modifier = modifier.height(16.dp))
                 Button(
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = AmityTheme.colors.highlight,
-                        disabledContainerColor = AmityTheme.colors.highlight.shade(AmityColorShade.SHADE2),
+                        containerColor = AmityTheme.colors.primary,
+                        disabledContainerColor = AmityTheme.colors.primary.copy(alpha = 0.3f),
                     ),
                     shape = RoundedCornerShape(4.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
@@ -209,9 +212,9 @@ fun AmityCommunityAddCategoryPage(
                     }
                 ) {
                     Text(
-                        text = "Add category",
+                        text = amitySocialString("amity_social_button_add_category"),
                         style = AmityTheme.typography.captionLegacy.copy(
-                            color = Color.White,
+                            color = amityColorWhite,
                         ),
                     )
                 }

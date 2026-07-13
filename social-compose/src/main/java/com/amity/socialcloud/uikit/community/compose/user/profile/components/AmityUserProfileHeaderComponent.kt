@@ -54,11 +54,13 @@ import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.getText
 import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.community.compose.user.profile.AmityUserProfilePageViewModel
 import com.amity.socialcloud.uikit.community.compose.user.profile.elements.AmityUserFollowRelationshipButton
 import com.amity.socialcloud.uikit.community.compose.user.profile.elements.AmityUserPendingRequestButton
 import com.amity.socialcloud.uikit.community.compose.user.profile.elements.AmityUserUnfollowBottomSheet
 import com.amity.socialcloud.uikit.community.compose.user.relationship.AmityUserRelationshipPageTab
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialConfigString
 
 @Composable
 fun AmityUserProfileHeaderComponent(
@@ -183,17 +185,22 @@ fun AmityUserProfileHeaderComponent(
                     AmityExpandableText(
                         text = user.getDescription(),
                         previewLines = 4,
+                        readMoreUnderlined = false,
+                        readMoreInline = true,
                         modifier = modifier.padding(vertical = 8.dp)
                     )
                 }
             } else {
                 Spacer(modifier.height(12.dp))
             }
-
-            Row(
-                modifier = Modifier.padding(vertical = 4.dp)
+            AmityBaseElement(
+                pageScope = pageScope,
+                componentScope = getComponentScope(),
+                elementId = "user_profile_action",
             ) {
-                if (!user.isBrand()) {
+                Row(
+                    modifier = Modifier.padding(vertical = 4.dp)
+                ) {
                     AmityBaseElement(
                         pageScope = pageScope,
                         componentScope = getComponentScope(),
@@ -223,7 +230,7 @@ fun AmityUserProfileHeaderComponent(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = getConfig().getText(),
+                                text = amitySocialConfigString("amity_social_button_user_profile_following"),
                                 style = AmityTheme.typography.captionLegacy.copy(
                                     fontWeight = FontWeight.Normal,
                                     color = AmityTheme.colors.baseShade2,
@@ -239,48 +246,54 @@ fun AmityUserProfileHeaderComponent(
                             .height(20.dp)
                             .background(color = AmityTheme.colors.baseShade4)
                     )
-                }
 
-                AmityBaseElement(
-                    pageScope = pageScope,
-                    componentScope = getComponentScope(),
-                    elementId = "user_follower"
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = modifier.clickableWithoutRipple {
-                            if (userFollowInfo?.getStatus() == AmityFollowStatus.ACCEPTED || state.isMyUserProfile()) {
-                                behavior.goToUserRelationshipPage(
-                                    context = context,
-                                    userId = user.getUserId(),
-                                    selectedTab = AmityUserRelationshipPageTab.FOLLOWER,
-                                )
-                            }  else if (AmityCoreClient.isVisitor()) {
-                                behavior.handleVisitorUserAction()
-                            } else if (userFollowInfo?.getStatus() != AmityFollowStatus.ACCEPTED) {
-                                behavior.handleNonFollowerAction()
-                            }
-                        }
+                    AmityBaseElement(
+                        pageScope = pageScope,
+                        componentScope = getComponentScope(),
+                        elementId = "user_follower"
                     ) {
-                        Text(
-                            text = getNumberAbbreveation(followerCount),
-                            style = AmityTheme.typography.bodyLegacy.copy(
-                                fontWeight = FontWeight.SemiBold,
-                            ),
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = getConfig().getText(),
-                            style = AmityTheme.typography.captionLegacy.copy(
-                                fontWeight = FontWeight.Normal,
-                                color = AmityTheme.colors.baseShade2,
-                            ),
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = modifier.clickableWithoutRipple {
+                                if (userFollowInfo?.getStatus() == AmityFollowStatus.ACCEPTED || state.isMyUserProfile()) {
+                                    behavior.goToUserRelationshipPage(
+                                        context = context,
+                                        userId = user.getUserId(),
+                                        selectedTab = AmityUserRelationshipPageTab.FOLLOWER,
+                                    )
+                                }
+                            }
+                        ) {
+                            Text(
+                                text = getNumberAbbreveation(followerCount),
+                                style = AmityTheme.typography.bodyLegacy.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = amitySocialConfigString("amity_social_button_user_profile_follower"),
+                                style = AmityTheme.typography.captionLegacy.copy(
+                                    fontWeight = FontWeight.Normal,
+                                    color = AmityTheme.colors.baseShade2,
+                                ),
+                            )
+                        }
                     }
                 }
             }
             Spacer(modifier.height(12.dp))
-            if (!state.isMyUserProfile() && (userFollowStatus != null)) {
+            if (AmityCoreClient.isVisitor()) {
+                AmityUserFollowRelationshipButton(
+                    modifier = modifier,
+                    pageScope = pageScope,
+                    componentScope = getComponentScope(),
+                    followStatus = AmityFollowStatus.NONE,
+                    onClick = {
+                        behavior.handleVisitorUserAction()
+                    }
+                )
+            } else if (!state.isMyUserProfile() && (userFollowStatus != null)) {
                 AmityUserFollowRelationshipButton(
                     modifier = modifier,
                     pageScope = pageScope,
@@ -306,24 +319,13 @@ fun AmityUserProfileHeaderComponent(
                                     onError = {
                                         if (it == AmityError.PERMISSION_DENIED) {
                                             showUserIsBlockedDialog = true
-                                        }
-                                        else {
+                                        } else {
                                             showFollowErrorDialog = true
                                         }
                                     }
                                 )
                             }
                         }
-                    }
-                )
-            } else if (AmityCoreClient.isVisitor()) {
-                AmityUserFollowRelationshipButton(
-                    modifier = modifier,
-                    pageScope = pageScope,
-                    componentScope = getComponentScope(),
-                    followStatus = AmityFollowStatus.NONE,
-                    onClick = {
-                        behavior.handleVisitorUserAction()
                     }
                 )
             }
@@ -355,10 +357,10 @@ fun AmityUserProfileHeaderComponent(
 
     if (showUnfollowPopupDialog) {
         AmityAlertDialog(
-            dialogTitle = "Unfollow this user?",
-            dialogText = "If you change your mind, you'll have to request to follow them again.",
-            confirmText = "Unfollow",
-            dismissText = "Cancel",
+            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_unfollow_user"),
+            dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_unfollow_description"),
+            confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unfollow"),
+            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
             confirmTextColor = AmityTheme.colors.alert,
             onConfirmation = {
                 showUnfollowPopupDialog = false
@@ -377,7 +379,7 @@ fun AmityUserProfileHeaderComponent(
 
     if (showUnblockUserDialog) {
         AmityAlertDialog(
-            dialogTitle = "Unblock member?",
+            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_unblock_user"),
             dialogText = buildAnnotatedString {
                 val displayName = user.getDisplayName() ?: ""
                 append(displayName)
@@ -388,8 +390,8 @@ fun AmityUserProfileHeaderComponent(
                 )
                 append(" will now be able to see posts and comments that you've created. They won't be notified that you've unblocked them.")
             },
-            confirmText = "Unblock",
-            dismissText = "Cancel",
+            confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unblock"),
+            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
             confirmTextColor = AmityTheme.colors.alert,
             onConfirmation = {
                 showUnblockUserDialog = false
@@ -398,13 +400,13 @@ fun AmityUserProfileHeaderComponent(
                     targetUserId = user.getUserId(),
                     onSuccess = {
                         pageScope?.showSnackbar(
-                            message = "User unblocked.",
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_user_unblocked"),
                             drawableRes = R.drawable.amity_ic_snack_bar_success,
                         )
                     },
                     onError = {
                         pageScope?.showErrorSnackbar(
-                            message = "Failed to unblock user. Please try again.",
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_unblock_failed"),
                             drawableRes = R.drawable.amity_ic_snack_bar_warning
                         )
                     }
@@ -419,9 +421,9 @@ fun AmityUserProfileHeaderComponent(
 
     if (showUserIsBlockedDialog) {
         AmityAlertDialog(
-            dialogTitle = "Unable to follow this user",
-            dialogText = "Oops! something went wrong. Please try again later.",
-            dismissText = "OK",
+            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_unable_to_follow_user"),
+            dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_generic_error"),
+            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
             onDismissRequest = {
                 showUserIsBlockedDialog = false
             }
@@ -430,9 +432,9 @@ fun AmityUserProfileHeaderComponent(
 
     if (showFollowErrorDialog) {
         AmityAlertDialog(
-            dialogTitle = "Unable to follow this user",
-            dialogText = "Oops! something went wrong. Please try again later.",
-            dismissText = "OK",
+            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_unable_to_follow_user"),
+            dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_generic_error"),
+            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
             onDismissRequest = {
                 showFollowErrorDialog = false
             }
@@ -441,9 +443,9 @@ fun AmityUserProfileHeaderComponent(
 
     if (showCancelErrorDialog) {
         AmityAlertDialog(
-            dialogTitle = "Unable to cancel the follow request",
-            dialogText = "Oops! something went wrong. Please try again later.",
-            dismissText = "OK",
+            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_unable_to_cancel_follow"),
+            dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_generic_error"),
+            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
             onDismissRequest = {
                 showCancelErrorDialog = false
             }
@@ -452,9 +454,9 @@ fun AmityUserProfileHeaderComponent(
 
     if (showUnFollowErrorDialog) {
         AmityAlertDialog(
-            dialogTitle = "Unable to unfollow this user",
-            dialogText = "Oops! something went wrong. Please try again later.",
-            dismissText = "OK",
+            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_failed_to_unfollow_user"),
+            dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_generic_error"),
+            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
             onDismissRequest = {
                 showUnFollowErrorDialog = false
             }

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -62,6 +63,7 @@ import com.amity.socialcloud.uikit.community.compose.story.draft.AmityStoryMedia
 import com.amity.socialcloud.uikit.community.compose.utils.AmityStoryCameraHelper
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
+import com.amity.socialcloud.uikit.common.ui.theme.amityMediaSurface
 
 
 @Composable
@@ -192,14 +194,14 @@ fun AmityCreateStoryPage(
     AmityBasePage(pageId = "camera_page") {
         LaunchedEffect(shouldShowPermissionRequiredMessage) {
             if (shouldShowPermissionRequiredMessage) {
-                getPageScope().showSnackbar("Required permission is not granted.")
+                getPageScope().showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_permission_camera_access_denied"))
             }
         }
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(amityMediaSurface)
         ) {
             ConstraintLayout(
                 modifier = Modifier.aspectRatio(9f / 16f)
@@ -210,7 +212,7 @@ fun AmityCreateStoryPage(
                     modifier = modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color.Black)
+                        .background(amityMediaSurface)
                         .testTag("camera_view")
                         .constrainAs(cameraPreview) {
                             top.linkTo(parent.top)
@@ -310,7 +312,7 @@ fun AmityCreateStoryPage(
                     ) {
                         Text(
                             text = videoRecordDuration.readableMinuteSeconds(),
-                            color = Color.White,
+                            color = AmityTheme.colors.baseInverse,
                             modifier = modifier.align(Alignment.Center)
                         )
                     }

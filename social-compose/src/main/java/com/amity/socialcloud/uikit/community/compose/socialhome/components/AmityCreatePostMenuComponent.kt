@@ -1,17 +1,14 @@
 package com.amity.socialcloud.uikit.community.compose.socialhome.components
 
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialConfigString
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.waterfall
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
@@ -19,15 +16,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -52,10 +44,9 @@ import com.amity.socialcloud.uikit.common.utils.getIcon
 import com.amity.socialcloud.uikit.common.utils.getText
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
-import com.amity.socialcloud.uikit.community.compose.community.profile.AmityCommunityProfilePageBehavior
 import com.amity.socialcloud.uikit.community.compose.post.composer.AmityPostTargetType
-import com.amity.socialcloud.uikit.community.compose.post.composer.poll.AmityPollPostTypeSelectionBottomSheet
 import com.amity.socialcloud.uikit.community.compose.target.AmityPostTargetSelectionPageType
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -95,7 +86,7 @@ fun AmityCreatePostMenuComponent(
     }
 
     val viewModel = viewModel<AmityCreatePostMenuComponentViewModel>()
-    val showStoryAction by viewModel.showStoryAction.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
 
     AmityBaseComponent(
         pageScope = pageScope,
@@ -115,13 +106,13 @@ fun AmityCreatePostMenuComponent(
                         testTagsAsResourceId = true
                     }
             ) {
-                DropdownMenuItem(
-                    text = {
-                        AmityBaseElement(
-                            pageScope = pageScope,
-                            componentScope = getComponentScope(),
-                            elementId = "create_post_button"
-                        ) {
+                AmityBaseElement(
+                    pageScope = pageScope,
+                    componentScope = getComponentScope(),
+                    elementId = "create_post_button"
+                ) {
+                    DropdownMenuItem(
+                        text = {
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -136,108 +127,119 @@ fun AmityCreatePostMenuComponent(
                                     modifier = modifier.size(20.dp)
                                 )
                                 Text(
-                                    text = getConfig().getText(),
+                                    text = amitySocialConfigString("amity_social_button_post_composer_create_button"),
                                     style = AmityTheme.typography.bodyLegacy.copy(
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 )
                             }
-                        }
-                    },
-                    onClick = {
-                        onDismiss()
-                        if (targetType == CreatePostTargetType.COMMUNITY && targetId?.isNotEmptyOrBlank() == true) {
-                            targetPostBehavior.goToPostComposerPage(
-                                context = context,
-                                launcher = launcher,
-                                targetId = targetId,
-                                targetType = AmityPostTargetType.COMMUNITY,
-                            )
-                        } else {
-                            behavior.goToSelectPostTargetPage(
-                                context = context,
-                                type = AmityPostTargetSelectionPageType.POST
-                            )
-                        }
-                    },
-                )
-
-                DropdownMenuItem(
-                    text = {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = modifier.padding(horizontal = 8.dp),
-                        ) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_amity_ic_poll_create),
-                                contentDescription = "Create Poll Post",
-                                tint = AmityTheme.colors.base,
-                                modifier = modifier.size(20.dp)
-                            )
-                            Text(
-                                "Poll",
-                                style = AmityTheme.typography.bodyLegacy.copy(
-                                    fontWeight = FontWeight.SemiBold
+                        },
+                        onClick = {
+                            onDismiss()
+                            if (targetType == CreatePostTargetType.COMMUNITY && targetId?.isNotEmptyOrBlank() == true) {
+                                targetPostBehavior.goToPostComposerPage(
+                                    context = context,
+                                    launcher = launcher,
+                                    targetId = targetId,
+                                    targetType = AmityPostTargetType.COMMUNITY,
                                 )
-                            )
-                        }
-                    },
-                    onClick = {
-                        onDismiss()
-                        if (targetType == CreatePostTargetType.COMMUNITY && targetId?.isNotEmptyOrBlank() == true) {
-                            behavior.goToSelectPollTargetPage(context)
-                        } else {
-                            behavior.goToSelectPollTargetPage(context)
-                        }
-                    }
-                )
-                DropdownMenuItem(
-                    text = {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = modifier.padding(horizontal = 8.dp),
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_amity_ic_live_stream_create),
-                                contentDescription = "Create Livestream Post",
-                                tint = AmityTheme.colors.base,
-                                modifier = modifier.size(20.dp)
-                            )
-                            Text(
-                                "Live stream",
-                                style = AmityTheme.typography.bodyLegacy.copy(
-                                    fontWeight = FontWeight.SemiBold
+                            } else {
+                                behavior.goToSelectPostTargetPage(
+                                    context = context,
+                                    type = AmityPostTargetSelectionPageType.POST
                                 )
-                            )
-                        }
-                    },
-                    onClick = {
-                        onDismiss()
-                        if (targetType == CreatePostTargetType.COMMUNITY && targetId?.isNotEmptyOrBlank() == true) {
-                            targetLivestreamBehavior.goToLivestreamPostComposerPage(
-                                context = context,
-                                launcher = launcher,
-                                targetId = targetId,
-                                targetType = AmityPost.TargetType.COMMUNITY,
-                            )
-                        } else {
-                            behavior.goToSelectLivestreamTargetPage(
-                                context = context
-                            )
-                        }
-                    }
-                )
+                            }
+                        },
+                    )
+                }
 
-                if (showStoryAction) {
+                AmityBaseElement(
+                    elementId = "create_poll_button",
+                    componentScope = getComponentScope()
+                ) {
                     DropdownMenuItem(
                         text = {
-                            AmityBaseElement(
-                                pageScope = pageScope,
-                                componentScope = getComponentScope(),
-                                elementId = "create_story_button"
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = modifier.padding(horizontal = 8.dp),
                             ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_amity_ic_poll_create),
+                                    contentDescription = "Create Poll Post",
+                                    tint = AmityTheme.colors.base,
+                                    modifier = modifier.size(20.dp)
+                                )
+                                Text(
+                                    amitySocialString("amity_social_button_poll"),
+                                    style = AmityTheme.typography.bodyLegacy.copy(
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                            }
+                        },
+                        onClick = {
+                            onDismiss()
+                            if (targetType == CreatePostTargetType.COMMUNITY && targetId?.isNotEmptyOrBlank() == true) {
+                                behavior.goToSelectPollTargetPage(context)
+                            } else {
+                                behavior.goToSelectPollTargetPage(context)
+                            }
+                        }
+                    )
+                }
+
+                AmityBaseElement(
+                    elementId = "create_livestream_button",
+                    componentScope = getComponentScope()
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = modifier.padding(horizontal = 8.dp),
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_amity_ic_live_stream_create),
+                                    contentDescription = "Create Livestream Post",
+                                    tint = AmityTheme.colors.base,
+                                    modifier = modifier.size(20.dp)
+                                )
+                                Text(
+                                    amitySocialString("amity_social_status_live_stream"),
+                                    style = AmityTheme.typography.bodyLegacy.copy(
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                            }
+                        },
+                        onClick = {
+                            onDismiss()
+                            if (targetType == CreatePostTargetType.COMMUNITY && targetId?.isNotEmptyOrBlank() == true) {
+                                targetLivestreamBehavior.goToLivestreamPostComposerPage(
+                                    context = context,
+                                    launcher = launcher,
+                                    targetId = targetId,
+                                    targetType = AmityPost.TargetType.COMMUNITY,
+                                )
+                            } else {
+                                behavior.goToSelectLivestreamTargetPage(
+                                    context = context
+                                )
+                            }
+                        }
+                    )
+                }
+
+                if (uiState.canCreateStory) {
+                    AmityBaseElement(
+                        pageScope = pageScope,
+                        componentScope = getComponentScope(),
+                        elementId = "create_story_button"
+                    ) {
+                        DropdownMenuItem(
+                            text = {
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
@@ -252,7 +254,98 @@ fun AmityCreatePostMenuComponent(
                                         modifier = modifier.size(20.dp)
                                     )
                                     Text(
-                                        text = getConfig().getText(),
+                                        text = amitySocialConfigString("amity_social_button_story"),
+                                        style = AmityTheme.typography.bodyLegacy.copy(
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    )
+                                }
+                            },
+                            onClick = {
+                                onDismiss()
+                                if (targetType == CreatePostTargetType.COMMUNITY && targetId?.isNotEmptyOrBlank() == true) {
+                                    targetStoryBehavior.goToStoryCreationPage(
+                                        context = context,
+                                        launcher = launcher,
+                                        targetId = targetId,
+                                        targetType = AmityStory.TargetType.COMMUNITY,
+                                    )
+                                } else {
+                                    behavior.goToSelectStoryTargetPage(context)
+                                }
+                            }
+                        )
+                    }
+                }
+
+                AmityBaseElement(
+                    elementId = "create_clip_button",
+                    componentScope = getComponentScope()
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = modifier.padding(horizontal = 8.dp),
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.amity_ic_create_clip),
+                                    contentDescription = "Create clip post",
+                                    tint = AmityTheme.colors.base,
+                                    modifier = modifier.size(20.dp)
+                                )
+                                Text(
+                                    amitySocialString("amity_social_button_clip"),
+                                    style = AmityTheme.typography.bodyLegacy.copy(
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                            }
+                        },
+                        onClick = {
+                            onDismiss()
+                            if (targetType == CreatePostTargetType.COMMUNITY && targetId?.isNotEmptyOrBlank() == true) {
+                                targetClipBehavior.goToClipPostComposerPage(
+                                    context = context,
+                                    launcher = launcher,
+                                    targetId = targetId,
+                                    targetType = AmityPostTargetType.COMMUNITY,
+                                )
+                            } else {
+                                behavior.goToSelectPostTargetPage(
+                                    context = context,
+                                    type = AmityPostTargetSelectionPageType.CLIP
+                                )
+                            }
+                        }
+                    )
+                }
+
+
+                if (uiState.canCreateEvent) {
+                    DropdownMenuItem(
+                        text = {
+                            AmityBaseElement(
+                                pageScope = pageScope,
+                                componentScope = getComponentScope(),
+                                elementId = "create_event_button"
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = modifier
+                                        .padding(horizontal = 8.dp)
+                                        .testTag(getAccessibilityId()),
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = com.amity.socialcloud.uikit.common.R.drawable.amity_ic_create_event),
+                                        contentDescription = "Create Event",
+                                        tint = AmityTheme.colors.base,
+                                        modifier = modifier.size(20.dp)
+                                    )
+                                    Text(
+                                        text = amitySocialString("amity_social_button_event"),
                                         style = AmityTheme.typography.bodyLegacy.copy(
                                             fontWeight = FontWeight.SemiBold
                                         )
@@ -262,93 +355,10 @@ fun AmityCreatePostMenuComponent(
                         },
                         onClick = {
                             onDismiss()
-                            if (targetType == CreatePostTargetType.COMMUNITY && targetId?.isNotEmptyOrBlank() == true) {
-                                targetStoryBehavior.goToStoryCreationPage(
-                                    context = context,
-                                    launcher = launcher,
-                                    targetId = targetId,
-                                    targetType = AmityStory.TargetType.COMMUNITY,
-                                )
-                            } else {
-                                behavior.goToSelectStoryTargetPage(context)
-                            }
+                            behavior.goToSelectEventTargetPage(context = context)
                         }
                     )
                 }
-
-                DropdownMenuItem(
-                    text = {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = modifier.padding(horizontal = 8.dp),
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.amity_ic_create_clip),
-                                contentDescription = "Create clip post",
-                                tint = AmityTheme.colors.base,
-                                modifier = modifier.size(20.dp)
-                            )
-                            Text(
-                                "Clip",
-                                style = AmityTheme.typography.bodyLegacy.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            )
-                        }
-                    },
-                    onClick = {
-                        onDismiss()
-                        if (targetType == CreatePostTargetType.COMMUNITY && targetId?.isNotEmptyOrBlank() == true) {
-                            targetClipBehavior.goToClipPostComposerPage(
-                                context = context,
-                                launcher = launcher,
-                                targetId = targetId,
-                                targetType = AmityPostTargetType.COMMUNITY,
-                            )
-                        } else {
-                            behavior.goToSelectPostTargetPage(
-                                context = context,
-                                type = AmityPostTargetSelectionPageType.CLIP
-                            )
-                        }
-                    }
-                )
-
-                DropdownMenuItem(
-                    text = {
-                        AmityBaseElement(
-                            pageScope = pageScope,
-                            componentScope = getComponentScope(),
-                            elementId = "create_event_button"
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = modifier
-                                    .padding(horizontal = 8.dp)
-                                    .testTag(getAccessibilityId()),
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = com.amity.socialcloud.uikit.common.R.drawable.amity_ic_create_event),
-                                    contentDescription = "Create Event",
-                                    tint = AmityTheme.colors.base,
-                                    modifier = modifier.size(20.dp)
-                                )
-                                Text(
-                                    text = "Event",
-                                    style = AmityTheme.typography.bodyLegacy.copy(
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                )
-                            }
-                        }
-                    },
-                    onClick = {
-                        onDismiss()
-                        behavior.goToSelectEventTargetPage(context = context)
-                    }
-                )
             }
         }
     }

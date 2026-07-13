@@ -6,11 +6,14 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -53,6 +56,7 @@ import com.amity.socialcloud.uikit.common.utils.closePage
 import com.amity.socialcloud.uikit.common.utils.isSignedIn
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.community.compose.story.view.components.AmityStoryAdView
 import com.amity.socialcloud.uikit.community.compose.story.view.components.AmityStoryBodyRow
 import com.amity.socialcloud.uikit.community.compose.story.view.components.AmityStoryBottomRow
@@ -61,6 +65,8 @@ import com.amity.socialcloud.uikit.community.compose.story.view.elements.AmitySt
 import com.amity.socialcloud.uikit.community.compose.utils.AmityStoryVideoPlayerHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.amity.socialcloud.uikit.common.ui.theme.amityMediaSurface
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -321,65 +327,14 @@ fun AmityViewCommunityStoryPage(
 
     val dialogState by viewModel.dialogUIState.collectAsState()
 
-    when (dialogState) {
-        is AmityStoryModalDialogUIState.OpenConfirmDeleteDialog -> {
-            if (!isTargetVisible) return
-            viewModel.handleSegmentTimer(true)
-            val data = dialogState as AmityStoryModalDialogUIState.OpenConfirmDeleteDialog
-            AmityAlertDialog(
-                dialogTitle = context.getString(R.string.amity_delete_story_title),
-                dialogText = context.getString(R.string.amity_delete_story_warning_message),
-                confirmText = context.getString(R.string.amity_delete),
-                dismissText = context.getString(R.string.amity_cancel),
-                onConfirmation = {
-                    shouldShowLoading = true
-                    viewModel.deleteStory(
-                        storyId = data.storyId,
-                        onSuccess = {
-                            shouldShowLoading = false
-                            AmityUIKitSnackbar.publishSnackbarMessage(context.getString(R.string.amity_delete_story_success))
-                            viewModel.updateDialogUIState(AmityStoryModalDialogUIState.CloseDialog)
-                            viewModel.handleSegmentTimer(false)
-
-                            if (stories.itemCount <= 1) {
-                                context.closePage()
-                            } else {
-                                scope.launch {
-                                    moveSegment(
-                                        shouldMoveToNext = false,
-                                        totalSegments = stories.itemCount,
-                                        storyPagerState = storyPagerState,
-                                        firstSegmentReached = firstSegmentReached,
-                                        lastSegmentReached = lastSegmentReached,
-                                    )
-                                }
-                            }
-                        },
-                        onError = {
-                            shouldShowLoading = false
-                            AmityUIKitSnackbar.publishSnackbarErrorMessage(context.getString(R.string.amity_delete_story_fail))
-                            viewModel.updateDialogUIState(AmityStoryModalDialogUIState.CloseDialog)
-                            viewModel.handleSegmentTimer(false)
-                        }
-                    )
-                },
-                onDismissRequest = {
-                    viewModel.updateDialogUIState(AmityStoryModalDialogUIState.CloseDialog)
-                    viewModel.handleSegmentTimer(false)
-                }
-            )
-        }
-
-        AmityStoryModalDialogUIState.CloseDialog -> {
-            viewModel.updateDialogUIState(AmityStoryModalDialogUIState.CloseDialog)
-        }
-    }
-
     AmityBasePage(pageId = "story_page") {
         Box(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(amityMediaSurface) // the color for the status bar background
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .background(amityMediaSurface)
         ) {
             HorizontalPager(
                 state = storyPagerState,
@@ -395,7 +350,8 @@ fun AmityViewCommunityStoryPage(
 
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = modifier.fillMaxSize()
+                            modifier = modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center
                         ) {
                             AmityStoryBodyRow(
                                 modifier = modifier
@@ -466,7 +422,8 @@ fun AmityViewCommunityStoryPage(
                         val ad = data.ad
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = modifier.fillMaxSize()
+                            modifier = modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Center
                         ) {
                             AmityStoryAdView(
                                 modifier = modifier.aspectRatio(9f / 16f),
@@ -558,7 +515,7 @@ fun AmityViewCommunityStoryPage(
                 Box(
                     modifier = modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = if (isMovedToUnseenStory) 0.5f else 1f))
+                        .background(amityColorBlack.copy(alpha = if (isMovedToUnseenStory) 0.5f else 1f))
                 ) {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center),
@@ -569,6 +526,65 @@ fun AmityViewCommunityStoryPage(
 
             if (isTargetVisible) {
                 AmityStoryModalBottomSheet(modifier = modifier)
+            }
+        }
+
+        // Dialog must live inside AmityBasePage so it composes within
+        // AmityComposeTheme — otherwise it falls back to the default light
+        // LocalAmityColors and shows a white background in dark mode.
+        when (dialogState) {
+            is AmityStoryModalDialogUIState.OpenConfirmDeleteDialog -> {
+                if (isTargetVisible) {
+                    viewModel.handleSegmentTimer(true)
+                    val data = dialogState as AmityStoryModalDialogUIState.OpenConfirmDeleteDialog
+                    AmityAlertDialog(
+                        dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_delete_story_title"),
+                        dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_discard_story_body"),
+                        confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_delete"),
+                        dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
+                        confirmTextColor = AmityTheme.colors.alert,
+                        onConfirmation = {
+                            shouldShowLoading = true
+                            viewModel.deleteStory(
+                                storyId = data.storyId,
+                                onSuccess = {
+                                    shouldShowLoading = false
+                                    AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_delete_story_success"))
+                                    viewModel.updateDialogUIState(AmityStoryModalDialogUIState.CloseDialog)
+                                    viewModel.handleSegmentTimer(false)
+
+                                    if (stories.itemCount <= 1) {
+                                        context.closePage()
+                                    } else {
+                                        scope.launch {
+                                            moveSegment(
+                                                shouldMoveToNext = false,
+                                                totalSegments = stories.itemCount,
+                                                storyPagerState = storyPagerState,
+                                                firstSegmentReached = firstSegmentReached,
+                                                lastSegmentReached = lastSegmentReached,
+                                            )
+                                        }
+                                    }
+                                },
+                                onError = {
+                                    shouldShowLoading = false
+                                    AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_something_went_wrong"))
+                                    viewModel.updateDialogUIState(AmityStoryModalDialogUIState.CloseDialog)
+                                    viewModel.handleSegmentTimer(false)
+                                }
+                            )
+                        },
+                        onDismissRequest = {
+                            viewModel.updateDialogUIState(AmityStoryModalDialogUIState.CloseDialog)
+                            viewModel.handleSegmentTimer(false)
+                        }
+                    )
+                }
+            }
+
+            AmityStoryModalDialogUIState.CloseDialog -> {
+                viewModel.updateDialogUIState(AmityStoryModalDialogUIState.CloseDialog)
             }
         }
     }

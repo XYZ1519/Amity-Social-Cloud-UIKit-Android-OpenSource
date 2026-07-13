@@ -88,6 +88,12 @@ import com.amity.socialcloud.uikit.community.compose.story.hyperlink.elements.Am
 import com.amity.socialcloud.uikit.community.compose.story.view.elements.AmityStoryVideoPlayer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
+import com.amity.socialcloud.uikit.common.ui.theme.amityMediaSurface
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorSecondary
+import com.amity.socialcloud.uikit.common.ui.theme.amityStoryEngagementBackground
+import com.amity.socialcloud.uikit.common.utils.asColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -164,25 +170,27 @@ fun AmityDraftStoryPage(
         }
     }
 
-    if (openAlertDialog.value) {
-        AmityAlertDialog(
-            dialogTitle = "Discard story?",
-            dialogText = "The story will be permanently discarded. It cannot be undone.",
-            confirmText = "Discard",
-            dismissText = "Cancel",
-            onConfirmation = { context.closePage() },
-            onDismissRequest = { openAlertDialog.value = false }
-        )
-    }
     BackHandler {
         openAlertDialog.value = true
     }
 
     AmityBasePage(pageId = "create_story_page") {
+        if (openAlertDialog.value) {
+            AmityAlertDialog(
+                dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_discard_story"),
+                dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_discard_story_body"),
+                confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_discard"),
+                dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
+                confirmTextColor = AmityTheme.colors.alert,
+                onConfirmation = { context.closePage() },
+                onDismissRequest = { openAlertDialog.value = false }
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(amityMediaSurface)
         ) {
             ConstraintLayout(
                 modifier = modifier
@@ -191,7 +199,7 @@ fun AmityDraftStoryPage(
 
                 Box(
                     modifier = modifier
-                        .background(Color.Black)
+                        .background(amityMediaSurface)
                         .clip(RoundedCornerShape(12.dp))
                         .constrainAs(contentBox) {
                             top.linkTo(parent.top)
@@ -206,9 +214,9 @@ fun AmityDraftStoryPage(
                                 .background(
                                     brush = Brush.verticalGradient(
                                         colors = listOf(
-                                            (palette?.mutedSwatch?.toComposeColor() ?: Color.Black),
+                                            (palette?.mutedSwatch?.toComposeColor() ?: amityColorBlack),
                                             (palette?.darkMutedSwatch?.toComposeColor()
-                                                ?: Color.Black),
+                                                ?: amityColorBlack),
                                         )
                                     )
                                 )
@@ -302,7 +310,7 @@ fun AmityDraftStoryPage(
                             if (hyperlinkUrlText.isEmpty()) {
                                 showBottomSheet = true
                             } else {
-                                AmityUIKitSnackbar.publishSnackbarErrorMessage("Can't add more than one link to your story.")
+                                AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_story_link_limit"))
                             }
                         }
                     )
@@ -338,7 +346,7 @@ fun AmityDraftStoryPage(
                 modifier = modifier
                     .fillMaxWidth()
                     .wrapContentHeight()
-                    .background(Color.Black)
+                    .background(amityMediaSurface)
                     .padding(end = 16.dp, top = 16.dp)
             ) {
                 AmityBaseElement(
@@ -369,7 +377,7 @@ fun AmityDraftStoryPage(
                                             hyperlinkCustomText = hyperlinkCustomText,
                                             onSuccess = {
                                                 AmityUIKitSnackbar.publishSnackbarMessage(
-                                                    "Successfully shared story"
+                                                    DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_story_shared")
                                                 )
                                             },
                                             onError = { message ->
@@ -390,7 +398,7 @@ fun AmityDraftStoryPage(
                                             hyperlinkCustomText = hyperlinkCustomText,
                                             onSuccess = {
                                                 AmityUIKitSnackbar.publishSnackbarMessage(
-                                                    "Successfully shared story"
+                                                    DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_story_shared")
                                                 )
                                             },
                                             onError = { message ->
@@ -412,13 +420,13 @@ fun AmityDraftStoryPage(
                                 modifier = Modifier
                                     .size(32.dp)
                                     .clip(CircleShape)
-                                    .background(Color.Black)
+                                    .background(amityMediaSurface)
                                     .testTag(getAccessibilityId("image_view"))
                             )
                         }
 
                         Text(
-                            text = "Share story",
+                            text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_share_story"),
                             style = MaterialTheme.typography.titleMedium
                         )
 
@@ -427,7 +435,7 @@ fun AmityDraftStoryPage(
                                 id = getConfig().getValue("share_icon").asDrawableRes()
                             ),
                             contentDescription = null,
-                            tint = AmityTheme.colors.base,
+                            tint = amityStoryEngagementBackground,
                             modifier = Modifier.size(20.dp)
                         )
                     }

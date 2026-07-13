@@ -19,19 +19,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.amity.socialcloud.uikit.common.ui.theme.amityCoHostWaitingBackground
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
 import com.amity.socialcloud.uikit.common.R
 import com.amity.socialcloud.uikit.common.ui.elements.AmityUserAvatarView
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import io.livekit.android.compose.types.TrackReference
 import io.livekit.android.compose.ui.ScaleType
 import io.livekit.android.compose.ui.VideoTrackView
 import io.livekit.android.room.Room
+import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
 
 
 @Composable
@@ -73,11 +78,12 @@ fun AmityWaitingForCoHost(
     isHost: Boolean,
     user: AmityUser?,
     onMenuClick: (() -> Unit)?,
+    isPendingInvitation: Boolean = false,
 ) {
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF4A5568))
+            .background(amityCoHostWaitingBackground)
     ) {
         if (onMenuClick != null) {
             AmityCoHostOverlay(
@@ -106,13 +112,13 @@ fun AmityWaitingForCoHost(
             // Waiting message
             Text(
                 text = if (isHost) {
-                    "Co-host is getting ready\nin the backstage."
+                    amitySocialString("amity_social_label_waiting_for_cohost")
                 } else {
-                    "Waiting for host\nto get resume..."
+                    amitySocialString("amity_social_label_waiting_for_host")
                 },
-                color = Color.White,
+                color = AmityTheme.colors.baseInverse,
                 fontSize = 17.sp,
-                fontWeight = FontWeight.Light,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
                 lineHeight = 24.sp
             )
@@ -138,46 +144,55 @@ fun AmityCoHostOverlay(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // User display name with icons
+                // User display name with icons - nested Row to constrain width
                 Row(
-                    modifier = Modifier
-                        .background(
-                            color = Color(0x33000000),
-                            shape = RoundedCornerShape(20.dp)
-                        )
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = user?.getDisplayName() ?: "Unknown User",
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Light
-                    )
+                    Row(
+                        modifier = Modifier
+                            .background(
+                                color = amityColorBlack.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = user?.getDisplayName() ?: amitySocialString("amity_social_button_unknown_user"),
+                            color = AmityTheme.colors.baseInverse,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Light,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
 
-                    // Show brand badge if user is a brand
-                    val isBrandUser = user?.isBrand() == true
-                    if (isBrandUser) {
-                        Image(
-                            painter = painterResource(id = com.amity.socialcloud.uikit.common.compose.R.drawable.amity_ic_brand_badge),
-                            contentDescription = "Brand badge",
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    if (isMute && !isHost) {
-                        Image(
-                            painter = painterResource(id = R.drawable.amity_ic_room_mute_state),
-                            contentDescription = "Mute state",
-                            modifier = Modifier.size(24.dp)
-                        )
+                        // Show brand badge if user is a brand
+                        val isBrandUser = user?.isBrand() == true
+                        if (isBrandUser) {
+                            Image(
+                                painter = painterResource(id = com.amity.socialcloud.uikit.common.compose.R.drawable.amity_ic_brand_badge),
+                                contentDescription = "Brand badge",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        if (isMute && !isHost) {
+                            Image(
+                                painter = painterResource(id = R.drawable.amity_ic_room_mute_state),
+                                contentDescription = "Mute state",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
                 Box(
                     modifier = Modifier
                         .size(32.dp)
                         .background(
-                            color = Color(0x80000000),
+                            color = amityColorBlack.copy(alpha = 0.5f),
                             shape = CircleShape
                         )
                         .clickableWithoutRipple {
@@ -187,7 +202,7 @@ fun AmityCoHostOverlay(
                     Icon(
                         painter = painterResource(R.drawable.amity_ic_more_vertical),
                         contentDescription = "Menu",
-                        tint = Color.White,
+                        tint = AmityTheme.colors.baseInverse,
                         modifier = Modifier
                             .size(24.dp)
                             .align(Alignment.Center)
@@ -201,14 +216,14 @@ fun AmityCoHostOverlay(
                     .padding(top = 48.dp, start = 16.dp)
                     .size(32.dp)
                     .background(
-                        color = Color(0x33000000),
+                        color = amityColorBlack.copy(alpha = 0.2f),
                         shape = CircleShape
                     )
             ) {
                 Icon(
                     painter = painterResource(R.drawable.amity_ic_room_mute_state),
                     contentDescription = "host mute state icon",
-                    tint = Color.White,
+                    tint = AmityTheme.colors.baseInverse,
                     modifier = Modifier
                         .size(24.dp)
                         .align(Alignment.Center)

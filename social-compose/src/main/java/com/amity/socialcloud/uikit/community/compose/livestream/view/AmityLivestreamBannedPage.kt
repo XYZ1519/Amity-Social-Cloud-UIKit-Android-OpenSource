@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 
 @Composable
 fun AmityBaseWarningPage(
@@ -56,22 +57,6 @@ fun AmityBaseWarningPage(
                 .background(AmityTheme.colors.background),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
-            // App Bar
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .background(Color.White),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Live stream",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.Black
-                )
-            }
             Box(
                 modifier = Modifier
                     .height(1.dp)
@@ -101,6 +86,7 @@ fun AmityBaseWarningPage(
                             contentDescription = "Warning Icon",
                             modifier = Modifier
                                 .size(56.dp),
+                            tint = AmityTheme.colors.baseShade4
                         )
                     }
 
@@ -111,7 +97,7 @@ fun AmityBaseWarningPage(
                         text = title,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Medium,
-                        color = AmityTheme.colors.base,
+                        color = AmityTheme.colors.baseShade3,
                         textAlign = TextAlign.Center
                     )
 
@@ -121,43 +107,28 @@ fun AmityBaseWarningPage(
                     Text(
                         text = description,
                         fontSize = 16.sp,
-                        color = AmityTheme.colors.baseShade1,
+                        color = AmityTheme.colors.baseShade3,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(horizontal = 32.dp)
                     )
-                }
-            }
 
+                    Spacer(modifier = Modifier.height(24.dp))
 
-            Box(
-                modifier = Modifier
-                    .height(1.dp)
-                    .fillMaxWidth()
-                    .background(AmityTheme.colors.divider)
-            ) {}
-
-            // OK Button
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Button(
-                    onClick = onOkClick,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AmityTheme.colors.primary
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = buttonText,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color.White
-                    )
+                    Button(
+                        onClick = onOkClick,
+                        modifier = Modifier
+                            .height(40.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AmityTheme.colors.primary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = buttonText,
+                            style = AmityTheme.typography.bodyBold,
+                            color = AmityTheme.colors.baseInverse
+                        )
+                    }
                 }
             }
         }
@@ -172,8 +143,8 @@ fun AmityLivestreamBannedPage(
     AmityBaseWarningPage(
         pageId = "live_stream_banned_page",
         iconRes = R.drawable.amity_ic_base_warning,
-        title =  "You've been banned.",
-        description = "You can no longer access this live stream.", buttonText = "OK",
+        title = amitySocialString("amity_social_label_banned_title"),
+        description = amitySocialString("amity_social_status_banned_desc"), buttonText = amitySocialString("amity_social_button_ok"),
         onOkClick = onOkClick,
     )
 }
@@ -185,8 +156,8 @@ fun AmityLivestreamDeclinedPage(
     AmityBaseWarningPage(
         pageId = "live_stream_declined_page",
         iconRes = R.drawable.amity_ic_livestream_unavailable,
-        title =  "Something went wrong",
-        description = "The content you're looking for is unavailable.", buttonText = "Go back",
+        title =  amitySocialString("amity_social_label_something_went_wrong"),
+        description = amitySocialString("amity_social_button_content_unavailable"), buttonText = amitySocialString("amity_social_button_go_back"),
         onOkClick = onOkClick,
     )
 }

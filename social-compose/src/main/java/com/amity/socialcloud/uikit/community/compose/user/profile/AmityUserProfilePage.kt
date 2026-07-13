@@ -3,6 +3,7 @@ package com.amity.socialcloud.uikit.community.compose.user.profile
 import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import com.amity.socialcloud.uikit.common.config.AmityUIKitConfigController
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -25,15 +26,12 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Text
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -59,10 +57,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.api.social.post.query.AmityFeedSource
 import com.amity.socialcloud.sdk.model.core.error.AmityError
 import com.amity.socialcloud.sdk.model.core.follow.AmityFollowStatus
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
+import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
+import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import com.amity.socialcloud.uikit.common.ui.elements.AmityAlertDialog
 import com.amity.socialcloud.uikit.common.ui.elements.AmityToolBar
@@ -70,10 +71,12 @@ import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.closePage
 import com.amity.socialcloud.uikit.common.utils.closePageWithResult
+import com.amity.socialcloud.uikit.common.utils.isSignedIn
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.clip.view.AmityClipFeedPageType
 import com.amity.socialcloud.uikit.community.compose.community.profile.element.AmityVideoAndClipChipSelector
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.community.compose.paging.feed.user.amityUserClipFeedLLS
 import com.amity.socialcloud.uikit.community.compose.paging.feed.user.amityUserFeedLLS
 import com.amity.socialcloud.uikit.community.compose.paging.feed.user.amityUserImageFeedLLS
@@ -89,9 +92,10 @@ import com.amity.socialcloud.uikit.community.compose.user.profile.elements.Amity
 import com.amity.socialcloud.uikit.community.compose.user.profile.elements.AmityUserUnfollowBottomSheet
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 
 @OptIn(
-    ExperimentalMaterialApi::class, ExperimentalFoundationApi::class,
+    ExperimentalFoundationApi::class,
     ExperimentalMaterial3Api::class
 )
 @Composable
@@ -136,12 +140,7 @@ fun AmityUserProfilePage(
     var targetUser by remember(state) { mutableStateOf<AmityUser?>(null) }
 
     var isHeaderSticky by remember { mutableStateOf(false) }
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = state.isRefreshing,
-        onRefresh = {
-            viewModel.refresh()
-        }
-    )
+    val onRefresh = { viewModel.refresh() }
     var showAvatarPopupDialog by remember { mutableStateOf(false) }
 
     var showMenuSheet by remember { mutableStateOf(false) }
@@ -177,9 +176,9 @@ fun AmityUserProfilePage(
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val feedFilter = listOf(
-        context.getString(R.string.amity_v4_user_profile_feed_option_all),
-        context.getString(R.string.amity_v4_user_profile_feed_option_community),
-        context.getString(R.string.amity_v4_user_profile_feed_option_user),
+        DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_user_profile_all_post_title"),
+        DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_user_profile_feed_option_community"),
+        DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_user_profile_feed_option_user"),
     )
 
     val error by remember(userId) {
@@ -199,15 +198,22 @@ fun AmityUserProfilePage(
     }
 
     var selectedMediaTabIndex by remember { mutableIntStateOf(0) }
-    val mediaTabTitles = listOf("Images", "Videos", "Clips")
+    val mediaTabTitles = listOf(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_image"), DefaultAmitySocialStringProvider.getInstance().getString("amity_social_tab_tab_videos"), DefaultAmitySocialStringProvider.getInstance().getString("amity_social_tab_tab_clips"))
 
     AmityBasePage("user_profile_page") {
-        Box(
-            modifier = Modifier
+        val isUserProfileContentVisible = remember {
+            !AmityUIKitConfigController.isExcluded(
+                "${getPageScope().getId()}/*/user_profile_content"
+            )
+        }
+
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = onRefresh,
+            modifier = modifier
                 .fillMaxSize()
                 .background(AmityTheme.colors.background)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .pullRefresh(pullRefreshState),
+                .windowInsetsPadding(WindowInsets.safeDrawing),
         ) {
             LaunchedEffect(lazyListState) {
                 snapshotFlow { lazyListState.firstVisibleItemIndex }
@@ -239,7 +245,7 @@ fun AmityUserProfilePage(
                                 painter = painterResource(R.drawable.amity_ic_back),
                                 contentDescription = "Back",
                                 tint = AmityTheme.colors.base,
-                                modifier = modifier
+                                modifier = Modifier
                                     .size(24.dp)
                                     .align(Alignment.CenterStart)
                                     .clickableWithoutRipple {
@@ -275,7 +281,7 @@ fun AmityUserProfilePage(
                                 painter = painterResource(R.drawable.amity_ic_more_horiz),
                                 contentDescription = "Menu",
                                 tint = AmityTheme.colors.base,
-                                modifier = modifier
+                                modifier = Modifier
                                     .size(24.dp)
                                     .align(Alignment.CenterEnd)
                                     .clickableWithoutRipple {
@@ -303,16 +309,18 @@ fun AmityUserProfilePage(
                             context.closePageWithResult(Activity.RESULT_CANCELED)
                         }
                     ) {
-                        Icon(
-                            painter = painterResource(R.drawable.amity_ic_more_horiz),
-                            contentDescription = "Close",
-                            tint = AmityTheme.colors.base,
-                            modifier = modifier
-                                .size(24.dp)
-                                .clickableWithoutRipple {
-                                    showMenuSheet = true
-                                }
-                        )
+                        if (AmityCoreClient.isSignedIn()) {
+                            Icon(
+                                painter = painterResource(R.drawable.amity_ic_more_horiz),
+                                contentDescription = "Close",
+                                tint = AmityTheme.colors.base,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clickableWithoutRipple {
+                                        showMenuSheet = true
+                                    }
+                            )
+                        }
                     }
                 }
                 item {
@@ -334,19 +342,25 @@ fun AmityUserProfilePage(
                     }
                 }
                 item {
-                    AmityUserProfileTabRow(
-                        selectedIndex = selectedTabIndex,
-                        onSelect = { it ->
-                            selectedTabIndex = it
-                        },
-                        currentFilter = feedFilter[selectedFilterIndex],
-                        onFilterLaunch = {
-                            showFeedFilterSheet = true
-                        }
-                    )
-                }
+                    AmityBaseElement(
+                        pageScope = getPageScope(),
+                        elementId = "user_profile_content",
+                    ) {
+                        AmityUserProfileTabRow(
+                            selectedIndex = selectedTabIndex,
+                            onSelect = { it ->
+                                selectedTabIndex = it
+                            },
+                            currentFilter = feedFilter[selectedFilterIndex],
+                            onFilterLaunch = {
+                                showFeedFilterSheet = true
+                            }
+                        )
 
-                when (selectedTabIndex) {
+                    }
+                }
+                if (isUserProfileContentVisible) {
+                    when (selectedTabIndex) {
                     0 -> {
                         AmityUserProfilePageViewModel.PostListState.from(
                             loadState = userPosts.loadState.refresh,
@@ -354,7 +368,7 @@ fun AmityUserProfilePage(
                         ).let(viewModel::setPostListState)
 
                         amityUserFeedLLS(
-                            modifier = modifier,
+                            modifier = Modifier,
                             context = context,
                             pageScope = getPageScope(),
                             userPosts = userPosts,
@@ -372,13 +386,19 @@ fun AmityUserProfilePage(
 
                     1 -> {
                         item {
-                            AmityVideoAndClipChipSelector(
-                                tabTitles = mediaTabTitles,
-                                selectedTabIndex = selectedMediaTabIndex,
-                                onTabSelected = { index ->
-                                    selectedMediaTabIndex = index
-                                },
-                            )
+                            AmityBaseComponent(
+                                componentId = "user_video_feed",
+                                pageScope = getPageScope()
+                            ) {
+                                AmityVideoAndClipChipSelector(
+                                    tabTitles = mediaTabTitles,
+                                    selectedTabIndex = selectedMediaTabIndex,
+                                    onTabSelected = { index ->
+                                        selectedMediaTabIndex = index
+                                    },
+                                    componentScope = getComponentScope()
+                                )
+                            }
                         }
 
                         when (selectedMediaTabIndex) {
@@ -389,7 +409,7 @@ fun AmityUserProfilePage(
                                 ).let(viewModel::setImagePostListState)
 
                                 amityUserImageFeedLLS(
-                                    modifier = modifier,
+                                    modifier = Modifier,
                                     pageScope = getPageScope(),
                                     imagePosts = imagePosts,
                                     postListState = imagePostListState,
@@ -410,7 +430,7 @@ fun AmityUserProfilePage(
                                 ).let(viewModel::setVideoPostListState)
 
                                 amityUserVideoFeedLLS(
-                                    modifier = modifier,
+                                    modifier = Modifier,
                                     pageScope = getPageScope(),
                                     videoPosts = videoPosts,
                                     postListState = videoPostListState,
@@ -425,7 +445,7 @@ fun AmityUserProfilePage(
                                 ).let(viewModel::setClipPostListState)
 
                                 amityUserClipFeedLLS(
-                                    modifier = modifier,
+                                    modifier = Modifier,
                                     pageScope = getPageScope(),
                                     clipPosts = clipPosts,
                                     postListState = clipPostListState,
@@ -474,36 +494,35 @@ fun AmityUserProfilePage(
                         }
 
                     }
+                    }
                 }
             }
 
-            PullRefreshIndicator(
-                refreshing = state.isRefreshing,
-                state = pullRefreshState,
-                modifier = Modifier.align(Alignment.TopCenter),
-                contentColor = androidx.compose.ui.graphics.Color(0xFFF26B1C),
-            )
-
             if (state.isMyUserProfile()) {
-                FloatingActionButton(
-                    onClick = {
-                        showUserActionSheet = true
-                    },
-                    shape = RoundedCornerShape(size = 32.dp),
-                    containerColor = AmityTheme.colors.primary,
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .size(64.dp)
-                        .align(Alignment.BottomEnd)
+                AmityBaseElement(
+                    pageScope = getPageScope(),
+                    elementId = "create_post_button",
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.amity_ic_plus),
-                        contentDescription = "create post",
-                        tint = Color.White,
+                    FloatingActionButton(
+                        onClick = {
+                            showUserActionSheet = true
+                        },
+                        shape = RoundedCornerShape(size = 32.dp),
+                        containerColor = AmityTheme.colors.primary,
                         modifier = Modifier
-                            .size(32.dp)
-                            .padding(4.dp)
-                    )
+                            .padding(16.dp)
+                            .size(64.dp)
+                            .align(Alignment.BottomEnd)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.amity_ic_plus),
+                            contentDescription = "create post",
+                            tint = amityColorWhite,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .padding(4.dp)
+                        )
+                    }
                 }
             }
 
@@ -538,6 +557,7 @@ fun AmityUserProfilePage(
             if (showUserActionSheet && user != null) {
                 AmityUserActionsBottomSheet(
                     user = user!!,
+                    pageScope = getPageScope(),
                     showPollTypeSelectionSheet = {
                         showPollSelectionBottomSheet = true
                     }
@@ -548,7 +568,7 @@ fun AmityUserProfilePage(
 
             if (showBlockUserDialog && user != null) {
                 AmityAlertDialog(
-                    dialogTitle = "Block member?",
+                    dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_block_user"),
                     dialogText = buildAnnotatedString {
                         val displayName = user?.getDisplayName() ?: ""
                         append(displayName)
@@ -559,8 +579,8 @@ fun AmityUserProfilePage(
                         )
                         append(" won't be able to see posts and comments that you've created. They won't be notified that you've blocked them.")
                     },
-                    confirmText = "Block",
-                    dismissText = "Cancel",
+                    confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_block"),
+                    dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
                     confirmTextColor = AmityTheme.colors.alert,
                     onConfirmation = {
                         showBlockUserDialog = false
@@ -569,13 +589,13 @@ fun AmityUserProfilePage(
                             targetUserId = user!!.getUserId(),
                             onSuccess = {
                                 getPageScope().showSnackbar(
-                                    message = "User blocked",
+                                    message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_user_blocked"),
                                     drawableRes = R.drawable.amity_ic_snack_bar_success,
                                 )
                             },
                             onError = {
                                 getPageScope().showErrorSnackbar(
-                                    message = "Block not successful. Please try again.",
+                                    message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_block_failed"),
                                     drawableRes = R.drawable.amity_ic_snack_bar_warning
                                 )
                             }
@@ -589,7 +609,7 @@ fun AmityUserProfilePage(
 
             if (showUnblockUserDialog && user != null) {
                 AmityAlertDialog(
-                    dialogTitle = "Unblock member?",
+                    dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_unblock_user"),
                     dialogText = buildAnnotatedString {
                         val displayName = user?.getDisplayName() ?: ""
                         append(displayName)
@@ -600,8 +620,8 @@ fun AmityUserProfilePage(
                         )
                         append(" will now be able to see posts and comments that you've created. They won't be notified that you've unblocked them.")
                     },
-                    confirmText = "Unblock",
-                    dismissText = "Cancel",
+                    confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unblock"),
+                    dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
                     confirmTextColor = AmityTheme.colors.alert,
                     onConfirmation = {
                         showUnblockUserDialog = false
@@ -610,13 +630,13 @@ fun AmityUserProfilePage(
                             targetUserId = user!!.getUserId(),
                             onSuccess = {
                                 getPageScope().showSnackbar(
-                                    message = "User unblocked.",
+                                    message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_user_unblocked"),
                                     drawableRes = R.drawable.amity_ic_snack_bar_success,
                                 )
                             },
                             onError = {
                                 getPageScope().showErrorSnackbar(
-                                    message = "Failed to unblock user. Please try again.",
+                                    message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_unblock_failed"),
                                     drawableRes = R.drawable.amity_ic_snack_bar_warning
                                 )
                             }
@@ -693,10 +713,10 @@ fun AmityUserProfilePage(
 
             if (showUnfollowPopupDialog) {
                 AmityAlertDialog(
-                    dialogTitle = "Unfollow this user?",
-                    dialogText = "If you change your mind, you'll have to request to follow them again.",
-                    confirmText = "Unfollow",
-                    dismissText = "Cancel",
+                    dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_unfollow_user"),
+                    dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_unfollow_description"),
+                    confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unfollow"),
+                    dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
                     confirmTextColor = AmityTheme.colors.alert,
                     onConfirmation = {
                         showUnfollowPopupDialog = false
@@ -718,14 +738,14 @@ fun AmityUserProfilePage(
 
         if (AmityError.from(error) == AmityError.ITEM_NOT_FOUND || user?.isDeleted() == true) {
             val title = if (user?.isDeleted() == true) {
-                context.getString(R.string.amity_invalid_user_dialog_title)
+                DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_invalid_user_dialog_title")
             } else {
-                context.getString(R.string.amity_deleted_user_dialog_title)
+                DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_deleted_user_dialog_title")
             }
             AmityAlertDialog(
                 dialogTitle = title,
                 dialogText = "",
-                dismissText = context.getString(R.string.amity_ok),
+                dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
                 onDismissRequest = {
                     context.closePage()
                 }
@@ -734,9 +754,9 @@ fun AmityUserProfilePage(
 
         if (showUnfollowErrorDialog) {
             AmityAlertDialog(
-                dialogTitle = "Unable to unfollow this user",
-                dialogText = "Oops! something went wrong. Please try again later.",
-                dismissText = "OK",
+                dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_failed_to_unfollow_user"),
+                dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_generic_error"),
+                dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
                 onDismissRequest = {
                     showUnfollowErrorDialog = false
                 }

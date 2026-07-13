@@ -1,5 +1,6 @@
 package com.amity.socialcloud.uikit.community.compose.comment.query.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,13 +24,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amity.socialcloud.sdk.helper.core.mention.AmityMentionMetadata
 import com.amity.socialcloud.sdk.helper.core.mention.AmityMentionMetadataGetter
+import com.amity.socialcloud.sdk.model.core.error.AmityError
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
 import com.amity.socialcloud.sdk.model.social.comment.AmityComment
 import com.amity.socialcloud.uikit.common.common.views.AmityColorShade
@@ -40,12 +41,19 @@ import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.getBackgroundColor
 import com.amity.socialcloud.uikit.common.utils.getValue
+import com.amity.socialcloud.uikit.common.utils.resolveValue
 import com.amity.socialcloud.uikit.common.utils.shade
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentViewModel
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 import com.amity.socialcloud.uikit.community.compose.ui.components.mentions.AmityMentionTextField
 import com.amity.socialcloud.uikit.community.compose.ui.components.mentions.AmityMentionSuggestionView
+import com.amity.socialcloud.uikit.community.compose.ui.components.mentions.UrlHighlight
 import com.google.gson.JsonObject
+import kotlin.collections.emptyList
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityDisabledColor
 
 @Composable
 fun AmityEditCommentContainer(
@@ -60,6 +68,31 @@ fun AmityEditCommentContainer(
     }
     val commentText = remember {
         (comment.getData() as? AmityComment.Data.TEXT)?.getText() ?: ""
+    }
+
+    // Convert existing SDK links to UrlHighlight for initial display in editor.
+    // Filter out hyperlinks (where display text != URL) since Android cannot author those.
+    val initialUrlHighlights = remember {
+        /* Remove until support hyperlink edit
+        comment.getLinks()?.mapNotNull { link ->
+            val index = link.getIndex()
+            val length = link.getLength()
+            val url = link.getUrl()
+            if (index != null && length != null && url != null && index + length <= commentText.length) {
+                val displayText = commentText.substring(index, index + length)
+                // Keep only auto-detected links where displayed text matches the URL
+                // (or the URL with https:// prepended). Hyperlinks are dropped.
+                val normalizedDisplay = displayText.lowercase()
+                val normalizedUrl = url.lowercase()
+                val isAutoDetectedLink = normalizedUrl == normalizedDisplay
+                        || normalizedUrl == "https://$normalizedDisplay"
+                        || normalizedUrl == "http://$normalizedDisplay"
+                if (isAutoDetectedLink) {
+                    UrlHighlight(start = index, end = index + length, url = url)
+                } else null
+            } else null
+        } ?: emptyList() */
+        emptyList<UrlHighlight>()
     }
 
     val viewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
@@ -78,7 +111,6 @@ fun AmityEditCommentContainer(
 
     var selectedUserToMention by remember { mutableStateOf<AmityUser?>(null) }
     var mentionedUsers by remember { mutableStateOf<List<AmityMentionMetadata.USER>>(emptyList()) }
-    val context = LocalContext.current
 
     // Define character limit constant for comments
     val COMMENT_MAX_CHAR_LIMIT = 50000
@@ -119,6 +151,9 @@ fun AmityEditCommentContainer(
                     mentionedUser = selectedUserToMention,
                     mentionMetadata = mentionGetter.getMentionedUsers(),
                     mentionees = comment.getMentionees(),
+                    enableUrlHighlighting = true,
+                    urlColor = AmityTheme.colors.highlight,
+                    urlHighlights = initialUrlHighlights,
                     onValueChange = {
                         localCommentText = it
                     },
@@ -155,19 +190,25 @@ fun AmityEditCommentContainer(
                     elementId = "cancel_button"
                 ) {
                     OutlinedButton(
-                        colors = ButtonDefaults.buttonColors(
+                        colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = Color.Transparent,
                             disabledContainerColor = AmityTheme.colors.primaryShade2,
                         ),
                         shape = RoundedCornerShape(4.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                         modifier = modifier.height(30.dp),
+                        border = BorderStroke(width = 1.dp, color = AmityTheme.colors.secondaryShade3),
                         onClick = {
                             onEditFinished()
                         }
                     ) {
                         Text(
-                            text = getElementScope().getConfig().getValue("cancel_button_text"),
+                            text = getElementScope()
+                                .getConfig()
+                                .resolveValue(
+                                    "cancel_button_text",
+                                    amitySocialString("amity_social_button_cancel")
+                                ),
                             style = AmityTheme.typography.captionLegacy.copy(
                                 color = AmityTheme.colors.baseShade1,
                             ),
@@ -182,9 +223,8 @@ fun AmityEditCommentContainer(
                 ) {
                     Button(
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = getElementScope().getConfig().getBackgroundColor(),
-                            disabledContainerColor = getElementScope().getConfig()
-                                .getBackgroundColor().shade(AmityColorShade.SHADE2),
+                            containerColor = AmityTheme.colors.primary,
+                            disabledContainerColor = AmityTheme.colors.primary.copy(alpha = 0.3f),
                         ),
                         shape = RoundedCornerShape(4.dp),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
@@ -194,7 +234,7 @@ fun AmityEditCommentContainer(
                             // Check character limit before proceeding
                             if (localCommentText.length > COMMENT_MAX_CHAR_LIMIT) {
                                 AmityUIKitSnackbar.publishSnackbarErrorMessage(
-                                    context.getString(R.string.amity_add_comment_exceed_error_message, COMMENT_MAX_CHAR_LIMIT)
+                                    DefaultAmitySocialStringProvider.getInstance().getString("amity_social_error_add_comment_exceed_error_message", COMMENT_MAX_CHAR_LIMIT)
                                 )
                                 return@Button
                             }
@@ -208,17 +248,28 @@ fun AmityEditCommentContainer(
                                 onSuccess = {
                                 },
                                 onError = {
-                                    it.message?.let { message ->
-                                        componentScope?.showSnackbar(message = message)
+                                    val errorMessage = if (AmityError.from(it) == AmityError.BAN_WORD_FOUND) {
+                                        DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_add_blocked_words_comment_error_message")
+                                    } else if(AmityError.from(it) == AmityError.LINK_NOT_ALLOWED) {
+                                        DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_add_blocked_links_comment_error_message")
+                                    } else {
+                                        DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_oops_something_went_wrong")
                                     }
+                                    AmityUIKitSnackbar.publishSnackbarErrorMessage(errorMessage)
                                 }
                             )
                         }
                     ) {
                         Text(
-                            text = getElementScope().getConfig().getValue("save_button_text"),
+
+                            text = getElementScope()
+                                .getConfig()
+                                .resolveValue(
+                                    "save_button_text",
+                                    amitySocialString("amity_social_modal_dialog_save_button")
+                                ),
                             style = AmityTheme.typography.captionLegacy.copy(
-                                color = Color.White,
+                                if (isAllowedToSave) amityColorWhite else amityDisabledColor(amityColorWhite),
                             ),
                             modifier = modifier.testTag(getAccessibilityId())
                         )

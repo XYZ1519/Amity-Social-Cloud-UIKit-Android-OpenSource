@@ -26,46 +26,53 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.media3.common.util.UnstableApi
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
 import com.amity.socialcloud.uikit.common.ui.elements.AmityMenuButton
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityVideoPlayerPage
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.ui.theme.amityMediaSurface
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
 
 @Composable
 fun AmityVideoFeedContainer(
     availablePostIds: Set<String> = emptySet(), // Pass current available post IDs
+    showMenuButton: Boolean = true,
     content: @Composable (
-        openDialog: (AmityPost.Data.VIDEO, String?, onBottomSheetRequest: (() -> Unit)?) -> Unit
+        openDialog: (AmityPost, onViewOriginalPost: (() -> Unit)?) -> Unit
     ) -> Unit
 ) {
-    var dialogData by remember { mutableStateOf<Triple<AmityPost.Data.VIDEO?, String?, (() -> Unit)?>?>(null) }
+    // Store post and callback
+    var dialogData by remember { mutableStateOf<Pair<AmityPost, (() -> Unit)?>?>(null) }
 
-    content { videoData, postId, onBottomSheetRequest ->
-        dialogData = Triple(videoData, postId, onBottomSheetRequest)
+    content { post, onViewOriginalPost ->
+        dialogData = Pair(post, onViewOriginalPost)
     }
 
-    dialogData?.let { (videoData, postId, onBottomSheetRequest) ->
+    dialogData?.let { (post, onViewOriginalPost) ->
+        val postId = post.getPostId()
 
         // Check if the current dialog's post still exists in the available post IDs
-        val isItemDeleted = postId != null && 
-                           availablePostIds.isNotEmpty() && 
-                           !availablePostIds.contains(postId)
+        val isItemDeleted = availablePostIds.isNotEmpty() && !availablePostIds.contains(postId)
 
         if (isItemDeleted) {
             VideoNotAvailableDialog(
-                onDismiss = { 
-                    dialogData = null 
+                onDismiss = {
+                    dialogData = null
                 }
             )
-        } else if (videoData != null) {
-            AmityProfileVideoFeedItemPreviewDialog(
-                data = videoData,
-                postId = postId,
-                onPostClick = { clickedPostId ->
-                    onBottomSheetRequest?.invoke()
-                }
-            ) {
-                dialogData = null
-            }
+        } else {
+            AmityVideoPlayerPage(
+                childPosts = listOf(post),
+                selectedFileId = postId,
+                showMenuButton = showMenuButton,
+                onDismiss = {
+                    dialogData = null
+                },
+                onViewOriginalPost = onViewOriginalPost
+            )
         }
     }
 }
@@ -83,7 +90,7 @@ private fun VideoNotAvailableDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(amityMediaSurface)
         ) {
             Column(
                 modifier = Modifier
@@ -94,17 +101,17 @@ private fun VideoNotAvailableDialog(
                 Icon(
                     painter = painterResource(id = R.drawable.amity_ic_video_not_available),
                     contentDescription = "Video Not Available",
-                    tint = Color.White,
+                    tint = amityColorWhite,
                     modifier = Modifier.size(60.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "This video is no longer available.",
+                    text = amitySocialString("amity_social_label_this_video_is_no_longer_available"),
                     style = TextStyle(
                         fontSize = 15.sp,
                         lineHeight = 20.sp,
                         fontWeight = FontWeight(400),
-                        color = Color.White,
+                        color = amityColorWhite,
                         textAlign = TextAlign.Center,
                     )
                 )
@@ -114,8 +121,8 @@ private fun VideoNotAvailableDialog(
                 icon = R.drawable.amity_ic_close2,
                 size = 32.dp,
                 iconPadding = 10.dp,
-                tint = Color.Black.copy(0.5f),
-                background = Color.White.copy(0.8f),
+                tint = amityColorBlack.copy(0.5f),
+                background = amityColorWhite.copy(0.8f),
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(16.dp),

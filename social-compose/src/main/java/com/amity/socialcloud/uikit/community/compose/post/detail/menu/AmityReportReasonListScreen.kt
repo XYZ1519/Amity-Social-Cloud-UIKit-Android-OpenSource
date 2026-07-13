@@ -41,6 +41,22 @@ import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.NoRippleInteractionSource
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.community.compose.R.*
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityDisabledColor
+import com.amity.socialcloud.uikit.community.compose.ui.components.radio.AmityFilledRadioIndicator
+
+private fun AmityContentFlagReason.toLocalizationKey(): String = when (this) {
+    is AmityContentFlagReason.CommunityGuidelines -> "amity_social_label_report_reason_community_guidelines"
+    is AmityContentFlagReason.FalseInformation -> "amity_social_label_report_reason_false_information"
+    is AmityContentFlagReason.HarassmentOrBullying -> "amity_social_label_report_reason_harassment_or_bullying"
+    is AmityContentFlagReason.SelfHarmOrSuicide -> "amity_social_label_report_reason_self_harm_or_suicide"
+    is AmityContentFlagReason.SellingRestrictedItems -> "amity_social_label_report_reason_selling_restricted"
+    is AmityContentFlagReason.SexualContentOrNudity -> "amity_social_label_report_reason_sexual_content_or_nudity"
+    is AmityContentFlagReason.SpamOrScams -> "amity_social_label_report_reason_spam_or_scams"
+    is AmityContentFlagReason.ViolenceOrThreateningContent -> "amity_social_label_report_reason_violence_or_threatening"
+    else -> ""
+}
 
 @Composable
 fun AmityReportReasonListScreen(
@@ -65,7 +81,7 @@ fun AmityReportReasonListScreen(
                 .padding(horizontal = 16.dp),
         ) {
             Text(
-                text = "Report reason",
+                text = amitySocialString("amity_social_button_report_reason"),
                 style = AmityTheme.typography.titleBold,
                 modifier = Modifier.align(Alignment.Center),
                 color = AmityTheme.colors.base
@@ -102,7 +118,7 @@ fun AmityReportReasonListScreen(
             item {
                 // Description
                 Text(
-                    text = stringResource(string.amity_report_list_screen_description),
+                    text = amitySocialString("amity_social_label_report_list_screen_description"),
                     style = AmityTheme.typography.body,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -134,7 +150,7 @@ fun AmityReportReasonListScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = "Others",
+                        text = amitySocialString("amity_social_button_others"),
                         style = AmityTheme.typography.bodyBold,
                         modifier = Modifier,
                         color = AmityTheme.colors.base
@@ -175,13 +191,13 @@ fun AmityReportReasonListScreen(
             shape = RoundedCornerShape(8.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = AmityTheme.colors.primary,
-                disabledContainerColor = AmityTheme.colors.primaryShade3
+                disabledContainerColor = AmityTheme.colors.primary.copy(alpha = 0.3f),
             ),
         ) {
             Text(
-                text = stringResource(string.amity_report_submit_button),
+                text = amitySocialString("amity_social_button_report_submit_button"),
                 style = AmityTheme.typography.bodyBold,
-                color = Color.White
+                color = if (selectedReason != null && isButtonEnabled) amityColorWhite else amityDisabledColor(amityColorWhite),
             )
         }
 
@@ -217,20 +233,17 @@ fun AmityReportReasonSelection(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = reportReason.reason,
+                    text = amitySocialString(reportReason.toLocalizationKey()).takeIf { it.isNotBlank() }
+                        ?: reportReason.reason,
                     style = AmityTheme.typography.bodyBold,
                     modifier = Modifier,
                     color = AmityTheme.colors.base
                 )
 
-                RadioButton(
-                    selected = (reportReason == selectedReason),
-                    onClick = null, // null recommended for accessibility with screen readers,
+                AmityFilledRadioIndicator(
                     enabled = radioButtonEnable,
-                    colors = RadioButtonDefaults.colors(
-                        selectedColor = AmityTheme.colors.primary,
-                        unselectedColor = AmityTheme.colors.baseShade3
-                    )
+                    selected = (reportReason == selectedReason),
+                    onClick = { onReasonSelected(reportReason) },
                 )
             }
         }

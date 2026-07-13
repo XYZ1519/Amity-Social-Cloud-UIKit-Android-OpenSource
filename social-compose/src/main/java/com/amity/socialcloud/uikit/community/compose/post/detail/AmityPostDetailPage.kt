@@ -1,5 +1,6 @@
 package com.amity.socialcloud.uikit.community.compose.post.detail
 
+import android.util.Log
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -35,6 +37,7 @@ import androidx.compose.runtime.rxjava3.subscribeAsState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
@@ -59,7 +62,6 @@ import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import com.amity.socialcloud.uikit.common.ui.elements.AmityAlertDialog
 import com.amity.socialcloud.uikit.common.ui.elements.DisposableEffectWithLifeCycle
-import com.amity.socialcloud.uikit.common.ui.elements.AmityAlertDialog
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.closePage
@@ -81,6 +83,7 @@ import com.amity.socialcloud.uikit.community.compose.post.detail.components.Amit
 import com.amity.socialcloud.uikit.community.compose.post.detail.menu.AmityPostMenuSheetUIState
 import com.amity.socialcloud.uikit.community.compose.post.detail.menu.AmityPostMenuViewModel
 import kotlinx.coroutines.delay
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -93,10 +96,16 @@ fun AmityPostDetailPage(
     showLivestreamPostExceeded: Boolean = false,
     commentId: String? = null,
     parentId: String? = null,
+    rootId: String? = null,
     replyToCommentId: String? = null,
     eventHostId: String? = null,
+    autoFocusCommentInput: Boolean = false,
 ) {
     val context = LocalContext.current
+
+    val behavior = remember {
+        AmitySocialBehaviorHelper.postDetailPageBehavior
+    }
 
     val viewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
         "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
@@ -129,32 +138,40 @@ fun AmityPostDetailPage(
     }.subscribeAsState(null)
 
     val postErrorState by viewModel.postErrorState.collectAsState()
+    val isL2 = parentId != null && rootId != null && parentId != rootId
+    val commentTarget by commentViewModel.commentTarget.collectAsState()
+    val commentTargetUnavailableSet by commentViewModel.commentTargetUnavailable.collectAsState()
+    val parentTargetUnavailable = parentId in commentTargetUnavailableSet
+    val commentTargetUnavailable = commentId in commentTargetUnavailableSet
 
     LaunchedEffect(Unit) {
-        if (parentId != null) {
-            commentViewModel.getCommentById(parentId)
-        } else if (commentId != null) {
-            commentViewModel.getCommentById(commentId)
+        val targetId = rootId ?: parentId ?: commentId
+        targetId?.let { commentViewModel.getCommentTargetById(it) }
+        // For L2: also verify the L1 parent and L2 itself
+        if (isL2) {
+            parentId.let { commentViewModel.verifyCommentExists(it) }
+            commentId?.let { commentViewModel.verifyCommentExists(it) }
+        } else if (parentId != null) {
+            // For L1: verify the L1 comment itself
+            commentId?.let { commentViewModel.verifyCommentExists(it) }
         }
     }
 
-    val commentTarget by commentViewModel.comment.collectAsState()
+    LaunchedEffect(commentTargetUnavailable, parentTargetUnavailable, error) {
+        if (error == null) {
+            if (commentTargetUnavailable || parentTargetUnavailable) {
+                AmityUIKitSnackbar.publishSnackbarErrorMessage(
+                    DefaultAmitySocialStringProvider.getInstance().getString("amity_social_error_reply_no_longer_available_error_message")
+                )
+            }
+        }
+    }
 
-    var replyComment by remember { mutableStateOf<AmityComment?>(null) }
-    var replyCommentId by remember { mutableStateOf("") }
+    val replyContext by commentViewModel.replyContext.collectAsState()
+
     var editingCommentId by remember { mutableStateOf<String?>(null) }
 
     var showLivestreamLimitExceededDialog by remember { mutableStateOf(showLivestreamPostExceeded) }
-
-    LaunchedEffect(replyCommentId) {
-        comments.itemSnapshotList.firstOrNull {
-            it is AmityListItem.CommentItem &&
-                    it.comment.getCommentId() == replyCommentId
-        }?.let {
-            replyComment = (it as AmityListItem.CommentItem).comment
-            replyCommentId = ""
-        }
-    }
 
     LaunchedEffect(post) {
         commentViewModel.setCommunity((post?.getTarget() as? AmityPost.Target.COMMUNITY)?.getCommunity())
@@ -195,11 +212,10 @@ fun AmityPostDetailPage(
     var scrollAnimationComplete by remember { mutableStateOf(false) }
 
     //LaunchedEffect that triggers the scroll with the measured offset
-    LaunchedEffect(Unit) {
-        // Ensure layout is complete
-        scrollAnimationComplete = false
-        delay(1000L)
+    LaunchedEffect(commentTarget) {
         if (commentTarget != null && !scrollTriggered) {
+            scrollAnimationComplete = false
+            delay(300L)
             scrollState.animateScrollToItem(
                 index = 2,
                 scrollOffset = -stickyHeaderHeight
@@ -208,12 +224,20 @@ fun AmityPostDetailPage(
             // Wait a bit to ensure scroll completes
             delay(100L)
             scrollAnimationComplete = true
-            replyToCommentId?.let {
-                replyCommentId = it
-
+            // If opened with a replyToCommentId, set reply context via ViewModel
+            replyToCommentId?.let { targetId ->
+                val targetComment = comments.itemSnapshotList
+                    .filterIsInstance<AmityListItem.CommentItem>()
+                    .flatMap { item ->
+                        listOf(item.comment) +
+                            item.comment.getLatestReplies() +
+                            item.comment.getLatestReplies().flatMap { it.getLatestReplies() }
+                    }
+                    .firstOrNull { it.getCommentId() == targetId }
+                targetComment?.let { comment ->
+                    commentViewModel.setReplyContext(comment, comment.getCommentId())
+                }
             }
-            delay(500L)
-            scrollAnimationComplete = false
         }
     }
 
@@ -222,8 +246,8 @@ fun AmityPostDetailPage(
             pageScope = getPageScope(),
             componentId = "comment_tray_component"
         ) {
-            if (post != null && ((post?.isDeleted() == true
-                        || !AmitySocialBehaviorHelper.supportedStructureTypes.contains(post?.getStructureType())) || postErrorState)
+            if ((post != null && ((post?.isDeleted() == true
+                        || !AmitySocialBehaviorHelper.supportedStructureTypes.contains(post?.getStructureType())) || postErrorState) || error != null)
                 ) {
                 AmityPostErrorPage()
             } else {
@@ -231,7 +255,7 @@ fun AmityPostDetailPage(
                     LazyColumn(
                         state = scrollState,
                         verticalArrangement = Arrangement.Top,
-                        modifier = modifier.weight(1f)
+                        modifier = Modifier.weight(1f)
                     ) {
                         AmityCommentTrayComponentViewModel.CommentListState.from(
                             loadState = comments.loadState.refresh,
@@ -240,7 +264,7 @@ fun AmityPostDetailPage(
 
                         stickyHeader {
                             Box(
-                                modifier = modifier
+                                modifier = Modifier
                                     .height(58.dp)
                                     .fillMaxWidth()
                                     .background(AmityTheme.colors.background)
@@ -257,20 +281,24 @@ fun AmityPostDetailPage(
                                         painter = painterResource(id = getConfig().getIcon()),
                                         contentDescription = null,
                                         tint = AmityTheme.colors.base,
-                                        modifier = modifier
+                                        modifier = Modifier
                                             .size(24.dp)
                                             .align(Alignment.CenterStart)
                                             .clickableWithoutRipple {
-                                                context.closePage()
+                                                behavior.closePage(
+                                                    context = AmityPostDetailPageBehavior.Context(
+                                                        pageContext = context,
+                                                    ),
+                                                )
                                             }
                                             .testTag(getAccessibilityId()),
                                     )
                                 }
 
                                 Text(
-                                    text = "Post",
+                                    text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_social_home_create_post_button"),
                                     style = AmityTheme.typography.titleLegacy,
-                                    modifier = modifier
+                                    modifier = Modifier
                                         .padding(horizontal = 48.dp)
                                         .align(Alignment.CenterStart)
                                 )
@@ -283,7 +311,7 @@ fun AmityPostDetailPage(
                                         painter = painterResource(id = getConfig().getIcon()),
                                         contentDescription = null,
                                         tint = AmityTheme.colors.base,
-                                        modifier = modifier
+                                        modifier = Modifier
                                             .size(24.dp)
                                             .align(Alignment.CenterEnd)
                                             .clickableWithoutRipple {
@@ -308,7 +336,7 @@ fun AmityPostDetailPage(
                             if (post != null && post?.isDeleted() == false) {
                                 val isEventHost = eventHostId != null && post?.getCreator()?.getUserId() == eventHostId
                                 AmityPostContentComponent(
-                                    modifier = modifier,
+                                    modifier = Modifier,
                                     pageScope = getPageScope(),
                                     post = post ?: return@item,
                                     style = style,
@@ -319,7 +347,7 @@ fun AmityPostDetailPage(
                                 )
                                 HorizontalDivider(
                                     color = AmityTheme.colors.baseShade4,
-                                    modifier = modifier
+                                    modifier = Modifier
                                 )
                             } else {
                                 AmityPostShimmer()
@@ -328,13 +356,13 @@ fun AmityPostDetailPage(
 
                         item(key = "scroll_anchor") {
                             Spacer(
-                                modifier = modifier
+                                modifier = Modifier
                                     .height(8.dp)
                             )
                         }
 
                         amityCommentListLLS(
-                            modifier = modifier,
+                            modifier = Modifier,
                             componentScope = getComponentScope(),
                             comments = comments,
                             commentTarget = commentTarget,
@@ -345,42 +373,46 @@ fun AmityPostDetailPage(
                             shouldAllowInteraction = true,
                             showEngagementRow = true,
                             eventHostId = eventHostId,
-                            onReply = {
-                                replyCommentId = it
-                            },
+                            onReply = { },
                             onEdit = {
                                 editingCommentId = it
                             },
                             showBounceEffect = scrollAnimationComplete,
-                            replyTargetId = if (parentId != null) commentId else null,
+                            replyTargetId = when {
+                                isL2 -> parentId    // L1 parent to sort to top and expand
+                                parentId != null -> commentId  // L1 reply to bounce
+                                else -> null
+                            },
+                            l2TargetId = if (isL2) commentId else null,
                             expandReplies = parentId != null,
                             fromNonMemberCommunity = sheetViewModel.isNotMember(post)
                         )
 
                         item {
-                            Box(modifier.height(commentComposeBarBottomOffset.unaryMinus()))
+                            Box(Modifier.height(commentComposeBarBottomOffset.unaryMinus()))
                         }
                     }
 
                     if (!sheetViewModel.isNotMember(post) && editingCommentId == null && AmityCoreClient.isSignedIn()) {
                         AmityCommentComposerBar(
-                            modifier = modifier.offset(y = commentComposeBarBottomOffset),
+                            modifier = Modifier.offset(y = commentComposeBarBottomOffset),
                             componentScope = getComponentScope(),
                             referenceId = id,
                             referenceType = AmityCommentReferenceType.POST,
-                            shouldFocusKeyboard = replyToCommentId != null,
+                            shouldFocusKeyboard = replyToCommentId != null || autoFocusCommentInput,
                             currentUser = currentUser,
-                            replyComment = replyComment,
+                            replyComment = replyContext?.first,
+                            replyCommentId = replyContext?.second
                         ) {
-                            replyComment = null
+                            commentViewModel.clearReplyContext()
                         }
                     }
 
                     if (showLivestreamLimitExceededDialog) {
                         AmityAlertDialog(
-                            dialogTitle = "Live stream ended",
-                            dialogText = "Your live stream has been automatically terminated since you reached 4-hour limit.",
-                            dismissText = "OK",
+                            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_livestream_ended"),
+                            dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_livestream_time_limit"),
+                            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
                             onDismissRequest = {
                                 showLivestreamLimitExceededDialog = false
                             }
@@ -389,7 +421,7 @@ fun AmityPostDetailPage(
 
                     if (internetState is NetworkConnectionEvent.Disconnected) {
                         AmityUIKitSnackbar.publishSnackbarErrorMessage(
-                            message = "No internet connection.",
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_no_internet_connection"),
                             offsetFromBottom = 70
                         )
                     }

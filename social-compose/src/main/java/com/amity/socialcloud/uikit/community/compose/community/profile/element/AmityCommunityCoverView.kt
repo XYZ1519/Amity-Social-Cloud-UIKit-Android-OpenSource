@@ -65,6 +65,7 @@ import com.amity.socialcloud.uikit.community.compose.community.profile.AmityComm
 import com.amity.socialcloud.uikit.community.compose.community.profile.component.AmityCommunityHeaderStyle
 import com.amity.socialcloud.uikit.community.compose.utils.BlurImage
 import com.amity.socialcloud.uikit.community.compose.utils.LegacyBlurImage
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 
 @Composable
 fun AmityCommunityCoverView(
@@ -301,7 +302,7 @@ fun AmityCommunityCoverView(
                                     fontSize = 17.sp,
                                     lineHeight = 24.sp,
                                     fontWeight = FontWeight(600),
-                                    color = Color.White,
+                                    color = amityColorWhite,
                                 ),
                                 modifier = Modifier
                                     .weight(1f, fill = false)
@@ -312,7 +313,7 @@ fun AmityCommunityCoverView(
                             if (community.isOfficial()) {
                                 Box(modifier = Modifier
                                     .size(24.dp)
-                                    .padding(top = 2.dp, start = 6.dp)
+                                    .padding(start = 6.dp)
                                 ) {
                                     AmityBaseElement(
                                         pageScope = pageScope,

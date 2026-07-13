@@ -12,12 +12,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.amity.socialcloud.uikit.common.ui.theme.amityEventHostBadgeBackground
+import com.amity.socialcloud.uikit.common.ui.theme.amityEventHostBadgeContent
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 
 @Composable
 fun AmityCommentEventHostBadge(
@@ -28,7 +30,7 @@ fun AmityCommentEventHostBadge(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         modifier = modifier
             .background(
-                color = Color(0xFFEAE2FF),
+                color = amityEventHostBadgeBackground,
                 shape = RoundedCornerShape(size = 20.dp)
             )
             .padding(start = 4.dp, end = 6.dp)
@@ -40,11 +42,11 @@ fun AmityCommentEventHostBadge(
             modifier = Modifier.size(12.dp)
         )
         Text(
-            text = "Host",
+            text = amitySocialString("amity_social_button_host"),
             style = TextStyle(
                 fontSize = 10.sp,
                 lineHeight = 18.sp,
-                color = Color(0xFF4B1BD0),
+                color = amityEventHostBadgeContent,
             )
         )
     }

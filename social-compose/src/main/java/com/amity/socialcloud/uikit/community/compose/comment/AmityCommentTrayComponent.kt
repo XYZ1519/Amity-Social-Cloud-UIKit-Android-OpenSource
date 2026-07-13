@@ -24,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
@@ -32,11 +31,8 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
-import com.amity.socialcloud.sdk.helper.core.coroutines.asFlow
-import com.amity.socialcloud.sdk.model.social.comment.AmityComment
 import com.amity.socialcloud.sdk.model.social.comment.AmityCommentReferenceType
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
-import com.amity.socialcloud.uikit.common.ad.AmityListItem
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.elements.AmityPagingEmptyItem
 import com.amity.socialcloud.uikit.common.ui.elements.AmityPagingErrorItem
@@ -44,6 +40,7 @@ import com.amity.socialcloud.uikit.common.ui.elements.AmityPagingLoadingItem
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.isSignedIn
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 import com.amity.socialcloud.uikit.community.compose.comment.create.AmityCommentComposerBar
 import com.amity.socialcloud.uikit.community.compose.comment.elements.AmityDisabledCommentView
 import com.amity.socialcloud.uikit.community.compose.comment.query.elements.AmityCommentItemShimmer
@@ -60,7 +57,6 @@ fun AmityCommentTrayComponent(
     includeDeleted : Boolean = true,
     fromNonMemberCommunity: Boolean = false,
 ) {
-    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
 
     val viewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
@@ -84,21 +80,9 @@ fun AmityCommentTrayComponent(
         viewModel.getCurrentUser()
     }.subscribeAsState(null)
 
-    var replyComment by remember { mutableStateOf<AmityComment?>(null) }
+    val replyContext by viewModel.replyContext.collectAsState()
 
-    var replyCommentId by remember { mutableStateOf("") }
     var editingCommentId by remember { mutableStateOf<String?>(null) }
-
-
-    LaunchedEffect(replyCommentId) {
-        comments.itemSnapshotList.firstOrNull {
-            it is AmityListItem.CommentItem &&
-                    it.comment.getCommentId() == replyCommentId
-        }?.let {
-            replyComment = (it as AmityListItem.CommentItem).comment
-            replyCommentId = ""
-        }
-    }
 
     LaunchedEffect(community?.getCommunityId()) {
         viewModel.setCommunity(community)
@@ -124,7 +108,7 @@ fun AmityCommentTrayComponent(
             Column(modifier = modifier.fillMaxWidth()) {
                 if (referenceType == AmityCommentReferenceType.STORY || referenceType == AmityCommentReferenceType.POST) {
                     Text(
-                        text = context.getString(R.string.amity_comments),
+                        text = amitySocialString("amity_social_button_comments"),
                         style = AmityTheme.typography.titleLegacy,
                         modifier = modifier
                             .fillMaxWidth()
@@ -154,7 +138,7 @@ fun AmityCommentTrayComponent(
                         AmityCommentTrayComponentViewModel.CommentListState.EMPTY -> {
                             item {
                                 AmityPagingEmptyItem(
-                                    text = "No comments yet",
+                                    text = amitySocialString("amity_social_empty_state_no_comments_yet"),
                                     modifier = Modifier.testTag("comment_tray_component/empty_text_view")
                                 )
                             }
@@ -173,7 +157,8 @@ fun AmityCommentTrayComponent(
                                 shouldAllowInteraction = shouldAllowInteraction,
                                 showEngagementRow = true,
                                 onReply = {
-                                    replyCommentId = it
+                                    // Reply context is already set by the EngagementBar via ViewModel.
+                                    // This callback is kept for compatibility / scroll behavior.
                                 },
                                 onEdit = {
                                     editingCommentId = it
@@ -206,10 +191,11 @@ fun AmityCommentTrayComponent(
                         referenceId = referenceId,
                         referenceType = referenceType,
                         currentUser = currentUser,
-                        replyComment = replyComment,
+                        replyComment = replyContext?.first,
+                        replyCommentId = replyContext?.second,
                         modifier = modifier.align(Alignment.BottomCenter)
                     ) {
-                        replyComment = null
+                        viewModel.clearReplyContext()
                     }
                 } else {
                     AmityDisabledCommentView(

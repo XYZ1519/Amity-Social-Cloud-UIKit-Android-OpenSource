@@ -1,5 +1,6 @@
 package com.amity.socialcloud.uikit.community.compose.search.components
 
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -33,11 +35,12 @@ fun AmityEmptySearchResultComponent(
         Image(
             painter = painterResource(R.drawable.amity_ic_no_search_result),
             contentDescription = null,
-            modifier = modifier.size(60.dp)
+            modifier = modifier.size(60.dp),
+            colorFilter = ColorFilter.tint(AmityTheme.colors.baseShade4)
         )
         Spacer(modifier = modifier.size(8.dp))
         Text(
-            "No results found",
+            amitySocialString("amity_social_label_no_results_found"),
             style = AmityTheme.typography.titleLegacy.copy(
                 color = AmityTheme.colors.baseShade3
             )

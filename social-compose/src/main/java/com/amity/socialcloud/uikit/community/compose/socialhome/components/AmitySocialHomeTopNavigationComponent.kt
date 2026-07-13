@@ -1,5 +1,6 @@
 package com.amity.socialcloud.uikit.community.compose.socialhome.components
 
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialConfigString
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -39,6 +40,8 @@ import com.amity.socialcloud.uikit.common.utils.isSignedIn
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.socialhome.AmitySocialHomePageTab
 import com.amity.socialcloud.uikit.community.compose.socialhome.elements.AmitySocialHomeNavigationButton
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.isUIKitInDarkTheme
 
 @Composable
 fun AmitySocialHomeTopNavigationComponent(
@@ -70,22 +73,23 @@ fun AmitySocialHomeTopNavigationComponent(
                 elementId = "header_label"
             ) {
                 Text(
-                    text = getConfig().getText(),
+                    text = amitySocialConfigString("amity_social_label_social_home_header_label"),
                     style = AmityTheme.typography.captionLegacy.copy(
                         fontSize = 20.sp,
                     ),
-                    modifier = modifier
+                    modifier = Modifier
                         .align(Alignment.CenterStart)
                         .testTag(getAccessibilityId())
                 )
             }
 
             Row(
-                modifier = modifier.align(Alignment.CenterEnd)
+                modifier = Modifier.align(Alignment.CenterEnd)
             ) {
                 if (AmityCoreClient.isSignedIn()) {
                     when (selectedTab) {
-                        AmitySocialHomePageTab.NEWSFEED,
+                        AmitySocialHomePageTab.FOR_YOU,
+                        AmitySocialHomePageTab.FOLLOWING,
 //                        AmitySocialHomePageTab.EXPLORE,
                         AmitySocialHomePageTab.COMMUNITIES,
                         AmitySocialHomePageTab.EVENTS,
@@ -96,28 +100,30 @@ fun AmitySocialHomeTopNavigationComponent(
                                 componentScope = getComponentScope(),
                                 elementId = "notification_tray_button"
                             ) {
-                                Box() {
-                                    Image(
-                                        painter = painterResource(getConfig().getIcon()),
-                                        contentDescription = null,
+                                Box {
+                                    AmitySocialHomeNavigationButton(
+                                        icon = getConfig().getIcon(),
+                                        background = AmityTheme.colors.baseShade4,
+                                        iconSize = 32.dp,
                                         modifier = Modifier
                                             .size(32.dp)
-                                            .clickableWithoutRipple {
-                                                notificationButton()
-                                            }
+                                            .testTag(getAccessibilityId()),
+                                        onClick = notificationButton
                                     )
-                                    if (isSeen == false) {
+                                    if (!isSeen) {
                                         Box(
                                             modifier = Modifier
                                                 .align(Alignment.TopEnd)
                                                 .size(12.dp)
-                                                .background(Color.White, shape = CircleShape)
-                                                .padding(2.dp)
+                                                .background(amityColorWhite, shape = CircleShape)
+                                                .then(
+                                                    if (isUIKitInDarkTheme()) Modifier
+                                                    else Modifier.padding(2.dp)
+                                                )
                                                 .background(color = AmityTheme.colors.alert, shape = CircleShape)
                                         )
                                     }
                                 }
-
                             }
                         }
 
@@ -125,10 +131,11 @@ fun AmitySocialHomeTopNavigationComponent(
                     }
                 }
 
-                Spacer(modifier = modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(10.dp))
 
                 when (selectedTab) {
-                    AmitySocialHomePageTab.NEWSFEED,
+                    AmitySocialHomePageTab.FOR_YOU,
+                    AmitySocialHomePageTab.FOLLOWING,
 //                    AmitySocialHomePageTab.EXPLORE,
                     AmitySocialHomePageTab.COMMUNITIES,
                     AmitySocialHomePageTab.EVENTS,
@@ -143,7 +150,7 @@ fun AmitySocialHomeTopNavigationComponent(
                                 icon = getConfig().getIcon(),
                                 background = AmityTheme.colors.baseShade4,
                                 iconSize = 20.dp,
-                                modifier = modifier
+                                modifier = Modifier
                                     .size(32.dp)
                                     .testTag(getAccessibilityId()),
                                 onClick = searchButtonAction
@@ -153,11 +160,12 @@ fun AmitySocialHomeTopNavigationComponent(
                     else -> {}
                 }
 
-                Spacer(modifier = modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(10.dp))
 
                 var expanded by remember { mutableStateOf(false) }
                 when (selectedTab) {
-                    AmitySocialHomePageTab.NEWSFEED,
+                    AmitySocialHomePageTab.FOR_YOU,
+                    AmitySocialHomePageTab.FOLLOWING,
                     AmitySocialHomePageTab.COMMUNITIES,
                     AmitySocialHomePageTab.EVENTS,
                     AmitySocialHomePageTab.CLIPS
@@ -171,7 +179,7 @@ fun AmitySocialHomeTopNavigationComponent(
                                 icon = getConfig().getIcon(),
                                 background = AmityTheme.colors.baseShade4,
                                 iconSize = 16.dp,
-                                modifier = modifier
+                                modifier = Modifier
                                     .size(32.dp)
                                     .testTag(getAccessibilityId()),
                                 onClick = {
@@ -184,7 +192,7 @@ fun AmitySocialHomeTopNavigationComponent(
                 }
 
                 AmityCreatePostMenuComponent(
-                    modifier = modifier,
+                    modifier = Modifier,
                     pageScope = pageScope,
                     expanded = expanded,
                     onDismiss = { expanded = false },

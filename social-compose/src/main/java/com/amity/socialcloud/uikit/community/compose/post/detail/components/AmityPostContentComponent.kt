@@ -57,11 +57,13 @@ import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityP
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostMediaElement
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostNonMemberSection
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostPollElement
+import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityProductCarousel
 import com.amity.socialcloud.uikit.community.compose.post.detail.menu.AmityPostMenuBottomSheet
 import com.amity.socialcloud.uikit.community.compose.post.detail.menu.AmityPostMenuDialogUIState
 import com.amity.socialcloud.uikit.community.compose.post.detail.menu.AmityPostMenuSheetUIState
 import com.amity.socialcloud.uikit.community.compose.post.detail.menu.AmityPostMenuViewModel
 import kotlinx.coroutines.launch
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 
 @Composable
 fun AmityPostContentComponent(
@@ -78,9 +80,10 @@ fun AmityPostContentComponent(
     onTapAction: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    val behavior by lazy {
+    val behavior = remember {
         AmitySocialBehaviorHelper.postContentComponentBehavior
     }
+
     val isPostDetailPage = remember(style) {
         style == AmityPostContentComponentStyle.DETAIL
     }
@@ -108,10 +111,11 @@ fun AmityPostContentComponent(
             val data = dialogState as AmityPostMenuDialogUIState.OpenConfirmDeleteDialog
             if (data.postId == post.getPostId()) {
                 AmityAlertDialog(
-                    dialogTitle = context.getString(R.string.amity_delete_post_title),
-                    dialogText = context.getString(R.string.amity_delete_post_warning_message),
-                    confirmText = context.getString(R.string.amity_delete),
-                    dismissText = context.getString(R.string.amity_cancel),
+                    dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_delete_post_title"),
+                    dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_delete_post_warning_message_2"),
+                    confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_delete"),
+                    dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
+                    confirmTextColor = AmityTheme.colors.alert,
                     onConfirmation = {
                         AmityPostComposerHelper.deletePost(data.postId)
                         viewModel.deletePost(
@@ -121,14 +125,14 @@ fun AmityPostContentComponent(
                                     context.closePageWithResult(Activity.RESULT_OK)
                                 }
                                 AmityUIKitSnackbar.publishSnackbarMessage(
-                                    message = "Post deleted",
+                                    message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_post_deleted"),
                                     offsetFromBottom = 52,
                                 )
                                 viewModel.updateDialogUIState(AmityPostMenuDialogUIState.CloseDialog)
                             },
                             onError = {
                                 val text =
-                                    "Delete post not successful. Please try again."
+                                    DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_delete_post_failed")
                                 AmityUIKitSnackbar.publishSnackbarErrorMessage(
                                     message = text,
                                     offsetFromBottom = 52,
@@ -148,10 +152,10 @@ fun AmityPostContentComponent(
             val data = dialogState as AmityPostMenuDialogUIState.OpenConfirmEditDialog
             if (data.postId == post.getPostId()) {
                 AmityAlertDialog(
-                    dialogTitle = "Edit globally featured post?",
-                    dialogText = "The post you're editing has been featured globally. If you edit your post, it would need to be re-approved, and will no longer be globally featured.",
-                    confirmText = "Edit",
-                    dismissText = context.getString(R.string.amity_cancel),
+                    dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_edit_globally_featured"),
+                    dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_featured_post_edit_warning"),
+                    confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_edit"),
+                    dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
                     onConfirmation = {
                         viewModel.updateDialogUIState(AmityPostMenuDialogUIState.CloseDialog)
                         behavior.goToPostComposerPage(
@@ -169,10 +173,10 @@ fun AmityPostContentComponent(
         is AmityPostMenuDialogUIState.OpenConfirmClosePollDialog -> {
             val data = dialogState as AmityPostMenuDialogUIState.OpenConfirmClosePollDialog
             AmityAlertDialog(
-                dialogTitle = "Close poll?",
-                dialogText = "The Poll duration you've set will be ignored and your poll will be closed immediately.",
-                confirmText = "Close poll",
-                dismissText = context.getString(R.string.amity_cancel),
+                dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_close_poll"),
+                dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_poll_duration_warning"),
+                confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_close_poll"),
+                dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
                 onConfirmation = {
                     scope.launch {
                         try {
@@ -182,7 +186,7 @@ fun AmityPostContentComponent(
 
                         } catch (e: Exception) {
                             val text =
-                                "Oops, something went wrong."
+                                DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_oops_something_went_wrong")
                             AmityUIKitSnackbar.publishSnackbarErrorMessage(
                                 message = text,
                                 offsetFromBottom = 52
@@ -344,6 +348,15 @@ fun AmityPostContentComponent(
                     post = post
                 )
             }
+
+            // Product Carousel - show tagged products from parent and child posts
+            AmityProductCarousel(
+                modifier = modifier,
+                pageScope = pageScope,
+                componentScope = getComponentScope(),
+                post = post,
+            )
+
             AmityPostEngagementView(
                 modifier = modifier,
                 pageScope = pageScope,

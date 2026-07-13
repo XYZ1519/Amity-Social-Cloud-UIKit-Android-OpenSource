@@ -41,10 +41,12 @@ import com.amity.socialcloud.sdk.model.chat.message.AmityMessage
 import com.amity.socialcloud.uikit.chat.compose.R
 import com.amity.socialcloud.uikit.chat.compose.live.AmityLiveChatPageViewModel
 import com.amity.socialcloud.uikit.chat.compose.live.util.getContent
+import com.amity.socialcloud.uikit.chat.compose.localization.amityChatString
 import com.amity.socialcloud.uikit.common.ui.elements.AmityAnnotatedText
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.utils.resolvedAvatarUrl
 import com.amity.socialcloud.uikit.common.utils.shimmerBackground
 import com.google.gson.JsonObject
 import kotlinx.coroutines.CoroutineScope
@@ -107,6 +109,7 @@ fun BaseReplyMessage(
 	val parentMessage by viewModel.getMessage(parentId).collectAsState(initial = null)
 	var reactionExpanded by remember { mutableStateOf(false) }
 	var menuExpanded by remember { mutableStateOf(false) }
+	val defaultUser = amityChatString("chat.unknown.user")
 	Row(
 		modifier = modifier
 			.fillMaxWidth()
@@ -115,7 +118,7 @@ fun BaseReplyMessage(
 	) {
 		AmityMessageAvatarView(
 			pageScope = pageScope,
-			avatarUrl = message.getCreator()?.getAvatar()?.getUrl() ?: "",
+			avatarUrl = message.getCreator()?.resolvedAvatarUrl() ?: "",
 			size = 32.dp
 		)
 		Spacer(modifier = Modifier.width(8.dp))
@@ -133,7 +136,7 @@ fun BaseReplyMessage(
 			horizontalAlignment = Alignment.Start
 		) {
 			Text(
-				text = message.getCreator()?.getDisplayName() ?: "Unknown",
+				text = message.getCreator()?.getDisplayName() ?: defaultUser,
 				fontSize = 13.sp,
 				lineHeight = 18.sp,
 				fontWeight = FontWeight(600),
@@ -253,7 +256,7 @@ fun BaseReplyMessage(
 					}
 					
 					// Determine the height of the item
-					val height = placeables.sumOf { it.height } - (8.dp.roundToPx())
+					val height = Math.max(placeables.sumOf { it.height } - (8.dp.roundToPx()), 0)
 					
 					// Set the size of the item
 					layout(height = height, width = placeables.maxOfOrNull { it.width } ?: 0) {
@@ -290,9 +293,10 @@ fun ParentTextMessage(
 	modifier: Modifier = Modifier,
 	pageScope: AmityComposePageScope? = null,
 ) {
+	val defaultUser = amityChatString("chat.unknown.user")
 	Column {
 		Text(
-			text = message.getCreator()?.getDisplayName() ?: "Unknown",
+			text = message.getCreator()?.getDisplayName() ?: defaultUser,
 			fontSize = 13.sp,
 			lineHeight = 18.sp,
 			fontWeight = FontWeight(600),

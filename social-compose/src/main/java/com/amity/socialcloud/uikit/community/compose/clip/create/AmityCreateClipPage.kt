@@ -1,5 +1,6 @@
 package com.amity.socialcloud.uikit.community.compose.clip.create
 
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import android.Manifest
 import android.app.Activity
 import android.content.Context
@@ -20,8 +21,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -52,10 +56,12 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
 import com.amity.socialcloud.uikit.common.common.readableMinuteSeconds
+import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import com.amity.socialcloud.uikit.common.ui.elements.AmityAlertDialog
 import com.amity.socialcloud.uikit.common.ui.elements.AmityMenuButton
 import com.amity.socialcloud.uikit.common.ui.elements.DisposableEffectWithLifeCycle
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.ui.theme.amityLiveBadgeRed
 import com.amity.socialcloud.uikit.common.utils.closePage
 import com.amity.socialcloud.uikit.common.utils.closePageWithResult
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
@@ -67,6 +73,7 @@ import com.amity.socialcloud.uikit.community.compose.story.create.elements.Amity
 import com.amity.socialcloud.uikit.community.compose.utils.AmityStoryCameraHelper
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
+import com.amity.socialcloud.uikit.common.ui.theme.amityMediaSurface
 
 private const val FILE_SIZE_LIMIT = 2L * 1024 * 1024 * 1024 // 2 GB
 
@@ -154,13 +161,17 @@ fun AmityCreateClipPage(
 
                 if (isFileSizeExceed) {
                     showUploadFileSizeError = Pair(
-                        "Maximum file size limit reached",
-                        "Please choose a video with smaller file size."
+                        DefaultAmitySocialStringProvider.getInstance()
+                            .getString("amity_social_modal_dialog_title_max_file_size_limit"),
+                        DefaultAmitySocialStringProvider.getInstance()
+                            .getString("amity_social_label_choose_video_smaller_size")
                     )
                 } else if (checkVideoIsExceedLength(context, it, 15)) {
                     showUploadFileSizeError = Pair(
-                        "Clip must be under 15 minutes",
-                        "Please choose a different video to upload."
+                        DefaultAmitySocialStringProvider.getInstance()
+                            .getString("amity_social_label_clip_duration_limit"),
+                        DefaultAmitySocialStringProvider.getInstance()
+                            .getString("amity_social_label_choose_different_video")
                     )
                 } else {
                     behavior.goToDraftClipPage(
@@ -234,22 +245,25 @@ fun AmityCreateClipPage(
         }
     }
 
+    AmityBasePage(pageId = "create_clip_post_page") {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(amityMediaSurface)
+            .statusBarsPadding()
+            .navigationBarsPadding()
     ) {
         Box(
             modifier = Modifier
+                .fillMaxWidth()
                 .aspectRatio(9f / 16f)
-                .fillMaxSize()
         ) {
             // Camera preview as the background
             AmityStoryCameraPreviewElement(
                 modifier = Modifier
                     .fillMaxSize()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color.Black)
+                    .background(amityMediaSurface)
                     .testTag("camera_view")
             )
 
@@ -303,11 +317,11 @@ fun AmityCreateClipPage(
                         .padding(top = 16.dp)
                         .size(60.dp, 26.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(Color(0xFFFF305A))
+                        .background(amityLiveBadgeRed)
                 ) {
                     Text(
                         text = videoRecordDuration.readableMinuteSeconds(),
-                        color = Color.White,
+                        color = AmityTheme.colors.baseInverse,
                         modifier = Modifier.align(Alignment.Center),
                         style = AmityTheme.typography.bodyBold,
                     )
@@ -356,9 +370,8 @@ fun AmityCreateClipPage(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(16.dp),
-                    title = "Allow access to your\ncamera and microphone",
-                    description = "This lets you record and live stream\n" +
-                            "from this device.",
+                    title = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_permission_title_allow_camera_mic_access"),
+                    description = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_status_allow_camera_desc"),
                     onOpenSettingClick = {
                         val intent =
                             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -377,8 +390,8 @@ fun AmityCreateClipPage(
         // Bottom bar (media, shutter, switch camera)
         Row(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(start = 16.dp, end = 16.dp),
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -438,9 +451,9 @@ fun AmityCreateClipPage(
                 onDismissRequest = {
                     isShowClipTooShortDialog = false
                 },
-                dialogTitle = "Clip too short",
-                dialogText = "Clip must be at least 1 second long.",
-                dismissText = "OK",
+                dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_clip_too_short"),
+                dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_clip_min_duration"),
+                dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
             )
         }
 
@@ -452,9 +465,10 @@ fun AmityCreateClipPage(
                 },
                 dialogTitle = showUploadFileSizeError?.first ?: "",
                 dialogText = showUploadFileSizeError?.second ?: "",
-                dismissText = "OK",
+                dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
             )
         }
+    }
     }
 }
 

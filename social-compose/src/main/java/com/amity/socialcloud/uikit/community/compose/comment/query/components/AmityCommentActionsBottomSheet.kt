@@ -1,6 +1,5 @@
 package com.amity.socialcloud.uikit.community.compose.comment.query.components
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
@@ -21,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -40,6 +38,7 @@ import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentViewModel
 import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentViewModel.CommentBottomSheetState
 import com.amity.socialcloud.uikit.community.compose.post.detail.menu.AmityReportOtherReasonScreen
@@ -64,7 +63,6 @@ fun AmityCommentActionsBottomSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     val behavior by lazy {
         AmitySocialBehaviorHelper.commentTrayComponentBehavior
     }
@@ -95,6 +93,55 @@ fun AmityCommentActionsBottomSheet(
         }
     }
 
+    val openDeleteAlertDialog = remember { mutableStateOf(false) }
+
+    val commentDeleteFailedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_comment_delete_failed_toast_message")
+    val commentReportedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_comment_reported_toast_message")
+    val replyReportedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_reply_reported_toast_message")
+    val commentReportFailedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_comment_reported_failed_toast_message")
+    val replyReportFailedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_reply_reported_failed_toast_message")
+    val commentUnreportedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_comment_unreported_toast_message")
+    val replyUnreportedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_reply_unreported_toast_message")
+    val commentUnreportFailedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_comment_unreported_failed_toast_message")
+    val replyUnreportFailedStr = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_reply_unreported_failed_toast_message")
+
+    if (openDeleteAlertDialog.value) {
+        AmityAlertDialog(
+            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString(
+                if (isReplyComment) "amity_social_button_delete_reply_title"
+                else "amity_social_button_delete_comment_title"
+            ),
+            dialogText = DefaultAmitySocialStringProvider.getInstance().getString(
+                if (isReplyComment) "amity_social_button_delete_reply_warning_message"
+                else "amity_social_button_delete_comment_warning_message"
+            ),
+            confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_delete"),
+            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
+            onConfirmation = {
+                scope.launch {
+                    sheetState.hide()
+                }.invokeOnCompletion {
+                    viewModel.updateSheetUIState(CommentBottomSheetState.CloseSheet)
+                }
+                openDeleteAlertDialog.value = false
+
+                viewModel.deleteComment(
+                    commentId = commentId,
+                    onSuccess = {
+                        // Do nothing
+                    },
+                    onError = {
+                        AmityUIKitSnackbar.publishSnackbarErrorMessage(
+                            message = commentDeleteFailedStr,
+                        )
+                    }
+                )
+            },
+            onDismissRequest = { openDeleteAlertDialog.value = false },
+            confirmTextColor = AmityTheme.colors.alert
+        )
+    }
+
     if (showSheet) {
         ModalBottomSheet(
             onDismissRequest = {
@@ -117,6 +164,7 @@ fun AmityCommentActionsBottomSheet(
                         isFlaggedByMe = isFlaggedByMe,
                         isFailed = isFailed,
                         onEdit = onEdit,
+                        onDeleteClick = { openDeleteAlertDialog.value = true },
                         onClose = {
                             scope.launch {
                                 sheetState.hide()
@@ -135,8 +183,11 @@ fun AmityCommentActionsBottomSheet(
                                 submitUnReport(
                                     viewModel = viewModel,
                                     commentId = commentId,
-                                    context = context,
-                                    isReplyComment = isReplyComment
+                                    isReplyComment = isReplyComment,
+                                    unreportedStr = commentUnreportedStr,
+                                    replyUnreportedStr = replyUnreportedStr,
+                                    unreportFailedStr = commentUnreportFailedStr,
+                                    replyUnreportFailedStr = replyUnreportFailedStr,
                                 )
                                 viewModel.updateSheetUIState(CommentBottomSheetState.CloseSheet)
                             } else {
@@ -169,9 +220,12 @@ fun AmityCommentActionsBottomSheet(
                                 submitReport(
                                     viewModel = viewModel,
                                     commentId = commentId,
-                                    context = context,
                                     isReplyComment = isReplyComment,
                                     reason = reason,
+                                    reportedStr = commentReportedStr,
+                                    replyReportedStr = replyReportedStr,
+                                    reportFailedStr = commentReportFailedStr,
+                                    replyReportFailedStr = replyReportFailedStr,
                                     onError = enableButtonCallback  // Pass the callback
                                 )
                             }
@@ -195,9 +249,12 @@ fun AmityCommentActionsBottomSheet(
                                 submitReport(
                                     viewModel = viewModel,
                                     commentId = commentId,
-                                    context = context,
                                     isReplyComment = isReplyComment,
                                     reason = AmityContentFlagReason.Others(detail),
+                                    reportedStr = commentReportedStr,
+                                    replyReportedStr = replyReportedStr,
+                                    reportFailedStr = commentReportFailedStr,
+                                    replyReportFailedStr = replyReportFailedStr,
                                     onError = enableButtonCallback
                                 )
                             },
@@ -236,50 +293,10 @@ fun AmityCommentActionsContainer(
     isFlaggedByMe: Boolean,
     isFailed: Boolean,
     onEdit: () -> Unit,
+    onDeleteClick: () -> Unit,
     onReportClick: () -> Unit,
     onClose: () -> Unit,
 ) {
-    val context = LocalContext.current
-
-    val openDeleteAlertDialog = remember { mutableStateOf(false) }
-
-    if (openDeleteAlertDialog.value) {
-        AmityAlertDialog(
-            dialogTitle = context.getString(
-                if (isReplyComment) R.string.amity_delete_reply_title
-                else R.string.amity_delete_comment_title
-            ),
-            dialogText = context.getString(
-                if (isReplyComment) R.string.amity_delete_reply_warning_message
-                else R.string.amity_delete_reply_warning_message
-            ),
-            confirmText = context.getString(R.string.amity_delete),
-            dismissText = context.getString(R.string.amity_cancel),
-            onConfirmation = {
-                onClose()
-                openDeleteAlertDialog.value = false
-
-                viewModel.deleteComment(
-                    commentId = commentId,
-                    onSuccess = {
-                        AmityUIKitSnackbar.publishSnackbarMessage(
-                            message = context.getString(
-                                if (isReplyComment) R.string.amity_reply_deleted_message
-                                else R.string.amity_comment_deleted_message
-                            )
-                        )
-                    },
-                    onError = {
-                        AmityUIKitSnackbar.publishSnackbarErrorMessage(
-                            message = context.getString(R.string.amity_comment_delete_failed_toast_message),
-                        )
-                    }
-                )
-            },
-            onDismissRequest = { openDeleteAlertDialog.value = false }
-        )
-    }
-
     Column(
         modifier = modifier
             .background(AmityTheme.colors.background)
@@ -290,9 +307,9 @@ fun AmityCommentActionsContainer(
             if (!isFailed) {
                 AmityBottomSheetActionItem(
                     icon = R.drawable.amity_ic_edit_profile,
-                    text = context.getString(
-                        if (isReplyComment) R.string.amity_edit_reply
-                        else R.string.amity_edit_comment
+                    text = DefaultAmitySocialStringProvider.getInstance().getString(
+                        if (isReplyComment) "amity_social_button_edit_reply"
+                        else "amity_social_button_edit_comment"
                     ),
                     modifier = modifier.testTag("comment_tray_component/bottom_sheet_edit_comment_button")
                 ) {
@@ -303,29 +320,29 @@ fun AmityCommentActionsContainer(
 
             AmityBottomSheetActionItem(
                 icon = R.drawable.amity_ic_delete_story,
-                text = context.getString(
-                    if (isReplyComment) R.string.amity_delete_reply
-                    else R.string.amity_delete_comment
+                text = DefaultAmitySocialStringProvider.getInstance().getString(
+                    if (isReplyComment) "amity_social_button_delete_reply"
+                    else "amity_social_button_delete_comment"
                 ),
                 color = AmityTheme.colors.alert,
                 modifier = modifier.testTag("comment_tray_component/bottom_sheet_delete_comment_button"),
             ) {
-                openDeleteAlertDialog.value = true
+                onDeleteClick()
             }
         } else {
             AmityBottomSheetActionItem(
                 icon = if (isFlaggedByMe) R.drawable.amity_ic_unreport else R.drawable.amity_ic_report_comment,
                 text = if (isFlaggedByMe) {
                     if (isReplyComment) {
-                        context.getString(R.string.amity_unreport_reply)
+                        DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unreport_reply")
                     } else {
-                        context.getString(R.string.amity_unreport_comment)
+                        DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unreport_comment")
                     }
                 } else {
                     if (isReplyComment) {
-                        context.getString(R.string.amity_report_reply_v4)
+                        DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_report_reply_v4")
                     } else {
-                        context.getString(R.string.amity_report_comment)
+                        DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_report_comment")
                     }
                 },
                 modifier = modifier.testTag("comment_tray_component/bottom_sheet_report_comment_button"),
@@ -340,9 +357,12 @@ fun AmityCommentActionsContainer(
 private fun submitReport(
     viewModel: AmityCommentTrayComponentViewModel,
     commentId: String,
-    context: Context,
     isReplyComment: Boolean,
     reason: AmityContentFlagReason,
+    reportedStr: String,
+    replyReportedStr: String,
+    reportFailedStr: String,
+    replyReportFailedStr: String,
     onError: () -> Unit = {},
 ) {
     viewModel.flagComment(
@@ -351,9 +371,9 @@ private fun submitReport(
         onSuccess = {
             AmityUIKitSnackbar.publishSnackbarMessage(
                 message = if (!isReplyComment) {
-                    context.getString(R.string.amity_comment_reported_toast_message)
+                    reportedStr
                 } else {
-                    context.getString(R.string.amity_reply_reported_toast_message)
+                    replyReportedStr
                 },
             )
             viewModel.updateSheetUIState(CommentBottomSheetState.CloseSheet)
@@ -366,18 +386,18 @@ private fun submitReport(
                 } else {
                     AmityUIKitSnackbar.publishSnackbarErrorMessage(
                         message = if (!isReplyComment) {
-                            context.getString(R.string.amity_comment_reported_failed_toast_message)
+                            reportFailedStr
                         } else {
-                            context.getString(R.string.amity_reply_reported_failed_toast_message)
+                            replyReportFailedStr
                         },
                     )
                 }
             } else {
                 AmityUIKitSnackbar.publishSnackbarErrorMessage(
                     message = if (!isReplyComment) {
-                        context.getString(R.string.amity_comment_reported_failed_toast_message)
+                        reportFailedStr
                     } else {
-                        context.getString(R.string.amity_reply_reported_failed_toast_message)
+                        replyReportFailedStr
                     },
                 )
             }
@@ -388,26 +408,29 @@ private fun submitReport(
 private fun submitUnReport(
     viewModel: AmityCommentTrayComponentViewModel,
     commentId: String,
-    context: Context,
     isReplyComment: Boolean,
+    unreportedStr: String,
+    replyUnreportedStr: String,
+    unreportFailedStr: String,
+    replyUnreportFailedStr: String,
 ) {
     viewModel.unflagComment(
         commentId = commentId,
         onSuccess = {
             AmityUIKitSnackbar.publishSnackbarMessage(
                 message = if (!isReplyComment) {
-                    context.getString(R.string.amity_comment_unreported_toast_message)
+                    unreportedStr
                 } else {
-                    context.getString(R.string.amity_reply_unreported_toast_message)
+                    replyUnreportedStr
                 }
             )
         },
         onError = {
             AmityUIKitSnackbar.publishSnackbarErrorMessage(
                 message = if (!isReplyComment) {
-                    context.getString(R.string.amity_comment_unreported_failed_toast_message)
+                    unreportFailedStr
                 } else {
-                    context.getString(R.string.amity_reply_unreported_failed_toast_message)
+                    replyUnreportFailedStr
                 }
             )
         }
@@ -424,6 +447,7 @@ fun AmityCommentActionsContainerPreview() {
         isFlaggedByMe = false,
         isFailed = true,
         onEdit = {},
+        onDeleteClick = {},
         onClose = {},
         onReportClick = {},
         viewModel = AmityCommentTrayComponentViewModel()

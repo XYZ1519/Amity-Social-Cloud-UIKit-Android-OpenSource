@@ -66,6 +66,7 @@ import com.amity.socialcloud.sdk.model.social.post.AmityPost
 import com.amity.socialcloud.sdk.model.video.stream.AmityStream
 import com.amity.socialcloud.sdk.video.presentation.AmityVideoPlayer
 import com.amity.socialcloud.uikit.common.common.isNotEmptyOrBlank
+import com.amity.socialcloud.uikit.common.utils.resolvedAvatarUrl
 import com.amity.socialcloud.uikit.common.config.AmityUIKitConfigController
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
 import com.amity.socialcloud.uikit.common.model.AmityMessageReactions
@@ -74,6 +75,8 @@ import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import com.amity.socialcloud.uikit.common.ui.elements.AmityBottomSheetActionItem
 import com.amity.socialcloud.uikit.common.ui.elements.DisposableEffectWithLifeCycle
+import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.ui.theme.amityLiveBadgeRedAccent
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.closePageWithResult
 import com.amity.socialcloud.uikit.common.utils.isSignedIn
@@ -82,6 +85,7 @@ import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.livestream.chat.AmityLivestreamMessageComposeBar
 import com.amity.socialcloud.uikit.community.compose.livestream.chat.ChatOverlay
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.community.compose.livestream.chat.FloatingReaction
 import com.amity.socialcloud.uikit.community.compose.livestream.chat.FloatingReactionsOverlay
 import com.amity.socialcloud.uikit.community.compose.livestream.chat.ReactionPicker
@@ -98,6 +102,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.text.style.TextOverflow.Companion as TextOverflow1
+import com.amity.socialcloud.uikit.common.ui.theme.amityMediaSurface
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorGray
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -254,7 +262,7 @@ fun AmityLivestreamPlayerPage(
                             contentAlignment = Alignment.TopStart,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black)
+                                .background(amityMediaSurface)
                         ) {
                             if (streamId == null) {
                                 AmityLivestreamLoadingView()
@@ -281,7 +289,7 @@ fun AmityLivestreamPlayerPage(
                                         id = R.drawable.amity_ic_close
                                     ),
                                     contentDescription = "Close",
-                                    tint = Color.White,
+                                    tint = AmityTheme.colors.baseInverse,
                                     modifier = Modifier
                                         .size(24.dp)
                                         .padding(4.dp)
@@ -364,10 +372,10 @@ fun AmityLivestreamPlayerPage(
                                     brush = Brush.verticalGradient(
                                         colorStops = arrayOf(
                                             0.0f to Color.Transparent,
-                                            0.3f to Color.Black.copy(alpha = 0.1f),
-                                            0.6f to Color.Black.copy(alpha = 0.4f),
-                                            0.8f to Color.Black.copy(alpha = 0.7f),
-                                            1.0f to Color.Black
+                                            0.3f to amityMediaSurface.copy(alpha = 0.1f),
+                                            0.6f to amityMediaSurface.copy(alpha = 0.4f),
+                                            0.8f to amityMediaSurface.copy(alpha = 0.7f),
+                                            1.0f to amityMediaSurface
                                         )
                                     )
                                 )
@@ -388,7 +396,7 @@ fun AmityLivestreamPlayerPage(
 //                                            drawRect(
 //                                                brush = Brush.verticalGradient(
 //                                                    colors = listOf(
-//                                                        Color.White, // Use white for fade mask
+//                                                        AmityTheme.colors.baseInverse, // Use white for fade mask
 //                                                        Color.Transparent,
 //                                                        Color.Transparent,
 //                                                    ),
@@ -493,8 +501,8 @@ fun AmityLivestreamPlayerPage(
                 showBottomSheet = false
             },
             sheetState = bottomSheetState,
-            containerColor = Color(0xFF191919),
-            contentColor = Color.White,
+            containerColor = AmityTheme.colors.background,
+            contentColor = AmityTheme.colors.baseInverse,
             dragHandle = {
                 Box(
                     modifier = Modifier
@@ -502,7 +510,7 @@ fun AmityLivestreamPlayerPage(
                         .width(36.dp)
                         .height(4.dp)
                         .background(
-                            Color.Gray,
+                            amityColorGray,
                             RoundedCornerShape(2.dp)
                         )
                 )
@@ -515,13 +523,13 @@ fun AmityLivestreamPlayerPage(
 
                 AmityBottomSheetActionItem(
                     icon = R.drawable.amity_v4_link_icon,
-                    text = "Copy live stream link",
+                    text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_status_copy_live_stream_link"),
                     modifier = Modifier
                         .padding(horizontal = 12.dp),
-                    color = Color(0xFFEBECEF)
+                    color = AmityTheme.colors.base
                 ) {
                     clipboardManager.setText(AnnotatedString(postLink))
-                    AmityUIKitSnackbar.publishSnackbarMessage("Link copied")
+                    AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_link_copied"))
                     // Delay the bottom sheet dismissal slightly
                     CoroutineScope(Dispatchers.Main).launch {
                         delay(100)
@@ -531,10 +539,10 @@ fun AmityLivestreamPlayerPage(
 
                 AmityBottomSheetActionItem(
                     icon = R.drawable.amity_v4_share_icon,
-                    text = "Share to",
+                    text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_share_to"),
                     modifier = Modifier
                         .padding(horizontal = 12.dp),
-                    color = Color(0xFFEBECEF)
+                    color = AmityTheme.colors.base
                 ) {
                     showBottomSheet = false
                     // Open native Android share sheet
@@ -564,7 +572,7 @@ fun CommunityLivestreamPlayerHeader(
         is AmityPost.Target.COMMUNITY -> {
             val community = (post.getTarget() as? AmityPost.Target.COMMUNITY)?.getCommunity()
             Pair(
-                community?.getDisplayName() ?: "Unknown Community",
+                community?.getDisplayName() ?: DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_community"),
                 community?.getAvatar()?.getUrl(AmityImage.Size.MEDIUM) ?: ""
             )
         }
@@ -572,8 +580,8 @@ fun CommunityLivestreamPlayerHeader(
         is AmityPost.Target.USER -> {
             val user = (post.getTarget() as? AmityPost.Target.USER)?.getUser()
             Pair(
-                user?.getDisplayName() ?: "Unknown User",
-                user?.getAvatar()?.getUrl(AmityImage.Size.MEDIUM) ?: ""
+                user?.getDisplayName() ?: DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unknown_user"),
+                user?.resolvedAvatarUrl() ?: ""
             )
         }
 
@@ -587,7 +595,7 @@ fun CommunityLivestreamPlayerHeader(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color.Black.copy(alpha = 0.6f),
+                        amityColorBlack.copy(alpha = 0.6f),
                         Color.Transparent
                     )
                 )
@@ -610,7 +618,7 @@ fun CommunityLivestreamPlayerHeader(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(CircleShape)
-                    .background(Color.Gray), // Fallback background
+                    .background(amityColorGray), // Fallback background
                 contentScale = ContentScale.Crop,
                 placeholder = painterResource(id = R.drawable.amity_ic_community_placeholder) // Add placeholder
             )
@@ -621,7 +629,7 @@ fun CommunityLivestreamPlayerHeader(
             Column {
                 Text(
                     text = info.first,
-                    color = Color.White,
+                    color = AmityTheme.colors.baseInverse,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
@@ -632,13 +640,13 @@ fun CommunityLivestreamPlayerHeader(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "By ${post?.getCreator()?.getDisplayName() ?: "Unknown User"}",
-                        color = Color.White.copy(alpha = 0.8f),
-                        fontSize = 14.sp,
+                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_by_creator").format(post?.getCreator()?.getDisplayName() ?: DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unknown_user")),
+                        color = amityColorWhite.copy(alpha = 0.8f),
+                        fontSize = 16.sp,
                         maxLines = 1,
                         overflow = TextOverflow1.Ellipsis
                     )
-                    
+
                     // Show brand badge if user is a brand
                     val isBrandCreator = post?.getCreator()?.isBrand() == true
                     if (isBrandCreator) {
@@ -658,14 +666,14 @@ fun CommunityLivestreamPlayerHeader(
             Box(
                 modifier = Modifier
                     .background(
-                        Color(0xFFFF3B5C), // Pink/Red color for LIVE badge
+                        amityLiveBadgeRedAccent, // Pink/Red color for LIVE badge
                         RoundedCornerShape(6.dp)
                     )
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = "LIVE",
-                    color = Color.White,
+                    text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_status_live"),
+                    color = AmityTheme.colors.baseInverse,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp
@@ -679,8 +687,8 @@ fun CommunityLivestreamPlayerHeader(
                     painter = painterResource(
                         id = R.drawable.amity_v4_option_vertical
                     ),
-                    contentDescription = "Options",
-                    tint = Color.White,
+                    contentDescription = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_options"),
+                    tint = AmityTheme.colors.baseInverse,
                     modifier = Modifier
                         .size(32.dp)
                         .clickableWithoutRipple {

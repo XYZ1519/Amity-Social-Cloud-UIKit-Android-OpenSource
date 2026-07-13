@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -22,6 +23,7 @@ import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 
 
 @Composable
@@ -44,11 +46,12 @@ fun AmityCommunityEmptyFeedView(
         ) {
             Image(
                 painter = painterResource(id = R.drawable.amity_ic_empty_feed),
-                contentDescription = "empty feed icon"
+                contentDescription = "empty feed icon",
+                colorFilter = ColorFilter.tint(AmityTheme.colors.baseShade4)
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "No post yet",
+                text = amitySocialString("amity_social_empty_state_empty_feed_no_posts"),
                 style = TextStyle(
                     fontSize = 17.sp,
                     lineHeight = 22.sp,

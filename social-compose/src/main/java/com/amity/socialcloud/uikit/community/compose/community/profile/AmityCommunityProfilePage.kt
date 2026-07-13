@@ -15,15 +15,12 @@ import androidx.compose.foundation.layout.waterfall
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.pullrefresh.PullRefreshIndicator
-import androidx.compose.material.pullrefresh.pullRefresh
-import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +51,7 @@ import com.amity.socialcloud.sdk.model.core.permission.AmityPermission
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunityPostSettings
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
+import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
@@ -62,6 +60,7 @@ import com.amity.socialcloud.uikit.common.utils.isSignedIn
 import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.community.compose.clip.view.AmityClipFeedPageType
 import com.amity.socialcloud.uikit.community.compose.community.profile.AmityCommunityModalSheetUIState
 import com.amity.socialcloud.uikit.community.compose.community.profile.AmityCommunityProfilePageBehavior
@@ -94,10 +93,12 @@ import kotlin.compareTo
 import kotlin.div
 import kotlin.text.compareTo
 import kotlin.text.get
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 
 @OptIn(
-    ExperimentalMaterialApi::class, ExperimentalFoundationApi::class,
-    ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class
+    ExperimentalFoundationApi::class,
+    ExperimentalLayoutApi::class,
+    ExperimentalMaterial3Api::class
 )
 @SuppressLint("UnrememberedMutableState")
 @Composable
@@ -162,16 +163,13 @@ fun AmityCommunityProfilePage(
     val allEvents =
         remember(communityId) { viewModel.getCommunityEvents() }.collectAsLazyPagingItems()
 
-    val pullRefreshState = rememberPullRefreshState(
-        refreshing = state.isRefreshing,
-        onRefresh = {
-            viewModel.refresh()
-            // Refresh event feeds
-            liveEvents.refresh()
-            upcomingEvents.refresh()
-            pastEvents.refresh()
-        }
-    )
+    val onRefresh: () -> Unit = {
+        viewModel.refresh()
+        // Refresh event feeds
+        liveEvents.refresh()
+        upcomingEvents.refresh()
+        pastEvents.refresh()
+    }
 
 
     // Use the appropriate event list based on filter
@@ -181,10 +179,17 @@ fun AmityCommunityProfilePage(
         else -> allEvents
     }
 
-    val hasCreatePrivilege by if (!AmityCoreClient.isSignedIn()) {
+    // Check if user is creator or has moderator permission (for admin-only post setting)
+    val isCreator by remember(community?.getCreatorId()) {
+        derivedStateOf {
+            AmityCoreClient.getUserId() == community?.getCreatorId()
+        }
+    }
+
+    val hasModeratorPermission by if (!AmityCoreClient.isSignedIn()) {
         remember { mutableStateOf(false) }
     } else {
-        AmityCoreClient.hasPermission(AmityPermission.CREATE_PRIVILEGED_POST)
+        AmityCoreClient.hasPermission(AmityPermission.REVIEW_COMMUNITY_POST)
             .atCommunity(communityId)
             .check()
             .asFlow()
@@ -192,6 +197,12 @@ fun AmityCommunityProfilePage(
                 emit(false)
             }
             .collectAsState(initial = false)
+    }
+
+    val hasCreatePrivilege by remember(isCreator, hasModeratorPermission) {
+        derivedStateOf {
+            isCreator || hasModeratorPermission
+        }
     }
 
     val hasManageStoryPermission by if (!AmityCoreClient.isSignedIn()) {
@@ -213,6 +224,19 @@ fun AmityCommunityProfilePage(
         AmitySocialClient.getSettings()
             .asFlow()
             .map { it.getStorySettings().isAllowAllUserToCreateStory() }
+            .catch {
+                emit(false)
+            }
+            .collectAsState(initial = false)
+    }
+
+    val hasEventCreationPermission by if (!AmityCoreClient.isSignedIn()) {
+        remember { mutableStateOf(false) }
+    } else {
+        AmityCoreClient.hasPermission(AmityPermission.CREATE_EVENT)
+            .atCommunity(communityId)
+            .check()
+            .asFlow()
             .catch {
                 emit(false)
             }
@@ -257,29 +281,49 @@ fun AmityCommunityProfilePage(
         }
     }
 
+    // Reload the feeds when the user transitions to a member (invitation accepted OR
+    // join request approved). Private-community posts are inaccessible before joining,
+    // so the paging sources must re-query once membership flips true. Covers both join
+    // paths without relying on isRefreshing (which the approval path never sets).
+    var previouslyJoined by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(community?.getCommunityId(), community?.isJoined()) {
+        val joined = community?.isJoined()
+        if (joined != null) {
+            if (previouslyJoined == false && joined) {
+                announcementPosts.refresh()
+                communityPosts.refresh()
+                pinPosts.refresh()
+                imagePosts.refresh()
+                videoPosts.refresh()
+            }
+            previouslyJoined = joined
+        }
+    }
+
     var isShowCompleteCreatedCommunity by remember { mutableStateOf(false) }
     LaunchedEffect(isCommunityJustCreated) {
         isShowCompleteCreatedCommunity = isCommunityJustCreated
         if (isShowCompleteCreatedCommunity) {
-            AmityUIKitSnackbar.publishSnackbarMessage(context.getString(R.string.amity_v4_community_setup_toast_create_success))
+            AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_community_setup_toast_create_success"))
         }
         delay(200L)
         isShowCompleteCreatedCommunity = false
     }
 
     var selectedMediaTabIndex by remember { mutableIntStateOf(0) }
-    val mediaTabTitles = listOf("Photos", "Videos", "Clips")
+    val mediaTabTitles = listOf(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_tab_tab_photos"), DefaultAmitySocialStringProvider.getInstance().getString("amity_social_tab_tab_videos"), DefaultAmitySocialStringProvider.getInstance().getString("amity_social_tab_tab_clips"))
 
     AmityBasePage(pageId = "community_profile_page") {
         Scaffold { padding ->
             if (state.community?.isDeleted() == true || state.error != null) {
                 AmityPostErrorPage()
             } else {
-                Box(
-                    modifier = Modifier
+                PullToRefreshBox(
+                    isRefreshing = state.isRefreshing,
+                    onRefresh = onRefresh,
+                    modifier = modifier
                         .padding(PaddingValues(bottom = padding.calculateBottomPadding()))
                         .fillMaxSize()
-                        .pullRefresh(pullRefreshState)
                         .background(AmityTheme.colors.newsfeedDivider),
                 ) {
                     LaunchedEffect(lazyListState) {
@@ -299,7 +343,12 @@ fun AmityCommunityProfilePage(
                             .fillMaxSize()
                             .background(AmityTheme.colors.background),
                     ) {
-                        if (community == null || state.isRefreshing) {
+                        // Only show the full-page shimmer during the genuine initial load
+                        // (no community data yet). Gating it on isRefreshing too made the
+                        // whole page flash to shimmer on every state change / refresh
+                        // (e.g. accepting an invitation). Refreshes keep the content and
+                        // use the pull-to-refresh spinner instead.
+                        if (community == null) {
                             item {
                                 AmityCommunityProfileShimmer()
                             }
@@ -350,7 +399,11 @@ fun AmityCommunityProfilePage(
                             } ?: false
                         val shouldShowAnnouncement = announcementPosts.itemCount > 0
                                 && (selectedTabIndex == 0 || (selectedTabIndex == 1 && hasAnnouncementPin))
-                        if (community?.isJoined() == false && community?.isPublic() == false) {
+                        // Gate on !state.isMember (genuine membership), not isRefreshing.
+                        // Keying on isRefreshing made the private view blink out during any
+                        // refresh; isMember is set true optimistically on accept, so the
+                        // private view disappears immediately on join without a flash.
+                        if (!state.isMember && community?.isJoined() == false && community?.isPublic() == false) {
                             item {
                                 Box(
                                     modifier = Modifier
@@ -362,7 +415,7 @@ fun AmityCommunityProfilePage(
                         } else {
                             if (shouldShowAnnouncement) {
                                 amityCommunityAnnouncementFeedLLS(
-                                    modifier = modifier,
+                                    modifier = Modifier,
                                     pageScope = getPageScope(),
                                     announcementPosts = announcementPosts,
                                     hasAnnouncementPin = hasAnnouncementPin,
@@ -370,6 +423,7 @@ fun AmityCommunityProfilePage(
                                         behavior.goToPostDetailPage(
                                             AmityCommunityProfilePageBehavior.Context(
                                                 pageContext = context,
+                                                community = community,
                                             ),
                                             postId = it.getPostId(),
                                             category = if (hasAnnouncementPin) {
@@ -391,7 +445,7 @@ fun AmityCommunityProfilePage(
                                         }
                                     } else {
                                         amityCommunityFeedLLS(
-                                            modifier = modifier,
+                                            modifier = Modifier,
                                             pageScope = getPageScope(),
                                             communityPosts = communityPosts,
                                             pinPosts = pinPosts,
@@ -413,9 +467,11 @@ fun AmityCommunityProfilePage(
                                                 behavior.goToPostDetailPage(
                                                     AmityCommunityProfilePageBehavior.Context(
                                                         pageContext = context,
+                                                        community = community,
                                                     ),
                                                     postId = post.getPostId(),
                                                     category = category,
+                                                    autoFocusCommentInput = true,
                                                 )
                                             }
                                         )
@@ -424,7 +480,7 @@ fun AmityCommunityProfilePage(
 
                                 1 -> {
                                     amityCommunityPinnedFeedLLS(
-                                        modifier = modifier,
+                                        modifier = Modifier,
                                         pageScope = getPageScope(),
                                         pinPosts = pinPosts,
                                         announcementPosts = announcementPosts,
@@ -432,6 +488,7 @@ fun AmityCommunityProfilePage(
                                             behavior.goToPostDetailPage(
                                                 AmityCommunityProfilePageBehavior.Context(
                                                     pageContext = context,
+                                                    community = community,
                                                 ),
                                                 postId = it.getPostId(),
                                                 category = AmityPostCategory.PIN
@@ -442,7 +499,7 @@ fun AmityCommunityProfilePage(
 
                                 2 -> {
                                     amityCommunityEventFeed(
-                                        modifier = modifier,
+                                        modifier = Modifier,
                                         pageScope = getPageScope(),
                                         communityId = communityId,
                                         liveEvents = liveEvents,
@@ -455,6 +512,7 @@ fun AmityCommunityProfilePage(
                                             behavior.goToEventDetailPage(
                                                 AmityCommunityProfilePageBehavior.Context(
                                                     pageContext = context,
+                                                    community = community,
                                                 ),
                                                 eventId = event.getEventId()
                                             )
@@ -464,18 +522,24 @@ fun AmityCommunityProfilePage(
 
                                 3 -> {
                                     item {
-                                        AmityVideoAndClipChipSelector(
-                                            tabTitles = mediaTabTitles,
-                                            selectedTabIndex = selectedMediaTabIndex,
-                                            onTabSelected = { index ->
-                                                selectedMediaTabIndex = index
-                                            },
-                                        )
+                                        AmityBaseComponent(
+                                            componentId = "community_video_feed",
+                                            pageScope = getPageScope()
+                                        ) {
+                                            AmityVideoAndClipChipSelector(
+                                                tabTitles = mediaTabTitles,
+                                                selectedTabIndex = selectedMediaTabIndex,
+                                                onTabSelected = { index ->
+                                                    selectedMediaTabIndex = index
+                                                },
+                                                componentScope = getComponentScope()
+                                            )
+                                        }
                                     }
                                     when (selectedMediaTabIndex) {
                                         0 -> {
                                             amityCommunityImageFeedLLS(
-                                                modifier = modifier,
+                                                modifier = Modifier,
                                                 imagePosts = imagePosts,
                                                 onViewPost = { postId, category ->
                                                     behavior.goToPostDetailPage(
@@ -491,12 +555,13 @@ fun AmityCommunityProfilePage(
 
                                         1 -> {
                                             amityCommunityVideoFeedLLS(
-                                                modifier = modifier,
+                                                modifier = Modifier,
                                                 videoPosts = videoPosts,
                                                 onViewPost = { postId, category ->
                                                     behavior.goToPostDetailPage(
                                                         AmityCommunityProfilePageBehavior.Context(
                                                             pageContext = context,
+                                                            community = community,
                                                         ),
                                                         postId = postId,
                                                         category = category,
@@ -582,7 +647,7 @@ fun AmityCommunityProfilePage(
                                 Icon(
                                     painter = painterResource(id = getConfig().getIcon()),
                                     contentDescription = "create post",
-                                    tint = Color.White,
+                                    tint = amityColorWhite,
                                     modifier = Modifier.size(32.dp)
                                 )
                             }
@@ -595,17 +660,14 @@ fun AmityCommunityProfilePage(
                             shouldShow = expanded,
                             shouldShowPostCreationButton = shouldShowPostCreationButton,
                             shouldShowStoryCreationButton = shouldShowStoryCreationButton,
+                            shouldShowEventCreationButton = hasEventCreationPermission,
                             showPollTypeSelectionSheet = {
                                 showPollSelectionBottomSheet = true
                             },
                             onDismiss = { expanded = false },
+                            pageScope = getPageScope()
                         )
                     }
-                    PullRefreshIndicator(
-                        refreshing = state.isRefreshing,
-                        state = pullRefreshState,
-                        modifier = Modifier.align(Alignment.TopCenter),
-                    )
                     if (bottomSheetUiState !is AmityCommunityModalSheetUIState.CloseSheet) {
                         community?.let {
                             AmityCommunityModalBottomSheet(

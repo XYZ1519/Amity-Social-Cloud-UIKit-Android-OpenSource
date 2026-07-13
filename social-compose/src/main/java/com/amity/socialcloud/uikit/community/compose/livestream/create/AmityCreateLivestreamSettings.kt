@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorGray
 
 @Composable
 fun AmityCreateLivestreamSettings(
@@ -39,16 +41,16 @@ fun AmityCreateLivestreamSettings(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    "Set live stream to read-only",
-                    color = Color.White,
+                    amitySocialString("amity_social_status_set_livestream_read_only"),
+                    color = AmityTheme.colors.baseInverse,
                     style = AmityTheme.typography.bodyBold
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    "Members who are not streamer can read messages but cannot send any messages.",
-                    color = Color(0xFFA5A9B5),
+                    amitySocialString("amity_social_label_livestream_read_only_description"),
+                    color = AmityTheme.colors.baseShade1,
                     style = AmityTheme.typography.caption
                 )
             }
@@ -59,10 +61,10 @@ fun AmityCreateLivestreamSettings(
                 checked = isReadOnly,
                 onCheckedChange = onReadOnlyToggle,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
+                    checkedThumbColor = AmityTheme.colors.baseInverse,
                     checkedTrackColor = AmityTheme.colors.primary,
-                    uncheckedThumbColor = Color.White,
-                    uncheckedTrackColor = Color.Gray
+                    uncheckedThumbColor = AmityTheme.colors.baseInverse,
+                    uncheckedTrackColor = amityColorGray
                 )
             )
         }

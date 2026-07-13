@@ -27,9 +27,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
+import com.amity.socialcloud.uikit.common.utils.isSignedIn
+import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
 
 @Composable
 fun AmityEmptyClipFeedScreen(
@@ -40,7 +45,7 @@ fun AmityEmptyClipFeedScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(AmityTheme.colors.baseShade1)
+            .background(AmityTheme.colors.secondaryShade1)
     ) {
         // Top Gradient
         Box(
@@ -49,7 +54,7 @@ fun AmityEmptyClipFeedScreen(
                 .height(102.dp) // adjust as needed
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Black.copy(alpha = 0.5f), Color.Transparent)
+                        colors = listOf(amityColorBlack.copy(alpha = 0.5f), Color.Transparent)
                     )
                 )
         )
@@ -62,7 +67,7 @@ fun AmityEmptyClipFeedScreen(
                 .height(168.dp)
                 .background(
                     brush = Brush.verticalGradient(
-                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.5f))
+                        colors = listOf(Color.Transparent, amityColorBlack.copy(alpha = 0.5f))
                     )
                 )
         )
@@ -78,20 +83,20 @@ fun AmityEmptyClipFeedScreen(
                     .size(160.dp)
             )
             Text(
-                text = "Your feed is empty",
+                text = amitySocialString("amity_social_empty_state_social_home_empty_title"),
                 style = AmityTheme.typography.titleBold,
-                color = Color.White
+                color = AmityTheme.colors.baseInverse
             )
             Text(
-                text = "Find community or create your own. ",
+                text = amitySocialString("amity_social_label_find_community_or_create_your_own"),
                 style = AmityTheme.typography.caption,
-                color = Color.White
+                color = AmityTheme.colors.baseInverse
             )
             Spacer(Modifier.height(16.dp))
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .border(width = 1.dp, color = Color.White, shape = RoundedCornerShape(8.dp))
+                    .border(width = 1.dp, color = AmityTheme.colors.baseInverse, shape = RoundedCornerShape(8.dp))
                     .padding(start = 12.dp, top = 12.dp, bottom = 12.dp, end = 16.dp)
                     .clickableWithoutRipple {
                         onExploreCommunityClick()
@@ -100,27 +105,30 @@ fun AmityEmptyClipFeedScreen(
             ) {
                 Icon(
                     painter = painterResource(R.drawable.amity_v4_language_icon),
-                    tint = Color.White,
+                    tint = AmityTheme.colors.baseInverse,
                     contentDescription = null,
                     modifier = Modifier
                         .size(20.dp)
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Explore community",
+                    text = amitySocialString("amity_social_button_explore_community_button"),
                     style = AmityTheme.typography.bodyBold,
-                    color = Color.White,
+                    color = AmityTheme.colors.baseInverse,
                 )
             }
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = "Create community",
-                style = AmityTheme.typography.bodyBold,
-                color = Color.White,
-                modifier = Modifier.clickableWithoutRipple {
-                    onCreateCommunityClick()
-                }
-            )
+
+            if(AmityCoreClient.isSignedIn()) {
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = amitySocialString("amity_social_button_social_home_create_community"),
+                    style = AmityTheme.typography.bodyBold,
+                    color = AmityTheme.colors.baseInverse,
+                    modifier = Modifier.clickableWithoutRipple {
+                        onCreateCommunityClick()
+                    }
+                )
+            }
 
         }
 

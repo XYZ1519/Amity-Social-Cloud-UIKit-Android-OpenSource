@@ -18,6 +18,8 @@ import com.amity.socialcloud.sdk.model.core.file.AmityImage
 import com.amity.socialcloud.sdk.model.core.file.upload.AmityUploadResult
 import com.amity.socialcloud.sdk.model.core.invitation.AmityInvitation
 import com.amity.socialcloud.sdk.model.core.invitation.AmityInvitationStatus
+import com.amity.socialcloud.sdk.model.core.product.AmityProduct
+import com.amity.socialcloud.sdk.model.core.producttag.AmityProductTag
 import com.amity.socialcloud.sdk.model.core.reaction.AmityLiveReactionReferenceType
 import com.amity.socialcloud.sdk.model.core.reaction.live.AmityLiveReaction
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
@@ -39,6 +41,7 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,6 +52,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.joda.time.Duration
 import java.util.concurrent.TimeUnit
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 
 class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : AmityBaseViewModel() {
     private val _uiState = MutableStateFlow(AmityCreateRoomPageUiState())
@@ -74,14 +78,15 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
             }
         }
         observeNetwork()
+        fetchProductCatalogueSettings()
         postId?.let(::getRoomPost)
     }
 
-    fun setupScreen(communityId: String? = null) {
+    fun setupScreen(communityId: String? = null, myTimelineLabel: String = "My timeline") {
         communityId?.let {
             getCommunity(it)
         } ?: run {
-            getCurrentUser()
+            getCurrentUser(myTimelineLabel = myTimelineLabel)
         }
     }
 
@@ -120,7 +125,7 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
         }
     }
 
-    private fun getCurrentUser() {
+    private fun getCurrentUser(myTimelineLabel: String = "My timeline") {
         viewModelScope.launch {
             addDisposable(
                 AmityCoreClient.getCurrentUser()
@@ -129,7 +134,7 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                     .observeOn(AndroidSchedulers.mainThread())
                     .doOnSuccess { user ->
                         user.getDisplayName()?.let {
-                            updateTargetInformation(name = "My timeline", userId = user.getUserId())
+                            updateTargetInformation(name = myTimelineLabel, userId = user.getUserId())
                         }
                     }
                     .subscribe()
@@ -243,6 +248,9 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({
+                _uiState.update { currentState ->
+                    currentState.copy(isLive = true)
+                }
                 onCreateCompleted.invoke(it, viewModelScope)
             }, { error ->
                 onCreateFailed(error.message ?: "")
@@ -267,7 +275,7 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
             }
             .flatMap {
                 createLiveChannel(
-                    livestreamTitle = room.getTitle() ?: "No title",
+                    livestreamTitle = room.getTitle() ?: "",
                     postId = post.getPostId(),
                     roomId = room.getRoomId()
                 )
@@ -275,7 +283,8 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
             .doOnSuccess { channel ->
                 _uiState.update { currentState ->
                     currentState.copy(
-                        channelId = channel.getChannelId()
+                        channelId = channel.getChannelId(),
+                        isLive = true
                     )
                 }
                 subscribeChannelRT(channel)
@@ -317,7 +326,7 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                         ?.await()
 
                     AmityUIKitSnackbar.publishSnackbarMessage(
-                        message = "Co-host invitation successfully sent."
+                        message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_invitation_sent")
                     )
 //                    if (user == null) {
 //                        fetchCohostUser(userId)
@@ -341,7 +350,7 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
             .observeOn(AndroidSchedulers.mainThread())
             .doOnComplete {
                 AmityUIKitSnackbar.publishSnackbarMessage(
-                    message = "Co-host invitation cancelled."
+                    message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_invitation_cancelled_toast")
                 )
             }
             .subscribe()
@@ -376,7 +385,7 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                             }
                         } else if (invitation.getStatus() == AmityInvitationStatus.REJECTED) {
                             AmityUIKitSnackbar.publishSnackbarMessage(
-                                message = "Co-host declined the invitation."
+                                message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_cohost_declined_invitation")
                             )
                             _uiState.update {
                                 it.copy(
@@ -402,7 +411,7 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
             .let(::addDisposable)
     }
 
-    private fun getPost(postId: String) {
+    fun getPost(postId: String) {
         viewModelScope.launch {
             AmitySocialClient.newPostRepository()
                 .getPost(postId)
@@ -416,7 +425,8 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                     _uiState.update { currentState ->
                         currentState.copy(
                             post = post,
-                            isPendingApproval = post.getReviewStatus() != AmityReviewStatus.PUBLISHED
+                            isPendingApproval = post.getReviewStatus() != AmityReviewStatus.PUBLISHED,
+                            pinnedProductId = post.getPinnedProductId()
                         )
                     }
                 }
@@ -517,6 +527,7 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
             .createRoom(
                 title = title,
                 description = description,
+                thumbnailFileId = _uiState.value.thumbnailId,
                 liveChatEnabled = true,
             )
     }
@@ -600,6 +611,11 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
         room: AmityRoom,
         //userMentions: List<AmityMentionMetadata.USER>,
     ): Single<AmityPost> {
+        val (taggedProducts, pinnedProductId) = if (_uiState.value.isProductCatalogueEnabled) {
+            Pair(_uiState.value.taggedProducts?.map { AmityProductTag.Media(it.getProductId()) }, _uiState.value.pinnedProductId)
+        } else {
+            Pair(null, null)
+        }
         return AmitySocialClient.newPostRepository()
             .createRoomPost(
                 targetType = AmityPost.TargetType.COMMUNITY,
@@ -607,11 +623,15 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                 roomId = room.getRoomId(),
                 title = _uiState.value.liveTitle,
                 text = _uiState.value.liveDesc ?: "",
+                productTags = taggedProducts,
+                pinnedProductId = pinnedProductId
                 //, metadata = null, mentionUserIds = setOf()
             )
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
-            .doOnSuccess { setPostId(it.getPostId()) }
+            .doOnSuccess {
+                setPostId(it.getPostId())
+            }
     }
 
     private fun createUserSelfPost(
@@ -726,7 +746,8 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                 when (event) {
                     is AmityCoHostEvent.CoHostInviteRejected -> {
                         AmityUIKitSnackbar.publishSnackbarMessage(
-                            message = "Co-host declined the invitation."
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_cohost_declined_invitation"),
+                            offsetFromBottom = 50
                         )
                     }
                     is AmityCoHostEvent.CoHostLeft -> {
@@ -734,13 +755,21 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                         val actorInternalId = event.actorInternalId
                         if (hostInternalId != actorInternalId) {
                             AmityUIKitSnackbar.publishSnackbarMessage(
-                                message = "Co-host left the stage."
+                                message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_status_cohost_left"),
+                                offsetFromBottom = 50
                             )
                         }
                     }
                     is AmityCoHostEvent.CoHostInviteAccepted -> {
                         AmityUIKitSnackbar.publishSnackbarMessage(
-                            message = "Co-host accepted the invitation."
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_cohost_accepted_invitation"),
+                            offsetFromBottom = 50
+                        )
+                    }
+                    is AmityCoHostEvent.CoHostRemoved -> {
+                        AmityUIKitSnackbar.publishSnackbarMessage(
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_status_cohost_removed"),
+                            offsetFromBottom = 50
                         )
                     }
                     else -> {
@@ -778,10 +807,6 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
         AmityVideoClient.newRoomRepository()
             .removeRoomParticipant(roomId = roomId, userId = userId)
             .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .doOnComplete {
-                AmityUIKitSnackbar.publishSnackbarMessage("Your co-host was removed from your live stream.")
-            }
             .subscribe()
             .let(::addDisposable)
     }
@@ -968,6 +993,199 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                 }
             }
             .observeOn(AndroidSchedulers.mainThread())
+            .subscribe()
+            .let(::addDisposable)
+    }
+
+    fun addTaggedProducts(
+        taggedProducts: List<AmityProduct>
+    ) {
+        if (_uiState.value.isLive) {
+            val currentTaggedProduct = _uiState.value.getRoomPost()?.getProducts().orEmpty().map {
+                AmityProductTag.Media(it.getProductId())
+            }
+            AmitySocialClient.newPostRepository()
+                .editPost(
+                    postId = _uiState.value.getRoomPost()?.getPostId() ?: "",
+                )
+                .taggedProducts(
+                    productTags = (currentTaggedProduct + taggedProducts.map { AmityProductTag.Media(it.getProductId()) }).distinct(),
+                )
+                .build()
+                .apply()
+                .doOnError {
+                    AmityUIKitSnackbar.publishSnackbarMessage(
+                        offsetFromBottom = 50,
+                        message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_product_tag_add_failed")
+                    )
+                }
+                .doOnComplete {
+                    viewModelScope.launch {
+                        delay(300)
+                        val newTaggedProductSize = currentTaggedProduct.size + taggedProducts.size
+                        if (newTaggedProductSize > _uiState.value.getRoomPost()?.getProductTags().orEmpty().size) {
+                            AmityUIKitSnackbar.publishSnackbarErrorMessage(
+                                offsetFromBottom = 50,
+                                message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_tagged_products_unavailable")
+                            )
+                        } else {
+                            AmityUIKitSnackbar.publishSnackbarMessage(
+                                offsetFromBottom = 50,
+                                message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_product_tags_added")
+                            )
+                        }
+                    }
+                }
+                .subscribe()
+        } else {
+            viewModelScope.launch {
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        taggedProducts = currentState.taggedProducts.orEmpty() + taggedProducts
+                    )
+                }
+            }
+        }
+    }
+
+    fun removeTaggedProduct(productId: String) {
+        if (_uiState.value.isLive) {
+            // straight hit api
+            AmitySocialClient.newPostRepository()
+                .editPost(
+                    postId = _uiState.value.getRoomPost()?.getPostId() ?: "",
+                )
+                .taggedProducts(
+                    productTags = _uiState.value.getRoomPost()?.getProducts()
+                        ?.filter { it.getProductId() != productId }
+                        ?.map { AmityProductTag.Media(it.getProductId()) }
+                        .orEmpty(),
+                )
+                .build()
+                .apply()
+                .doOnError {
+                    AmityUIKitSnackbar.publishSnackbarMessage(
+                        offsetFromBottom = 50,
+                        message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_product_tag_remove_failed")
+                    )
+                }
+                .doOnComplete {
+                    AmityUIKitSnackbar.publishSnackbarMessage(
+                        offsetFromBottom = 50,
+                        message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_product_tag_removed")
+                    )
+                }
+                .subscribe()
+        } else {
+            // save to state
+            _uiState.update { currentState ->
+                val isPinned = currentState.pinnedProductId == productId
+                currentState.copy(
+                    taggedProducts = currentState.taggedProducts
+                        ?.filter { it.getProductId() != productId },
+                    pinnedProductId = if (isPinned) null else currentState.pinnedProductId
+                )
+            }
+        }
+    }
+
+    fun togglePinProduct(
+        productId: String?
+    ) {
+        if (_uiState.value.isLive) {
+            AmitySocialClient.newPostRepository().let {
+                if (productId == null) {
+                    it.unpinProduct(
+                        postId = _uiState.value.getRoomPost()?.getPostId() ?: ""
+                    )
+                } else {
+                    it.pinProduct(
+                        productId = productId,
+                        postId = _uiState.value.getRoomPost()?.getPostId() ?: ""
+                    )
+                }
+            }.doOnComplete {
+                    if (productId == null) {
+                        _uiState.update { currentState ->
+                            currentState.copy(
+                                pinnedProductId = null
+                            )
+                        }
+                        AmityUIKitSnackbar.publishSnackbarMessage(
+                            offsetFromBottom = 50,
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_product_tag_unpinned")
+                        )
+                    } else {
+                        AmityUIKitSnackbar.publishSnackbarMessage(
+                            offsetFromBottom = 50,
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_product_tag_pinned")
+                        )
+                    }
+                }
+                .doOnError {
+                    if (productId == null) {
+                        AmityUIKitSnackbar.publishSnackbarErrorMessage(
+                            offsetFromBottom = 50,
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_unpin_product_tag_failed")
+                        )
+                    } else {
+                        AmityUIKitSnackbar.publishSnackbarErrorMessage(
+                            offsetFromBottom = 50,
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_pin_product_tag_failed")
+                        )
+                    }
+                }
+                .subscribe()
+                .let(::addDisposable)
+        } else {
+            _uiState.update { currentState ->
+                currentState.copy(
+                    pinnedProductId = productId
+                )
+            }
+        }
+    }
+
+    fun fetchProductCatalogueSettings(
+        onEnabledAction: (() -> Unit)? = null,
+        onDisabledAction: (() -> Unit)? = null
+    ) {
+        AmityCoreClient.getProductCatalogueSetting()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .doOnSuccess { settings ->
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        isProductCatalogueEnabled = settings.enabled
+                    )
+                }
+                if (settings.enabled) {
+                    onEnabledAction?.invoke()
+                } else {
+                    onDisabledAction?.invoke()
+                }
+            }
+            .subscribe()
+            .let(::addDisposable)
+    }
+
+    fun updateCoHostManageProductPermission(canManageProduct: Boolean) {
+        val currentState = _uiState.value
+        val roomId = currentState.room?.getRoomId() ?: return
+        val cohostUserId = currentState.cohostUserId ?: return
+        AmityVideoClient.newRoomRepository()
+            .updateCohostPermission(
+                roomId = roomId,
+                canManageProductTags = canManageProduct,
+                cohostId = cohostUserId
+            )
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .doOnError {
+                AmityUIKitSnackbar.publishSnackbarMessage(
+                    message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_update_cohost_permission_failed")
+                )
+            }
             .subscribe()
             .let(::addDisposable)
     }

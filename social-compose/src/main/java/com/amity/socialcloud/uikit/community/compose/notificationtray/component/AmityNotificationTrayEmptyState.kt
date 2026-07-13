@@ -13,25 +13,40 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.amity.socialcloud.uikit.common.compose.R
+import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
+import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.utils.getIcon
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 
 @Composable
-fun AmityNotificationTrayEmptyState(modifier: Modifier) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+fun AmityNotificationTrayEmptyState(
+    modifier: Modifier,
+    pageScope: AmityComposePageScope? = null,
+) {
+    AmityBaseElement(
+        pageScope = pageScope,
+        elementId = "empty_notification"
     ) {
-        Image(
-            painter = painterResource(R.drawable.amity_ic_notification_tray_empty),
-            contentDescription = null
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "No notifications",
-            style = AmityTheme.typography.titleBold,
-            color = AmityTheme.colors.baseShade3
-        )
+        Column(
+            modifier = modifier,
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            val iconRes = getConfig().getIcon()
+            Image(
+                painter = painterResource(
+                    if (iconRes != 0) iconRes else R.drawable.amity_ic_notification_tray_empty
+                ),
+                contentDescription = null
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = amitySocialString("amity_social_notification_no_notifications"),
+                style = AmityTheme.typography.titleBold,
+                color = AmityTheme.colors.baseShade3
+            )
+        }
     }
 }
 

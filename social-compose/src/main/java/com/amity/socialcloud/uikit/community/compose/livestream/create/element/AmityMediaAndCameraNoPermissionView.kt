@@ -18,6 +18,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 
 @Composable
 fun AmityMediaAndCameraNoPermissionView(
@@ -35,7 +36,7 @@ fun AmityMediaAndCameraNoPermissionView(
             modifier = Modifier,
             text = title ?: "",
             style = AmityTheme.typography.titleBold,
-            color = Color.White,
+            color = AmityTheme.colors.baseInverse,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(4.dp))
@@ -43,7 +44,7 @@ fun AmityMediaAndCameraNoPermissionView(
             modifier = Modifier,
             text = description ?: "",
             style = AmityTheme.typography.caption,
-            color = Color.White,
+            color = AmityTheme.colors.baseInverse,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(24.dp))
@@ -59,10 +60,10 @@ fun AmityMediaAndCameraNoPermissionView(
         ) {
             Text(
                 modifier = Modifier,
-                text = "Open settings",
+                text = amitySocialString("amity_social_setting_open_settings"),
                 style = AmityTheme.typography.bodyLegacy.copy(
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
+                    color = AmityTheme.colors.baseInverse,
                     textAlign = TextAlign.Center,
                     lineHeight = 20.sp
                 )

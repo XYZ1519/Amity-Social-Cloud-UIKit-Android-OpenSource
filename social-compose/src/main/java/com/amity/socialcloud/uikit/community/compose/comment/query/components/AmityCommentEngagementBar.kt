@@ -30,7 +30,6 @@ import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
@@ -48,7 +47,7 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.model.social.comment.AmityComment
-import com.amity.socialcloud.uikit.common.common.readableSocialTimeDiff
+import com.amity.socialcloud.uikit.common.utils.readableSocialTimeDiff
 import com.amity.socialcloud.uikit.common.model.AmitySocialReactions
 import com.amity.socialcloud.uikit.common.reaction.picker.AmityReactionPicker
 import com.amity.socialcloud.uikit.common.reaction.picker.getReactionIndexByX
@@ -58,6 +57,10 @@ import com.amity.socialcloud.uikit.common.utils.AmityConstants.POST_REACTION
 import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.localization.amitySocialReactionDisplayName
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.isUIKitInDarkTheme
 import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentViewModel
 import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentViewModel.CommentBottomSheetState
 import kotlinx.coroutines.TimeoutCancellationException
@@ -71,13 +74,13 @@ fun AmityCommentEngagementBar(
     allowInteraction: Boolean,
     allowAction: Boolean = true,
     isReplyComment: Boolean,
+    isL2Comment: Boolean = false,
     comment: AmityComment,
     isCreatedByMe: Boolean,
     fromNonMemberCommunity: Boolean = false,
     onReply: (String) -> Unit,
     onEdit: () -> Unit,
 ) {
-    val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val behavior by lazy {
         AmitySocialBehaviorHelper.commentTrayComponentBehavior
@@ -135,7 +138,7 @@ fun AmityCommentEngagementBar(
         ) {
             Text(
                 text = comment.getCreatedAt()
-                    .readableSocialTimeDiff() + if (comment.isEdited()) " (edited)" else "",
+                    .readableSocialTimeDiff() + if (comment.isEdited()) amitySocialString("amity_social_button_edited_suffix") else "",
                 style = AmityTheme.typography.captionLegacy.copy(
                     fontWeight = FontWeight.Normal,
                     color = AmityTheme.colors.baseShade2,
@@ -143,16 +146,17 @@ fun AmityCommentEngagementBar(
                 modifier = modifier.testTag("comment_list/comment_bubble_timestamp")
             )
             if (allowInteraction) {
+                val resolvedReactionKey = reacting
+                    .first
+                    .ifEmpty { myReaction }
+                    .ifEmpty { AmitySocialReactions.toReaction(POST_REACTION).name }
                 Text(
-                    text = reacting
-                        .first
-                        .ifEmpty { myReaction }
-                        .ifEmpty { AmitySocialReactions.toReaction(POST_REACTION).name }
-                        .replaceFirstChar {
-                            if (it.isLowerCase()) it.titlecase() else it.toString()
-                        },
+                    text = amitySocialReactionDisplayName(resolvedReactionKey),
                     style = AmityTheme.typography.captionLegacy.copy(
-                        color = if (isReacted) AmityTheme.colors.primary
+                        color = if (isReacted) {
+                            if (isUIKitInDarkTheme()) amityColorWhite
+                            else AmityTheme.colors.primary
+                        }
                         else AmityTheme.colors.baseShade2,
                     ),
                     modifier = modifier
@@ -297,9 +301,9 @@ fun AmityCommentEngagementBar(
                         .testTag("comment_list/comment_bubble_reaction_button")
                 )
 
-                if (!isReplyComment) {
+                if (!fromNonMemberCommunity || comment.getParentId() != null) {
                     Text(
-                        text = context.getString(R.string.amity_reply),
+                        text = amitySocialString("amity_social_button_reply"),
                         style = AmityTheme.typography.captionLegacy.copy(
                             color = AmityTheme.colors.baseShade2,
                         ),
@@ -310,12 +314,22 @@ fun AmityCommentEngagementBar(
                                 } else if (fromNonMemberCommunity) {
                                     behavior.handleNonMemberAction()
                                 }  else {
+                                    // L0 → child = L1 (parentId = L0.id)
+                                    // L1 → child = L2 (parentId = L1.id)
+                                    // L2 → sibling L2 (parentId = L2.getParentId() = L1.id)
+                                    val parentIdForReply = if (isL2Comment && comment.getParentId() != null) {
+                                        comment.getParentId()!!
+                                    } else {
+                                        comment.getCommentId()
+                                    }
+                                    viewModel.setReplyContext(comment, parentIdForReply)
                                     onReply(comment.getCommentId())
                                 }
                             }
                             .testTag("comment_list/comment_bubble_reply_button")
                     )
                 }
+
                 if (allowAction) {
                     Icon(
                         painter = painterResource(id = R.drawable.amity_ic_more_horiz),

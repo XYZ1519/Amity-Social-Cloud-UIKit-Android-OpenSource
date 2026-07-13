@@ -32,40 +32,54 @@ import androidx.compose.ui.window.DialogProperties
 import com.amity.socialcloud.sdk.model.core.file.AmityImage
 import com.amity.socialcloud.uikit.common.ui.elements.AmityMenuButton
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.ui.theme.amityMediaSurface
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
 
 @Composable
 fun AmityImageFeedContainer(
     availablePostIds: Set<String> = emptySet(), // Pass current available post IDs
+    onProductTagClick: ((String) -> Unit)? = null, // Pass postId when product tag clicked
     content: @Composable (
-        openDialog: (AmityImage?, String?, onBottomSheetRequest: (() -> Unit)?) -> Unit
+        openDialog: (AmityImage?, String?, Int, onBottomSheetRequest: (() -> Unit)?) -> Unit
     ) -> Unit
 ) {
-    var dialogData by remember { mutableStateOf<Triple<AmityImage?, String?, (() -> Unit)?>?>(null) }
+    // Tuple4: image, postId, productTagCount, onBottomSheetRequest
+    var dialogData by remember { mutableStateOf<Array<Any?>?>(null) }
 
-    content { image, postId, onBottomSheetRequest ->
-        dialogData = Triple(image, postId, onBottomSheetRequest)
+    content { image, postId, productTagCount, onBottomSheetRequest ->
+        dialogData = arrayOf(image, postId, productTagCount, onBottomSheetRequest)
     }
 
-    dialogData?.let { (image, postId, onBottomSheetRequest) ->
+    dialogData?.let { data ->
+        val image = data[0] as? AmityImage
+        val postId = data[1] as? String
+        val productTagCount = data[2] as? Int ?: 0
+        val onBottomSheetRequest = data[3] as? (() -> Unit)
 
         // Check if the current dialog's post still exists in the available post IDs
-        val isItemDeleted = postId != null && 
-                           availablePostIds.isNotEmpty() && 
+        val isItemDeleted = postId != null &&
+                           availablePostIds.isNotEmpty() &&
                            !availablePostIds.contains(postId)
 
         if (isItemDeleted) {
             ImageNotAvailableDialog(
-                onDismiss = { 
-                    dialogData = null 
+                onDismiss = {
+                    dialogData = null
                 }
             )
         } else {
             AmityProfileImageFeedItemPreviewDialog(
                 data = image,
                 postId = postId,
+                productTagCount = productTagCount,
                 onPostClick = { clickedPostId ->
                     onBottomSheetRequest?.invoke()
-                }
+                },
+                onProductTagClick = if (postId != null && onProductTagClick != null) {
+                    { onProductTagClick(postId) }
+                } else null
             ) {
                 dialogData = null
             }
@@ -86,7 +100,7 @@ private fun ImageNotAvailableDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(amityMediaSurface)
         ) {
             Column(
                 modifier = Modifier
@@ -97,17 +111,17 @@ private fun ImageNotAvailableDialog(
                 Icon(
                     painter = painterResource(id = R.drawable.amity_ic_image_not_available),
                     contentDescription = "Image Not Available",
-                    tint = Color.White,
+                    tint = amityColorWhite,
                     modifier = Modifier.size(60.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "This photo is no longer available.",
+                    text = amitySocialString("amity_social_label_this_photo_is_no_longer_available"),
                     style = TextStyle(
                         fontSize = 15.sp,
                         lineHeight = 20.sp,
                         fontWeight = FontWeight(400),
-                        color = Color.White,
+                        color = amityColorWhite,
                         textAlign = TextAlign.Center,
                     )
                 )
@@ -117,8 +131,8 @@ private fun ImageNotAvailableDialog(
                 icon = R.drawable.amity_ic_close2,
                 size = 32.dp,
                 iconPadding = 10.dp,
-                tint = Color.Black.copy(0.5f),
-                background = Color.White.copy(0.8f),
+                tint = amityColorBlack.copy(0.5f),
+                background = amityColorWhite.copy(0.8f),
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .padding(16.dp),

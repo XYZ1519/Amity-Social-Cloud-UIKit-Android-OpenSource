@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 
 @Composable
 fun AmityClipPostDeleted(
@@ -50,9 +51,9 @@ fun AmityClipPostDeleted(
                     }
             )
             Text(
-                text = "This clip is no longer available.",
+                text = amitySocialString("amity_social_label_this_clip_is_no_longer_available"),
                 style = AmityTheme.typography.body,
-                color = Color.White,
+                color = AmityTheme.colors.baseInverse,
                 modifier = Modifier.padding(16.dp)
             )
             OutlinedButton(
@@ -60,19 +61,19 @@ fun AmityClipPostDeleted(
                     .align(Alignment.CenterHorizontally),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = Color.Transparent,
-                    contentColor = Color.White,
+                    contentColor = AmityTheme.colors.baseInverse,
                 ),
                 shape = RoundedCornerShape(8.dp),
                 border = BorderStroke(
                     width = 1.dp,
-                    color = Color.White
+                    color = AmityTheme.colors.baseInverse
                 ),
                 onClick = onNextClipClick,
             ) {
                 Text(
-                    text = "Watch next clip",
+                    text = amitySocialString("amity_social_label_watch_next_clip"),
                     style = AmityTheme.typography.bodyBold,
-                    color = Color.White,
+                    color = AmityTheme.colors.baseInverse,
                 )
             }
         }

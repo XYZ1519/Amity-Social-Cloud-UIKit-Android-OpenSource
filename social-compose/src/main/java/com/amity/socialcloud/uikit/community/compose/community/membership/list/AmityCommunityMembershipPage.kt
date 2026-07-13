@@ -24,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.amity.socialcloud.sdk.model.chat.settings.AmityMembershipAcceptanceType
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
@@ -34,6 +33,7 @@ import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import com.amity.socialcloud.uikit.common.ui.elements.AmityTabRow
 import com.amity.socialcloud.uikit.common.ui.elements.AmityTabRowItem
 import com.amity.socialcloud.uikit.common.ui.elements.AmityToolBar
+import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.closePageWithResult
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
@@ -43,6 +43,7 @@ import com.amity.socialcloud.uikit.community.compose.community.membership.elemen
 import com.amity.socialcloud.uikit.community.compose.community.membership.element.AmityCommunityModeratorsMembershipComponent
 import com.amity.socialcloud.uikit.community.compose.community.membership.invite.AmityCommunityInviteMemberPageActivity
 import kotlinx.coroutines.launch
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -60,10 +61,12 @@ fun AmityCommunityMembershipPage(
         AmityCommunityMembershipPageViewModel(community.getCommunityId())
     }
 
-    val tabs = remember {
+    val membersLabel = amitySocialString("amity_social_button_members")
+    val moderatorsLabel = amitySocialString("amity_social_button_moderators")
+    val tabs = remember(membersLabel, moderatorsLabel) {
         listOf(
-            AmityTabRowItem(title = "Members"),
-            AmityTabRowItem(title = "Moderators"),
+            AmityTabRowItem(title = membersLabel),
+            AmityTabRowItem(title = moderatorsLabel),
         )
     }
     var selectedTabIndex by remember { mutableIntStateOf(0) }
@@ -75,8 +78,9 @@ fun AmityCommunityMembershipPage(
 
     val hasEditPermission by viewModel.hasEditPermission().subscribeAsState(initial = false)
 
-    val successMessage = stringResource(SocialR.string.amity_v4_community_add_member_success)
-    val failedToAddMessage = stringResource(SocialR.string.amity_v4_community_add_member_failed)
+    val addingInProgressMessage = amitySocialString("amity_social_toast_community_add_member_in_progress")
+    val successMessage = amitySocialString("amity_social_toast_community_add_member_success")
+    val failedToAddMessage = amitySocialString("amity_social_toast_membership_add_failed")
 
     AmityBasePage(pageId = "community_membership_page") {
         val addMembersLauncher = rememberLauncherForActivityResult(
@@ -87,13 +91,20 @@ fun AmityCommunityMembershipPage(
                     val users = it.let(AmityCommunityAddMemberPageActivity::getUsers)
                     viewModel.addMembers(
                         userIds = users.map { user -> user.getUserId() },
+                        onAddingStarted = {
+                            // Surfaces the "Adding member…" progress snackbar while we
+                            // wait for the backend to index the new members.
+                            getPageScope().showProgressSnackbar(addingInProgressMessage)
+                        },
                         onSuccess = {
+                            getPageScope().dismissSnackbar()
                             getPageScope().showSnackbar(
                                 message = successMessage,
                                 drawableRes = R.drawable.amity_ic_snack_bar_success,
                             )
                         },
                         onError = {
+                            getPageScope().dismissSnackbar()
                             getPageScope().showSnackbar(
                                 message = failedToAddMessage,
                                 drawableRes = R.drawable.amity_ic_snack_bar_warning,
@@ -121,7 +132,7 @@ fun AmityCommunityMembershipPage(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
             AmityToolBar(
-                title = "All members",
+                title = amitySocialString("amity_social_button_all_members"),
                 onBackClick = {
                     context.closePageWithResult(Activity.RESULT_CANCELED)
                 }
@@ -134,6 +145,7 @@ fun AmityCommunityMembershipPage(
                     Icon(
                         painter = painterResource(R.drawable.amity_ic_add),
                         contentDescription = "Close",
+                        tint = AmityTheme.colors.base,
                         modifier = modifier
                             .size(24.dp)
                             .clickableWithoutRipple {

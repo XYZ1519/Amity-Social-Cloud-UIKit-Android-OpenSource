@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
+import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import com.amity.socialcloud.uikit.common.ui.elements.AmityToolBar
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
@@ -40,8 +41,10 @@ import com.amity.socialcloud.uikit.common.utils.isPostNotificationEnabled
 import com.amity.socialcloud.uikit.common.utils.isSocialNotificationEnabled
 import com.amity.socialcloud.uikit.common.utils.isStoryNotificationEnabled
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.community.setting.elements.AmityCommunitySettingItem
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 
 @Composable
 fun AmityCommunityNotificationSettingPage(
@@ -85,7 +88,7 @@ fun AmityCommunityNotificationSettingPage(
                 .windowInsetsPadding(WindowInsets.safeDrawing)
         ) {
             AmityToolBar(
-                title = "Notifications",
+                title = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_notification_title_notifications"),
                 onBackClick = {
                     context.closePageWithResult(Activity.RESULT_CANCELED)
                 }
@@ -101,13 +104,13 @@ fun AmityCommunityNotificationSettingPage(
                     modifier = modifier.weight(1f)
                 ) {
                     Text(
-                        text = "Allow notifications",
+                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_notification_allow_notifications"),
                         style = AmityTheme.typography.bodyLegacy.copy(
                             fontWeight = FontWeight.SemiBold
                         )
                     )
                     Text(
-                        text = "Turn on to receive push notifications from this community.",
+                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_notification_turn_on_to_receive_push_notifications_from_this_communi"),
                         style = AmityTheme.typography.captionLegacy.copy(
                             fontWeight = FontWeight.Normal,
                             color = AmityTheme.colors.baseShade1,
@@ -121,7 +124,7 @@ fun AmityCommunityNotificationSettingPage(
                     colors = SwitchDefaults.colors(
                         checkedTrackColor = AmityTheme.colors.highlight,
                         uncheckedBorderColor = AmityTheme.colors.baseShade3,
-                        uncheckedThumbColor = Color.White,
+                        uncheckedThumbColor = amityColorWhite,
                         uncheckedTrackColor = AmityTheme.colors.baseShade3,
                     ),
                     onCheckedChange = {
@@ -130,10 +133,10 @@ fun AmityCommunityNotificationSettingPage(
                         viewModel.updateCommunityNotificationSetting(
                             enable = isChecked,
                             onSuccess = {
-                                AmityUIKitSnackbar.publishSnackbarMessage("Successfully updated community profile!")
+                                AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_community_profile_updated"))
                             },
                             onError = {
-                                AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to update community profile")
+                                AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_community_profile_update_failed"))
                             }
                         )
                     }
@@ -153,7 +156,7 @@ fun AmityCommunityNotificationSettingPage(
                         modifier = modifier.size(20.dp),
                     )
                     Text(
-                        text = "Moderator has disabled notification for this community",
+                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_notification_moderator_has_disabled_notification_for_this_community"),
                         style = AmityTheme.typography.captionLegacy.copy(
                             color = AmityTheme.colors.baseShade2,
                             fontWeight = FontWeight.Normal,
@@ -172,7 +175,7 @@ fun AmityCommunityNotificationSettingPage(
 
                 if (communityNotificationSettings?.isPostNotificationEnabled() == true) {
                     AmityCommunitySettingItem(
-                        title = "Posts",
+                        title = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_tab_tab_posts"),
                         titleStyle = AmityTheme.typography.bodyLegacy.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
@@ -197,7 +200,7 @@ fun AmityCommunityNotificationSettingPage(
 
                 if (communityNotificationSettings?.isCommentNotificationEnabled() == true) {
                     AmityCommunitySettingItem(
-                        title = "Comments",
+                        title = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_title_comments"),
                         titleStyle = AmityTheme.typography.bodyLegacy.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
@@ -222,7 +225,7 @@ fun AmityCommunityNotificationSettingPage(
 
                 if (communityNotificationSettings?.isStoryNotificationEnabled() == true) {
                     AmityCommunitySettingItem(
-                        title = "Stories",
+                        title = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_title_stories"),
                         titleStyle = AmityTheme.typography.bodyLegacy.copy(
                             fontWeight = FontWeight.SemiBold
                         ),

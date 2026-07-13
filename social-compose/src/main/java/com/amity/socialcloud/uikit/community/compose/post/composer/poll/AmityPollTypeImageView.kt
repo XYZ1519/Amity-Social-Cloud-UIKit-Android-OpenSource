@@ -62,6 +62,9 @@ import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.post.composer.components.AltTextMedia
 import com.amity.socialcloud.uikit.community.compose.post.composer.poll.model.ImagePollUiState
 import com.amity.socialcloud.uikit.community.compose.post.model.AmityFileUploadState
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
 
 @Composable
 fun AmityPollTypeImageView(
@@ -80,14 +83,14 @@ fun AmityPollTypeImageView(
     LazyVerticalGrid(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(AmityTheme.colors.background),
         columns = GridCells.Fixed(2),
         contentPadding = PaddingValues(12.dp),
     ) {
         itemsIndexed(sampleItems) { index, item ->
             AmityPollImageTypeItemView(
                 uiState = item,
-                placeHolderText = "Option ${index + 1}",
+                placeHolderText = amitySocialString("amity_social_button_option_number").format(index + 1),
                 onTextChange = { newValue ->
                     sampleItems = sampleItems.map {
                         if (it == item) it.copy(answer = newValue) else it
@@ -122,7 +125,7 @@ fun AmityPollTypeImageView(
 @Composable
 fun AmityPollImageTypeItemView(
     uiState: ImagePollUiState,
-    placeHolderText: String = "Option",
+    placeHolderText: String? = null,
     onTextChange: (TextFieldValue) -> Unit = {},
     maxChar: Int = Int.MAX_VALUE,
     onSelectImageClick: () -> Unit = {},
@@ -133,6 +136,7 @@ fun AmityPollImageTypeItemView(
     isShowDeleteIcon: Boolean = true,
 ) {
     val density = LocalDensity.current
+    val resolvedPlaceholderText = placeHolderText ?: amitySocialString("amity_social_label_poll_option_label")
 
     val painter = rememberAsyncImagePainter(
         model = ImageRequest
@@ -149,7 +153,7 @@ fun AmityPollImageTypeItemView(
 
     Box(
         modifier = Modifier
-            .background(Color.White)
+            .background(AmityTheme.colors.background)
             .onGloballyPositioned { coordinates ->
                 onCardHeight(with(density) { coordinates.size.height.toDp() })
             }
@@ -160,7 +164,7 @@ fun AmityPollImageTypeItemView(
                 .padding(4.dp),
             shape = RoundedCornerShape(8.dp),
             colors = CardDefaults.cardColors(
-                containerColor = Color.White,
+                containerColor = AmityTheme.colors.background,
             ),
             border = BorderStroke(1.dp, AmityTheme.colors.baseShade4)
         ) {
@@ -177,7 +181,7 @@ fun AmityPollImageTypeItemView(
                         .clickableWithoutRipple {
                             onSelectImageClick()
                         },
-                    painter = if (uiState.imageUri != null) painter else painterResource(R.drawable.amity_v4_poll_image_placeholder),
+                    painter = if (uiState.imageUri != null) painter else painterResource(R.drawable.amity_v4_poll_image_placeholder_no_text),
                     contentDescription = "",
                     contentScale = ContentScale.Crop
                 )
@@ -187,7 +191,7 @@ fun AmityPollImageTypeItemView(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.5f)),
+                                .background(amityColorBlack.copy(alpha = 0.5f)),
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(
@@ -195,7 +199,7 @@ fun AmityPollImageTypeItemView(
                                     uiState.uploadProgress.toFloat() / 100f
                                 },
                                 color = AmityTheme.colors.primary,
-                                trackColor = Color.White,
+                                trackColor = amityColorWhite,
                                 strokeWidth = 2.dp,
                                 modifier = Modifier.size(28.dp),
                                 strokeCap = StrokeCap.Round,
@@ -207,7 +211,7 @@ fun AmityPollImageTypeItemView(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.5f))
+                                .background(amityColorBlack.copy(alpha = 0.5f))
                                 .clickableWithoutRipple {
                                     onErrorUploadImageClick()
                                 },
@@ -217,7 +221,7 @@ fun AmityPollImageTypeItemView(
                                 modifier = Modifier.size(28.dp),
                                 painter = painterResource(R.drawable.amity_ic_snack_bar_warning),
                                 contentDescription = "Upload Failed",
-                                tint = Color.White
+                                tint = amityColorWhite
                             )
                         }
                     }
@@ -230,7 +234,7 @@ fun AmityPollImageTypeItemView(
                                     .padding(8.dp)
                                     .height(24.dp)
                                     .background(
-                                        color = Color.Black.copy(alpha = 0.5f),
+                                        color = amityColorBlack.copy(alpha = 0.5f),
                                         shape = RoundedCornerShape(size = 9999.dp)
                                     )
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -241,9 +245,9 @@ fun AmityPollImageTypeItemView(
                                     },
                             ) {
                                 Text(
-                                    text = "ALT",
+                                    text = amitySocialString("amity_social_button_alt"),
                                     style = AmityTheme.typography.captionBold.copy(
-                                        color = Color.White,
+                                        color = amityColorWhite,
                                     ),
                                     modifier = Modifier
                                         .align(Alignment.CenterVertically)
@@ -256,7 +260,7 @@ fun AmityPollImageTypeItemView(
                                         Icon(
                                             painter = painterResource(id = R.drawable.amity_ic_alt_check),
                                             contentDescription = "Check Icon",
-                                            tint = Color.White,
+                                            tint = amityColorWhite,
                                         )
                                     }
                                 }
@@ -265,7 +269,20 @@ fun AmityPollImageTypeItemView(
                     }
 
                     else -> {
-                        // No overlay needed
+                        if (uiState.imageUri == null) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(bottom = 8.dp, top = 32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = amitySocialString("amity_social_button_poll_upload_image"),
+                                    style = AmityTheme.typography.captionBold,
+                                    color = AmityTheme.colors.baseShade1
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -299,7 +316,7 @@ fun AmityPollImageTypeItemView(
                 keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Done),
                 placeholder = {
                     Text(
-                        text = placeHolderText,
+                        text = resolvedPlaceholderText,
                         style = AmityTheme.typography.bodyLegacy.copy(
                             color = AmityTheme.colors.baseShade2
                         )
@@ -355,7 +372,7 @@ fun AmityPollImageTypeAddItemView(
             },
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White,
+            containerColor = AmityTheme.colors.background,
         ),
         border = BorderStroke(1.dp, AmityTheme.colors.baseShade4)
     ) {
@@ -373,7 +390,7 @@ fun AmityPollImageTypeAddItemView(
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                "Add Option",
+                amitySocialString("amity_social_button_add_option"),
                 style = AmityTheme.typography.captionBold,
                 modifier = Modifier.padding(top = 8.dp)
             )

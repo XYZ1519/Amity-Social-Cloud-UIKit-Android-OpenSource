@@ -1,6 +1,5 @@
 package com.amity.socialcloud.uikit.community.compose.ui.components.feed
 
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -16,10 +15,8 @@ import androidx.compose.foundation.layout.waterfall
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,8 +41,6 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.amity.socialcloud.sdk.api.core.AmityCoreClient
-import com.amity.socialcloud.sdk.helper.core.asAmityImage
 import com.amity.socialcloud.sdk.model.core.file.AmityImage
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
@@ -56,10 +51,13 @@ import com.amity.socialcloud.uikit.common.ui.image.zoomable
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.community.compose.post.composer.AmityPostComposerPageViewModel
 import com.amity.socialcloud.uikit.community.compose.post.composer.RenderAltTextConfigSheet
 import com.amity.socialcloud.uikit.community.compose.post.composer.components.AltTextMedia
-import kotlinx.coroutines.Dispatchers
+import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityProductTagBadge
+import com.amity.socialcloud.uikit.common.ui.theme.amityMediaSurface
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,8 +67,10 @@ fun AmityProfileImageFeedItem(
     postId: String? = null,
     parentPostId: String? = null,
     isPostCreator: Boolean = false,
+    productTagCount: Int = 0,
     onPostClick: ((String) -> Unit)? = null,
-    openDialog: ((AmityImage?, String?, onBottomSheetRequest: (() -> Unit)?) -> Unit)? = null,
+    onProductTagClick: (() -> Unit)? = null,
+    openDialog: ((AmityImage?, String?, Int, onBottomSheetRequest: (() -> Unit)?) -> Unit)? = null,
 ) {
     val thumbnailUrl = remember(data) {
         data?.getImage()?.getUrl(AmityImage.Size.MEDIUM)
@@ -81,7 +81,6 @@ fun AmityProfileImageFeedItem(
     }
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val context = LocalContext.current
 
     val viewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
         "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
@@ -95,27 +94,42 @@ fun AmityProfileImageFeedItem(
         }
     }
 
-    AsyncImage(
-        model = ImageRequest
-            .Builder(LocalContext.current)
-            .data(thumbnailUrl)
-            .crossfade(true)
-            .networkCachePolicy(CachePolicy.ENABLED)
-            .diskCachePolicy(CachePolicy.ENABLED)
-            .memoryCachePolicy(CachePolicy.ENABLED)
-            .build(),
-        contentDescription = "Image Post",
-        contentScale = ContentScale.Crop,
+    Box(
         modifier = modifier
-            .clickableWithoutRipple {
-                openDialog?.invoke(data?.getImage(), postId) {
-                    showBottomSheet = true
-                }
-            }
             .aspectRatio(1f)
             .clip(RoundedCornerShape(8.dp))
-            .background(AmityTheme.colors.baseShade4)
-    )
+    ) {
+        AsyncImage(
+            model = ImageRequest
+                .Builder(LocalContext.current)
+                .data(thumbnailUrl)
+                .crossfade(true)
+                .networkCachePolicy(CachePolicy.ENABLED)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .memoryCachePolicy(CachePolicy.ENABLED)
+                .build(),
+            contentDescription = "Image Post",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .clickableWithoutRipple {
+                    openDialog?.invoke(data?.getImage(), postId, productTagCount) {
+                        showBottomSheet = true
+                    }
+                }
+                .background(AmityTheme.colors.baseShade4)
+        )
+
+        if (productTagCount > 0) {
+            AmityProductTagBadge(
+                count = productTagCount,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 8.dp, bottom = 8.dp),
+                onClick = onProductTagClick
+            )
+        }
+    }
 
     if (showBottomSheet && parentPostId != null) {
         ModalBottomSheet(
@@ -132,7 +146,7 @@ fun AmityProfileImageFeedItem(
 
                 AmityBottomSheetActionItem(
                     icon = R.drawable.amity_ic_view_post,
-                    text = "View post",
+                    text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_view_post"),
                     modifier = Modifier,
                     onClick = {
                         showBottomSheet = false
@@ -143,7 +157,7 @@ fun AmityProfileImageFeedItem(
                 if (isPostCreator) {
                     AmityBottomSheetActionItem(
                         icon = R.drawable.amity_ic_edit_profile,
-                        text = context.getString(R.string.amity_image_edit_alt_text_title),
+                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_image_edit_alt_text_title"),
                         modifier = Modifier,
                     ) {
                         val image = data?.getImage()
@@ -167,7 +181,7 @@ fun AmityProfileImageFeedItem(
         onSuccess = { image ->
             imageMap[image.getFileId()] = image
             AmityUIKitSnackbar.publishSnackbarMessage(
-                message = context.getString(R.string.amity_image_alt_text_updated_message),
+                message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_image_alt_text_updated_message"),
             )
         },
         onDismiss = {
@@ -181,7 +195,9 @@ fun AmityProfileImageFeedItemPreviewDialog(
     modifier: Modifier = Modifier,
     data: AmityImage?,
     postId: String? = null,
+    productTagCount: Int = 0,
     onPostClick: ((String) -> Unit)? = null,
+    onProductTagClick: (() -> Unit)? = null,
     onDismiss: () -> Unit,
 ) {
     val painter = rememberAsyncImagePainter(
@@ -203,72 +219,87 @@ fun AmityProfileImageFeedItemPreviewDialog(
         ),
     ) {
         Box(
-            modifier = modifier
-                .fillMaxSize()
-                .background(Color.Black)
+            modifier = Modifier.fillMaxSize()
         ) {
-            Image(
-                painter = painter,
-                contentDescription = "Image Post",
-                contentScale = ContentScale.Fit,
-                modifier = modifier.fillMaxSize()
-                    .zoomable(rememberZoomState()),
-            )
-
-            ConstraintLayout(
+            Box(
                 modifier = modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .background(Color.Black.copy(alpha = 0.5f)),
+                    .fillMaxSize()
+                    .background(amityMediaSurface)
             ) {
-                val (closeBtn, menuBtn) = createRefs()
-
-                AmityMenuButton(
-                    icon = R.drawable.amity_ic_close2,
-                    size = 32.dp,
-                    iconPadding = 8.dp,
-                    modifier = Modifier
-                        .zIndex(Float.MAX_VALUE).constrainAs(closeBtn) {
-                            top.linkTo(parent.top, margin = 16.dp)
-                            start.linkTo(parent.start, margin = 16.dp)
-                        },
-                    onClick = {
-                        onDismiss()
-                    }
+                Image(
+                    painter = painter,
+                    contentDescription = "Image Post",
+                    contentScale = ContentScale.Fit,
+                    modifier = modifier.fillMaxSize()
+                        .zoomable(rememberZoomState()),
                 )
 
-                AmityMenuButton(
-                    icon = R.drawable.amity_ic_more_horiz,
-                    size = 32.dp,
-                    iconPadding = 2.dp,
-                    modifier = Modifier.constrainAs(menuBtn) {
-                        top.linkTo(parent.top, margin = 16.dp)
-                        end.linkTo(parent.end, margin = 16.dp)
-                    },
-                    onClick = {
-                        if (postId != null && onPostClick != null) {
-                            onPostClick(postId)
-                        }
-                    }
-                )
-            }
-
-            if (painterState !is AsyncImagePainter.State.Success) {
-                Box(
+                ConstraintLayout(
                     modifier = modifier
                         .fillMaxWidth()
-                        .aspectRatio(0.75f)
-                        .background(AmityTheme.colors.baseShade4)
-                        .align(Alignment.Center)
+                        .height(64.dp)
+                        .background(amityColorBlack.copy(alpha = 0.5f)),
+                ) {
+                    val (closeBtn, menuBtn) = createRefs()
+
+                    AmityMenuButton(
+                        icon = R.drawable.amity_ic_close2,
+                        size = 32.dp,
+                        iconPadding = 8.dp,
+                        modifier = Modifier
+                            .zIndex(Float.MAX_VALUE).constrainAs(closeBtn) {
+                                top.linkTo(parent.top, margin = 16.dp)
+                                start.linkTo(parent.start, margin = 16.dp)
+                            },
+                        onClick = {
+                            onDismiss()
+                        }
+                    )
+
+                    AmityMenuButton(
+                        icon = R.drawable.amity_ic_more_horiz,
+                        size = 32.dp,
+                        iconPadding = 2.dp,
+                        modifier = Modifier.constrainAs(menuBtn) {
+                            top.linkTo(parent.top, margin = 16.dp)
+                            end.linkTo(parent.end, margin = 16.dp)
+                        },
+                        onClick = {
+                            if (postId != null && onPostClick != null) {
+                                onPostClick(postId)
+                            }
+                        }
+                    )
+                }
+
+                if (painterState !is AsyncImagePainter.State.Success) {
+                    Box(
+                        modifier = modifier
+                            .fillMaxWidth()
+                            .aspectRatio(0.75f)
+                            .background(AmityTheme.colors.baseShade4)
+                            .align(Alignment.Center)
+                    )
+                }
+            }
+            Box(
+                Modifier
+                    .height(32.dp)
+                    .offset(y = (-32).dp)
+                    .fillMaxWidth()
+                    .background(amityMediaSurface)
+            )
+
+            // Product Tag Badge at bottom-right of screen (outside inner boxes)
+            if (productTagCount > 0) {
+                AmityProductTagBadge(
+                    count = productTagCount,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 12.dp, bottom = 120.dp),
+                    onClick = onProductTagClick
                 )
             }
         }
-        Box(
-            Modifier
-                .height(32.dp)
-                .offset(y = (-32).dp)
-                .fillMaxWidth()
-                .background(Color.Black)
-        )
     }
 }

@@ -1,5 +1,6 @@
 package com.amity.socialcloud.uikit.community.compose.clip.draft
 
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 import android.app.Activity
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -56,6 +58,7 @@ import com.amity.socialcloud.uikit.common.ui.elements.AmityAlertDialog
 import com.amity.socialcloud.uikit.common.ui.elements.AmityMenuButton
 import com.amity.socialcloud.uikit.common.ui.elements.DisposableEffectWithLifeCycle
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
 import com.amity.socialcloud.uikit.common.utils.asDrawableRes
 import com.amity.socialcloud.uikit.common.utils.closePage
 import com.amity.socialcloud.uikit.common.utils.closePageWithResult
@@ -65,6 +68,8 @@ import com.amity.socialcloud.uikit.common.utils.getValue
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.post.composer.AmityPostTargetType
 import com.amity.socialcloud.uikit.community.compose.story.view.elements.AmityStoryVideoPlayer
+import com.amity.socialcloud.uikit.common.ui.theme.amityMediaSurface
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -128,20 +133,14 @@ fun AmityDraftClipPage(
 
     var openAlertDialog by remember { mutableStateOf(false) }
 
-    if (openAlertDialog) {
-        AmityAlertDialog(
-            dialogTitle = "Discard this clip?",
-            dialogText = "The clip will be permanently discarded. It cannot be undone.",
-            confirmText = "Discard",
-            dismissText = "Keep editing",
-            onConfirmation = { context.closePage() },
-            onDismissRequest = { openAlertDialog = false },
-            confirmTextColor = AmityTheme.colors.alert,
-            dismissTextColor = AmityTheme.colors.highlight,
-        )
-    }
-
     DisposableEffectWithLifeCycle(
+        onResume = {
+            // Resume playback when returning to this page (e.g. after back from post composer)
+            if (clipUploadState is AmityDraftClipViewModel.ClipUploadState.Success) {
+                exoPlayer.prepare()
+                exoPlayer.playWhenReady = true
+            }
+        },
         onStop = {
             // Stop the player when the page is stopped
             if (exoPlayer.isPlaying) {
@@ -158,7 +157,8 @@ fun AmityDraftClipPage(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(amityMediaSurface)
+                .statusBarsPadding()
         ) {
             // Top bar and exo player view
             Box(
@@ -168,7 +168,7 @@ fun AmityDraftClipPage(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.Black)
+                        .background(amityMediaSurface)
                         .clip(RoundedCornerShape(12.dp))
                         .align(Alignment.TopCenter)
                 ) {
@@ -188,15 +188,15 @@ fun AmityDraftClipPage(
                             modifier = Modifier
                                 .aspectRatio(9f / 16f)
                                 .align(Alignment.TopCenter)
-                                .background(Color.White.copy(alpha = 0.3f)) // Semi-transparent white overlay
+                                .background(amityColorWhite.copy(alpha = 0.3f)) // Semi-transparent white overlay
                         ) {
                             CircularProgressIndicator(
                                 modifier = Modifier
                                     .align(Alignment.Center)
                                     .size(40.dp),
-                                color = Color.White,
+                                color = AmityTheme.colors.baseInverse,
                                 strokeWidth = 2.dp,
-                                trackColor = Color.White.copy(0.2f),
+                                trackColor = amityColorWhite.copy(0.2f),
                                 strokeCap = StrokeCap.Round,
                             )
                         }
@@ -281,7 +281,7 @@ fun AmityDraftClipPage(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .background(Color.Black)
+                        .background(amityMediaSurface)
                         .padding(horizontal = 16.dp)
                 ) {
                     AmityBaseElement(
@@ -294,7 +294,7 @@ fun AmityDraftClipPage(
                             modifier = Modifier
                                 .height(40.dp)
                                 .clip(RoundedCornerShape(24.dp))
-                                .background(Color.White)
+                                .background(AmityTheme.colors.baseInverse)
                                 .padding(start = 16.dp, end = 8.dp)
                                 .align(Alignment.CenterEnd)
                                 .clickable {
@@ -312,8 +312,10 @@ fun AmityDraftClipPage(
                                 }
                         ) {
                             Text(
-                                text = "Next",
-                                style = AmityTheme.typography.bodyBold
+                                text = amitySocialString("amity_social_button_next"),
+                                style = AmityTheme.typography.bodyBold.copy(
+                                    color = amityColorBlack
+                                )
                             )
 
                             Icon(
@@ -321,7 +323,7 @@ fun AmityDraftClipPage(
                                     id = getConfig().getIcon()
                                 ),
                                 contentDescription = null,
-                                tint = AmityTheme.colors.base,
+                                tint = amityColorBlack,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -331,13 +333,26 @@ fun AmityDraftClipPage(
 
             if (clipUploadState is AmityDraftClipViewModel.ClipUploadState.Error) {
                 AmityAlertDialog(
-                    dialogTitle = "Failed to upload",
-                    dialogText = "Please check your connection or choose a different video to upload",
-                    dismissText = "OK",
+                    dialogTitle = amitySocialString("amity_social_toast_failed_to_upload"),
+                    dialogText = amitySocialString("amity_social_modal_dialog_video_upload_error"),
+                    dismissText = amitySocialString("amity_social_button_ok"),
                     onDismissRequest = { context.closePage() }
                 )
             }
 
+        }
+
+        if (openAlertDialog) {
+            AmityAlertDialog(
+                dialogTitle = amitySocialString("amity_social_modal_dialog_title_discard_clip"),
+                dialogText = amitySocialString("amity_social_modal_dialog_discard_clip"),
+                confirmText = amitySocialString("amity_social_button_discard"),
+                dismissText = amitySocialString("amity_social_button_keep_editing"),
+                onConfirmation = { context.closePage() },
+                onDismissRequest = { openAlertDialog = false },
+                confirmTextColor = AmityTheme.colors.alert,
+                dismissTextColor = AmityTheme.colors.highlight,
+            )
         }
     }
 }
@@ -348,9 +363,9 @@ fun AmityDraftClipPagePreview() {
     CircularProgressIndicator(
         modifier = Modifier
             .size(40.dp),
-        color = Color.White,
+        color = AmityTheme.colors.baseInverse,
         strokeWidth = 2.dp,
-        trackColor = Color.White.copy(0.2f),
+        trackColor = amityColorWhite.copy(0.2f),
         strokeCap = StrokeCap.Round,
     )
 }

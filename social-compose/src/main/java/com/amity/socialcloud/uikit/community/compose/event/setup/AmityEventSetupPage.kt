@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -65,7 +66,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import android.text.format.DateFormat
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.Image
 import androidx.compose.ui.text.style.TextOverflow
 import coil3.compose.AsyncImage
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
@@ -103,6 +104,10 @@ import org.joda.time.DateTime
 import org.joda.time.DateTimeZone
 import org.joda.time.format.DateTimeFormat
 import java.util.TimeZone
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
+import com.amity.socialcloud.uikit.common.ui.theme.amityDisabledColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 
@@ -435,11 +440,11 @@ fun AmityEventSetupPage(
             isCapturedImageReady = false
             isCameraPermissionGranted = permissions.entries.all { it.value }
             if (!isCameraPermissionGranted) {
-                AmityUIKitSnackbar.publishSnackbarErrorMessage("Camera permission not granted")
+                AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_permission_camera_access_denied"))
             } else {
                 val imageFile = AmityCameraUtil.createImageFile(context)
                 if (imageFile == null) {
-                    AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to create image file")
+                    AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_failed_create_image_file"))
                 } else {
                     coverImageUri = AmityCameraUtil.createPhotoUri(context, imageFile)
                     imageCaptureLauncher.launch(coverImageUri)
@@ -523,7 +528,7 @@ fun AmityEventSetupPage(
                         elementId = "title"
                     ) {
                         Text(
-                            text = if (isInEditMode) "Edit event" else "Create event",
+                            text = if (isInEditMode) DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_edit_event") else DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_create_event"),
                             style = AmityTheme.typography.titleBold,
                             color = AmityTheme.colors.base,
                             textAlign = TextAlign.Center,
@@ -584,25 +589,21 @@ fun AmityEventSetupPage(
                         null
                     }
 
-                    AsyncImage(
-                        model = coverImage,
-                        contentDescription = "Cover Image",
-                        contentScale = ContentScale.Crop,
-                        modifier = modifier.fillMaxWidth(),
-                    )
-                    Box(
-                        modifier = modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.4f))
-                    )
-                    Icon(
-                        painter = painterResource(R.drawable.amity_ic_event_setup_camera),
-                        contentDescription = "Upload cover image",
-                        tint = Color.White,
-                        modifier = modifier
-                            .size(32.dp)
-                            .align(Alignment.Center)
-                    )
+                    if (coverImage != null) {
+                        AsyncImage(
+                            model = coverImage,
+                            contentDescription = "Cover Image",
+                            contentScale = ContentScale.Crop,
+                            modifier = modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        Image(
+                            painterResource(R.drawable.amity_ic_event_setup_camera),
+                            contentDescription = "Cover placeholder",
+                            contentScale = ContentScale.Crop,
+                            modifier = modifier.fillMaxWidth(),
+                        )
+                    }
                 }
 
                 Spacer(modifier = modifier.height(24.dp))
@@ -620,12 +621,20 @@ fun AmityEventSetupPage(
                         elementId = "event_name_title"
                     ) {
                         Text(
-                            text = "Event name",
+                            text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_event_name"),
                             style = AmityTheme.typography.body,
                             color = AmityTheme.colors.base,
                             modifier = modifier.testTag(getAccessibilityId())
                         )
                     }
+
+                    Text(
+                        text = "${eventName.length}/60",
+                        style = AmityTheme.typography.caption.copy(
+                            fontWeight = FontWeight.Normal,
+                            color = AmityTheme.colors.baseShade1,
+                        )
+                    )
                 }
 
                 Spacer(modifier = modifier.height(4.dp))
@@ -674,9 +683,9 @@ fun AmityEventSetupPage(
                             },
                         placeholder = {
                             Text(
-                                text = "Name your event",
+                                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_name_your_event"),
                                 style = AmityTheme.typography.bodyLegacy,
-                                color = Color(0xFF6E6E6E)
+                                color = AmityTheme.colors.baseShade1
                             )
                         },
                         colors = TextFieldDefaults.colors(
@@ -697,18 +706,12 @@ fun AmityEventSetupPage(
                     )
                 }
 
-                Spacer(modifier = modifier.height(8.dp))
-
-                Text(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    text = "${eventName.length}/60",
-                    style = AmityTheme.typography.caption.copy(
-                        fontWeight = FontWeight.Normal,
-                        color = AmityTheme.colors.baseShade1,
-                    )
+                HorizontalDivider(
+                    color = AmityTheme.colors.divider,
+                    modifier = modifier.padding(horizontal = 16.dp)
                 )
 
-                Spacer(modifier = modifier.height(24.dp))
+                Spacer(modifier = modifier.height(16.dp))
 
                 // Event Details
                 Row(
@@ -723,12 +726,20 @@ fun AmityEventSetupPage(
                         elementId = "event_details_title"
                     ) {
                         Text(
-                            text = "Event details",
+                            text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_event_details"),
                             style = AmityTheme.typography.body,
                             color = AmityTheme.colors.base,
                             modifier = modifier.testTag(getAccessibilityId())
                         )
                     }
+
+                    Text(
+                        text = "${eventDetails.length}/1,000",
+                        style = AmityTheme.typography.caption.copy(
+                            fontWeight = FontWeight.Normal,
+                            color = AmityTheme.colors.baseShade1,
+                        )
+                    )
                 }
                 Spacer(modifier = modifier.height(4.dp))
 
@@ -745,11 +756,10 @@ fun AmityEventSetupPage(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 112.dp)
                         .padding(horizontal = 16.dp)
                         .background(
-                            AmityTheme.colors.baseShade4,
-                            RoundedCornerShape(8.dp)
+                            color = Color.Transparent,
+                            shape = RoundedCornerShape(4.dp)
                         )
                         .padding(vertical = 4.dp)
                 ) {
@@ -776,9 +786,9 @@ fun AmityEventSetupPage(
                             },
                         placeholder = {
                             Text(
-                                text = "Share details about the event and what to expect",
+                                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_placeholder_event_setup_event_details_placeholder"),
                                 style = AmityTheme.typography.bodyLegacy,
-                                color = Color(0xFF6E6E6E)
+                                color = AmityTheme.colors.baseShade1
                             )
                         },
                         colors = TextFieldDefaults.colors(
@@ -799,15 +809,9 @@ fun AmityEventSetupPage(
                     )
                 }
 
-                Spacer(modifier = modifier.height(8.dp))
-
-                Text(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    text = "${eventDetails.length}/1,000",
-                    style = AmityTheme.typography.caption.copy(
-                        fontWeight = FontWeight.Normal,
-                        color = AmityTheme.colors.baseShade1,
-                    )
+                HorizontalDivider(
+                    color = AmityTheme.colors.divider,
+                    modifier = modifier.padding(horizontal = 16.dp)
                 )
 
                 Spacer(modifier = modifier.height(24.dp))
@@ -818,7 +822,7 @@ fun AmityEventSetupPage(
                     elementId = "date_time_title"
                 ) {
                     Text(
-                        text = "Date and time",
+                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_date_and_time"),
                         style = AmityTheme.typography.titleBold,
                         color = AmityTheme.colors.base,
                         modifier = modifier
@@ -836,7 +840,7 @@ fun AmityEventSetupPage(
                         .padding(horizontal = 16.dp)
                 ) {
                     Text(
-                        text = "Timezone",
+                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_timezone"),
                         style = AmityTheme.typography.body,
                         color = AmityTheme.colors.base,
                     )
@@ -886,7 +890,7 @@ fun AmityEventSetupPage(
                         .padding(horizontal = 16.dp)
                 ) {
                     Text(
-                        text = "Starts",
+                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_starts"),
                         style = AmityTheme.typography.body,
                         color = AmityTheme.colors.base,
                     )
@@ -897,7 +901,7 @@ fun AmityEventSetupPage(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        val dayFormat = DateTimeFormat.forPattern("MMM dd yyyy")
+                        val dayFormat = DateTimeFormat.forPattern("dd MMM yyyy")
                         Text(
                             text = startDateTime.toString(dayFormat),
                             style = AmityTheme.typography.body,
@@ -915,7 +919,7 @@ fun AmityEventSetupPage(
                         )
 
                         val is24HourFormat = DateFormat.is24HourFormat(context)
-                        val timeFormat = DateTimeFormat.forPattern(if (is24HourFormat) "HH:mm" else "hh:mm a")
+                        val timeFormat = DateTimeFormat.forPattern(if (is24HourFormat) "HH:mm" else "h:mm a")
                         Text(
                             text = startDateTime.toString(timeFormat),
                             style = AmityTheme.typography.body,
@@ -946,7 +950,7 @@ fun AmityEventSetupPage(
                         if (hasEndDateTime) {
                             // Show end date fields with trash icon
                             Text(
-                                text = "Ends on",
+                                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_event_setup_ends_on"),
                                 style = AmityTheme.typography.body,
                                 color = AmityTheme.colors.base,
                             )
@@ -982,7 +986,7 @@ fun AmityEventSetupPage(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 val is24HourFormat = DateFormat.is24HourFormat(context)
-                                val timeFormat = DateTimeFormat.forPattern(if (is24HourFormat) "HH:mm" else "hh:mm a")
+                                val timeFormat = DateTimeFormat.forPattern(if (is24HourFormat) "HH:mm" else "h:mm a")
                                 Text(
                                     text = currentEndDateTime.toString(timeFormat),
                                     style = AmityTheme.typography.body,
@@ -1018,7 +1022,7 @@ fun AmityEventSetupPage(
                     if (!hasEndDateTime || endDateTime == null) {
                         // Show helper text and "Add end date and time" button
                         Text(
-                            text = "Event without specified end time will end after 12 hours.",
+                            text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_time_event_without_specified_end_time_will_end_after_12_hour"),
                             style = AmityTheme.typography.caption,
                             color = AmityTheme.colors.baseShade1
                         )
@@ -1042,7 +1046,7 @@ fun AmityEventSetupPage(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Add end date and time",
+                                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_add_end_date_and_time"),
                                 style = AmityTheme.typography.body.copy(
                                     fontWeight = FontWeight.SemiBold
                                 ),
@@ -1067,7 +1071,7 @@ fun AmityEventSetupPage(
                     elementId = "location_title"
                 ) {
                     Text(
-                        text = "Location",
+                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_location"),
                         style = AmityTheme.typography.titleBold,
                         color = AmityTheme.colors.base,
                         modifier = modifier
@@ -1086,24 +1090,24 @@ fun AmityEventSetupPage(
                 ) {
                     val displayText = when {
                         // Not configured yet - show placeholder
-                        !hasConfiguredLocation -> "Select where this event will be happening"
+                        !hasConfiguredLocation -> DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_event_select_location")
                         // In-person with address
                         locationData.eventType == AmityEventType.IN_PERSON && locationData.address.isNotEmpty() ->
                             locationData.address
                         // Virtual with Live Stream
                         locationData.eventType == AmityEventType.VIRTUAL &&
                         locationData.platform == EventPlatform.LIVE_STREAM ->
-                            "Live stream"
+                            DefaultAmitySocialStringProvider.getInstance().getString("amity_social_status_live_stream")
                         // Virtual with External Platform and link
                         locationData.eventType == AmityEventType.VIRTUAL &&
                         locationData.platform == EventPlatform.EXTERNAL_PLATFORM &&
                         locationData.eventLink.isNotEmpty() ->
                             locationData.eventLink
                         // Default placeholder for other cases
-                        else -> "Select where this event will be happening"
+                        else -> DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_event_select_location")
                     }
 
-                    val isPlaceholder = displayText == "Select where this event will be happening"
+                    val isPlaceholder = displayText == DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_event_select_location")
 
                     Text(
                         text = displayText,
@@ -1153,14 +1157,15 @@ fun AmityEventSetupPage(
                 )
 
                 Spacer(modifier = modifier.height(16.dp))
+                val isEventActionEnabled = shouldActionButtonEnable && !isCreatingOrSaving
                 Button(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AmityTheme.colors.primary,
-                        disabledContainerColor = AmityTheme.colors.primaryShade3,
+                        disabledContainerColor = AmityTheme.colors.primary.copy(alpha = 0.3f),
                     ),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                    enabled = shouldActionButtonEnable && !isCreatingOrSaving,
+                    enabled = isEventActionEnabled,
                     modifier = Modifier
                         .height(40.dp)
                         .fillMaxWidth()
@@ -1172,8 +1177,8 @@ fun AmityEventSetupPage(
 
                         if (startDateTime.isBefore(minimumTime)) {
                             val errorMessage = when (mode) {
-                                is AmityEventSetupPageMode.Create -> "Your event wasn't created as it needs to start at least 15 minutes from now."
-                                is AmityEventSetupPageMode.Edit -> "Event could not be updated. The event must start at least 15 minutes from now."
+                                is AmityEventSetupPageMode.Create -> DefaultAmitySocialStringProvider.getInstance().getString("amity_social_error_event_create_time_error")
+                                is AmityEventSetupPageMode.Edit -> DefaultAmitySocialStringProvider.getInstance().getString("amity_social_error_event_setup_update_time_limit_error")
                             }
                             AmityUIKitSnackbar.publishSnackbarErrorMessage(errorMessage)
                             return@Button
@@ -1201,13 +1206,13 @@ fun AmityEventSetupPage(
                                     isCreatingOrSaving = true
 
                                     // Show "Creating..." toast
-                                    getPageScope()?.showSnackbar("Creating...")
+                                    getPageScope()?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_event_setup_creating"))
 
                                     val communityId = mode.communityId.orEmpty()
 
                                     // Ensure communityId is provided
                                     if (communityId.isBlank()) {
-                                        AmityUIKitSnackbar.publishSnackbarErrorMessage("Community ID is required")
+                                        AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_community_id_required"))
                                         isCreatingOrSaving = false
                                         return
                                     }
@@ -1282,7 +1287,7 @@ fun AmityEventSetupPage(
                                         }
                                         .doOnError { error ->
                                             isCreatingOrSaving = false
-                                            getPageScope()?.showSnackbar("Failed to create event. Please try again.")
+                                            getPageScope()?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_create_event_failed"))
                                         }
                                         .subscribe()
                                 }
@@ -1292,7 +1297,7 @@ fun AmityEventSetupPage(
                                     isCreatingOrSaving = true
 
                                     // Show "Saving..." toast
-                                    getPageScope()?.showSnackbar("Saving...")
+                                    getPageScope()?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_event_setup_saving"))
 
                                     val eventId = mode.eventId
                                     val builder = eventRepository.updateEvent(eventId)
@@ -1376,12 +1381,12 @@ fun AmityEventSetupPage(
                                         .doOnSuccess { event ->
                                             isCreatingOrSaving = false
                                             // Show success toast and pop back
-                                            AmityUIKitSnackbar.publishSnackbarMessage("Successfully updated event.")
+                                            AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_event_updated"))
                                             context.closePageWithResult(Activity.RESULT_OK)
                                         }
                                         .doOnError { error ->
                                             isCreatingOrSaving = false
-                                            getPageScope()?.showSnackbar("Failed to update event. Please try again.")
+                                            getPageScope()?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_update_event_failed"))
                                         }
                                         .subscribe()
                                 }
@@ -1439,10 +1444,10 @@ fun AmityEventSetupPage(
                         if (isInEditMode) {
                             // Edit mode: No icon, just text
                             Text(
-                                text = "Save",
+                                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_edit_user_save_button"),
                                 style = AmityTheme.typography.body.copy(
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Color.White,
+                                    color = if (isEventActionEnabled) amityColorWhite else amityDisabledColor(amityColorWhite),
                                 ),
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.testTag(getAccessibilityId())
@@ -1456,15 +1461,15 @@ fun AmityEventSetupPage(
                                 Icon(
                                     painter = painterResource(com.amity.socialcloud.uikit.common.R.drawable.amity_ic_add),
                                     contentDescription = "Create",
-                                    tint = Color.White,
+                                    tint = if (isEventActionEnabled) amityColorWhite else amityDisabledColor(amityColorWhite),
                                     modifier = modifier.size(16.dp)
                                 )
                                 Spacer(modifier = modifier.width(8.dp))
                                 Text(
-                                    text = "Create event",
+                                    text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_create_event"),
                                     style = AmityTheme.typography.body.copy(
                                         fontWeight = FontWeight.SemiBold,
-                                        color = Color.White,
+                                        color = if (isEventActionEnabled) amityColorWhite else amityDisabledColor(amityColorWhite),
                                     ),
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.testTag(getAccessibilityId())
@@ -1577,12 +1582,12 @@ fun AmityEventSetupPage(
                             }
                         }
                     ) {
-                        Text("OK", color = AmityTheme.colors.primary)
+                        Text(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"), color = AmityTheme.colors.primary)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showStartDatePicker = false }) {
-                        Text("CANCEL", color = AmityTheme.colors.primary)
+                        Text(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"), color = AmityTheme.colors.primary)
                     }
                 }
             )
@@ -1626,12 +1631,12 @@ fun AmityEventSetupPage(
                             }
                         }
                     ) {
-                        Text("OK", color = AmityTheme.colors.primary)
+                        Text(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"), color = AmityTheme.colors.primary)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showStartTimePicker = false }) {
-                        Text("CANCEL", color = AmityTheme.colors.primary)
+                        Text(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"), color = AmityTheme.colors.primary)
                     }
                 }
             )
@@ -1668,12 +1673,12 @@ fun AmityEventSetupPage(
                             }
                         }
                     ) {
-                        Text("OK", color = AmityTheme.colors.primary)
+                        Text(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"), color = AmityTheme.colors.primary)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showEndDatePicker = false }) {
-                        Text("CANCEL", color = AmityTheme.colors.primary)
+                        Text(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"), color = AmityTheme.colors.primary)
                     }
                 }
             )
@@ -1709,12 +1714,12 @@ fun AmityEventSetupPage(
                             }
                         }
                     ) {
-                        Text("OK", color = AmityTheme.colors.primary)
+                        Text(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"), color = AmityTheme.colors.primary)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showEndTimePicker = false }) {
-                        Text("CANCEL", color = AmityTheme.colors.primary)
+                        Text(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"), color = AmityTheme.colors.primary)
                     }
                 }
             )
@@ -1723,16 +1728,16 @@ fun AmityEventSetupPage(
         // Leave Confirmation Dialog
         if (showLeaveConfirmDialog) {
             val dialogText = if (isInEditMode) {
-                "Your changes that you made may not be saved."
+                DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_event_unsaved_changes")
             } else {
-                "Your progress won't be saved and your event won't be created."
+                DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_event_progress_not_saved")
             }
 
             AmityAlertDialog(
-                dialogTitle = "Leave without finishing?",
+                dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_event_detail_alert_leave_without_finishing_title"),
                 dialogText = dialogText,
-                confirmText = "Leave",
-                dismissText = "Cancel",
+                confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_leave"),
+                dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
                 confirmTextColor = AmityTheme.colors.alert,
                 onConfirmation = { context.closePage() },
                 onDismissRequest = { showLeaveConfirmDialog = false }
@@ -1743,9 +1748,9 @@ fun AmityEventSetupPage(
         if (showCoverImageErrorUploadDialog.first) {
             val isInappropriateImage = showCoverImageErrorUploadDialog.second == AmityError.BUSINESS_ERROR.code
             AmityAlertDialog(
-                dialogTitle = if (isInappropriateImage) "Inappropriate image" else "Upload failed",
-                dialogText = if (isInappropriateImage) "Please choose a different image." else "Please try again.",
-                dismissText = "OK",
+                dialogTitle = if (isInappropriateImage) DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_inappropriate_image") else DefaultAmitySocialStringProvider.getInstance().getString("amity_social_error_upload_failed"),
+                dialogText = if (isInappropriateImage) DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_choose_different_image") else DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_please_try_again"),
+                dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
                 onDismissRequest = {
                     showCoverImageErrorUploadDialog = Pair(false, 0)
                 },

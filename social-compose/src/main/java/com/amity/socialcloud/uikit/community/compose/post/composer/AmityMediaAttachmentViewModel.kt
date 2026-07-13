@@ -20,7 +20,7 @@ open class AmityMediaAttachmentViewModel : AmityBaseViewModel() {
 
     fun setPostAttachmentAllowedPickerType(type: AmityPostAttachmentAllowedPickerType) {
         viewModelScope.launch {
-            _postAttachmentAllowedPickerType.value = type
+            _postAttachmentAllowedPickerType.value =  type
         }
     }
 

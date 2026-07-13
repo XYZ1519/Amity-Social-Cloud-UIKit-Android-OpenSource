@@ -2,6 +2,7 @@
 
 package com.amity.socialcloud.uikit.chat.compose.live.component
 
+import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -51,10 +52,12 @@ import com.amity.socialcloud.uikit.chat.compose.live.elements.ConfirmDeletePopup
 import com.amity.socialcloud.uikit.common.reaction.AmityMessageReactionBottomSheetTemp
 import com.amity.socialcloud.uikit.common.reaction.AmityMessageReactionListViewModel
 import com.amity.socialcloud.uikit.chat.compose.live.util.getContent
+import com.amity.socialcloud.uikit.chat.compose.localization.amityChatString
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.copyText
+import com.amity.socialcloud.uikit.common.localization.DefaultAmityCommonStringProvider
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import com.amity.socialcloud.uikit.common.compose.R as CommonR
@@ -106,6 +109,9 @@ fun AmityLiveChatMessageList(
     }
 
     val onCopy = @Composable { message: AmityMessage ->
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.S_V2) {
+            amityChatString("chat.toast.copied")
+        }
         copyText(getContent(message))
     }
 
@@ -170,7 +176,7 @@ fun AmityLiveChatMessageList(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Couldn't load chat",
+                        text = amityChatString("chat.load.error"),
                         style = TextStyle(
                             fontSize = 15.sp,
                             lineHeight = 20.sp,
@@ -199,7 +205,7 @@ fun AmityLiveChatMessageList(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "You are banned from chat",
+                        text = amityChatString("chat.label.banned.from.chat"),
                         style = TextStyle(
                             fontSize = 17.sp,
                             lineHeight = 24.sp,
@@ -233,6 +239,8 @@ fun AmityLiveChatMessageList(
                 }
             }
         } else {
+            val successReportMessage = amityChatString("chat.toast.message.reported")
+            val errorReportMessage = amityChatString("chat.toast.message.reported.error")
             LazyColumn(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 reverseLayout = true,
@@ -270,13 +278,13 @@ fun AmityLiveChatMessageList(
                                             message = message,
                                             onSuccess = {
                                                 getComponentScope().showSnackbar(
-                                                    message = "Message reported",
+                                                    message = successReportMessage,
                                                     drawableRes = CommonR.drawable.amity_ic_check_circle
                                                 )
                                             },
                                             onError = {
                                                 getComponentScope().showErrorSnackbar(
-                                                    message = "This message failed to be reported. Please try again."
+                                                    message = errorReportMessage
                                                 )
                                             }
                                         )
@@ -285,6 +293,7 @@ fun AmityLiveChatMessageList(
                             } else {
                                 null
                             }
+                        val unreportSuccessMessage = amityChatString("chat.unreport.success")
                         val onUnFlagAction =
                             if (message.getCreatorId() != AmityCoreClient.getUserId() && message.getFlagCount() > 0 && message.isFlaggedByMe()) {
                                 {
@@ -292,13 +301,13 @@ fun AmityLiveChatMessageList(
                                         message = message,
                                         onSuccess = {
                                             getComponentScope().showSnackbar(
-                                                message = "Message unreported",
+                                                message = unreportSuccessMessage,
                                                 drawableRes = CommonR.drawable.amity_ic_check_circle
                                             )
                                         },
                                         onError = {
                                             getComponentScope().showSnackbar(
-                                                message = "This message failed to be unreported. Please try again."
+                                                message = DefaultAmityCommonStringProvider.getInstance().getString("amity_social_toast_message_unreport_failed")
                                             )
                                         }
                                     )

@@ -2,6 +2,7 @@ package com.amity.socialcloud.uikit.community.compose.post.detail.elements
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,17 +14,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -32,10 +36,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.model.core.file.AmityImage
+import com.amity.socialcloud.sdk.model.core.product.AmityProduct
+import com.amity.socialcloud.sdk.model.core.producttag.AmityProductTag
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
 import com.amity.socialcloud.uikit.common.common.isNotEmptyOrBlank
+import com.amity.socialcloud.uikit.common.behavior.AmityGlobalBehavior
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.livestream.room.shared.AmityProductWebViewBottomSheet
+import com.amity.socialcloud.uikit.community.compose.post.composer.components.AmityProductTagListComponent
+import com.amity.socialcloud.uikit.community.compose.post.composer.components.RenderModeEnum
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
 
 @Composable
 fun AmityPostMediaElement(
@@ -106,6 +120,10 @@ fun AmityChildPostMediaElement(
         getChildPostData(post)
     }
 
+    val postChildrenList = remember(post.getPostId(), post.getUpdatedAt()) {
+        post.getChildren()
+    }
+
     val images by remember {
         derivedStateOf {
             childPosts.mapNotNull { data ->
@@ -121,22 +139,105 @@ fun AmityChildPostMediaElement(
     val showMediaDialog = remember { mutableStateOf(false) }
     val selectedFileId = remember { mutableStateOf("") }
 
+    // State for product tag bottom sheet
+    var showProductTagSheet by remember { mutableStateOf(false) }
+    var selectedProducts by remember { mutableStateOf<List<AmityProduct>>(emptyList()) }
+    var selectedProduct by remember { mutableStateOf<AmityProduct?>(null) }
+    val disposables = remember { io.reactivex.rxjava3.disposables.CompositeDisposable() }
+    val context = LocalContext.current
+    val behavior = AmitySocialBehaviorHelper.globalBehavior
+
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            disposables.clear()
+        }
+    }
+
     if (showMediaDialog.value && selectedFileId.value.isNotEmptyOrBlank()) {
-        AmityPostMediaPreviewDialog(
-            childPosts = childPosts,
-            isVideoPost = isVideoPost,
-            isPostCreator = post.getCreatorId() == AmityCoreClient.getUserId(),
-            selectedFileId = selectedFileId.value,
-            onDismiss = { showMediaDialog.value = false }
+        if (isVideoPost) {
+            // Use AmityVideoPlayerPage for video posts
+            AmityVideoPlayerPage(
+                childPosts = post.getChildren(),
+                selectedFileId = selectedFileId.value,
+                onDismiss = { showMediaDialog.value = false }
+            )
+        } else {
+            // Use AmityPostMediaPreviewDialog for image posts
+            AmityPostMediaPreviewDialog(
+                childPosts = post.getChildren(),
+                isVideoPost = isVideoPost,
+                isPostCreator = post.getCreatorId() == AmityCoreClient.getUserId(),
+                selectedFileId = selectedFileId.value,
+                onDismiss = { showMediaDialog.value = false }
+            )
+        }
+    }
+
+    // Product tag bottom sheet
+    if (showProductTagSheet && selectedProducts.isNotEmpty()) {
+        AmityProductTagListComponent(
+            productTags = selectedProducts,
+            renderMode = if (isVideoPost) RenderModeEnum.VIDEO else RenderModeEnum.IMAGE,
+            onDismiss = { showProductTagSheet = false },
+            onProductClick = { product ->
+                val handled = behavior.onPostProductTagClick(
+                    AmityGlobalBehavior.Context(
+                        pageContext = context,
+                        product = product,
+                    )
+                )
+                if (!handled) {
+                    selectedProduct = product
+                }
+            },
         )
     }
 
-    when (post.getChildren().size) {
+    selectedProduct?.let { p ->
+        AmityProductWebViewBottomSheet(
+            product = p,
+            onDismiss = {
+                selectedProduct = null
+            }
+        )
+    }
+
+    // Callback for product tag badge click
+    val onProductTagClick: (AmityPost) -> Unit = { childPost ->
+        val mediaTags = childPost.getProductTags().filterIsInstance<AmityProductTag.Media>()
+        val productIds = mediaTags.map { it.productId }
+
+        if (productIds.isNotEmpty()) {
+            // Query products from productIds
+            val disposable = io.reactivex.rxjava3.core.Observable.fromIterable(productIds)
+                .flatMapSingle { productId ->
+                    AmityCoreClient.newProductRepository()
+                        .getProduct(productId)
+                        .firstOrError()
+                }
+                .toList()
+                .subscribeOn(io.reactivex.rxjava3.schedulers.Schedulers.io())
+                .observeOn(io.reactivex.rxjava3.android.schedulers.AndroidSchedulers.mainThread())
+                .subscribe(
+                    { products ->
+                        selectedProducts = products
+                        showProductTagSheet = true
+                    },
+                    { error ->
+                        android.util.Log.e("ProductTagBadge", "Error fetching products", error)
+                    }
+                )
+            disposables.add(disposable)
+        }
+    }
+
+    when (postChildrenList.size) {
         0 -> {}
         1 -> AmityPostMediaImageChildrenOne(
             modifier = modifier,
             isVideoPost = isVideoPost,
-            postChild = post.getChildren().first(),
+            postChild = postChildrenList.first(),
+            onProductTagClick = onProductTagClick,
         ) {
             if (it.getData() is AmityPost.Data.CLIP) {
                 clipClick(it)
@@ -148,9 +249,10 @@ fun AmityChildPostMediaElement(
 
         2 -> AmityPostMediaImageChildrenTwo(
             modifier = modifier,
-            postChildren = post.getChildren(),
+            postChildren = postChildrenList,
             images = images,
             isVideoPost = isVideoPost,
+            onProductTagClick = onProductTagClick,
         ) {
             selectedFileId.value = it.getPostId()
             showMediaDialog.value = true
@@ -158,9 +260,10 @@ fun AmityChildPostMediaElement(
 
         3 -> AmityPostMediaImageChildrenThree(
             modifier = modifier,
-            postChildren = post.getChildren(),
+            postChildren = postChildrenList,
             images = images,
             isVideoPost = isVideoPost,
+            onProductTagClick = onProductTagClick,
         ) {
             selectedFileId.value = it.getPostId()
             showMediaDialog.value = true
@@ -168,9 +271,10 @@ fun AmityChildPostMediaElement(
 
         else -> AmityPostMediaImageChildrenFour(
             modifier = modifier,
-            postChildren = post.getChildren(),
+            postChildren = postChildrenList,
             images = images,
             isVideoPost = isVideoPost,
+            onProductTagClick = onProductTagClick,
         ) {
             selectedFileId.value = it.getPostId()
             showMediaDialog.value = true
@@ -183,8 +287,13 @@ fun AmityPostMediaImageChildrenOne(
     modifier: Modifier = Modifier,
     postChild: AmityPost,
     isVideoPost: Boolean,
+    onProductTagClick: (AmityPost) -> Unit = {},
     onClick: (AmityPost) -> Unit,
 ) {
+    val productTagCount = remember(postChild.getPostId(), postChild.getUpdatedAt()) {
+        getProductTagCount(postChild)
+    }
+
     Box(
         modifier = modifier.fillMaxSize()
     ) {
@@ -204,6 +313,13 @@ fun AmityPostMediaImageChildrenOne(
                 modifier = Modifier.align(Alignment.Center)
             )
         }
+        AmityProductTagBadge(
+            count = productTagCount,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 12.dp, bottom = 12.dp),
+            onClick = { onProductTagClick(postChild) }
+        )
     }
 }
 
@@ -213,8 +329,13 @@ fun AmityPostMediaImageChildrenTwo(
     postChildren: List<AmityPost>,
     images: List<AmityImage>,
     isVideoPost: Boolean,
+    onProductTagClick: (AmityPost) -> Unit = {},
     onClick: (AmityPost) -> Unit,
 ) {
+    val productTagCounts = remember(postChildren.joinToString(separator = "|") { "${it.getPostId()}@${it.getUpdatedAt()}" }) {
+        postChildren.map { getProductTagCount(it) }
+    }
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier.fillMaxWidth()
@@ -241,6 +362,13 @@ fun AmityPostMediaImageChildrenTwo(
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
+            AmityProductTagBadge(
+                count = productTagCounts.getOrElse(0) { 0 },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 12.dp, bottom = 12.dp),
+                onClick = { onProductTagClick(postChildren[0]) }
+            )
         }
 
         Box(
@@ -265,6 +393,13 @@ fun AmityPostMediaImageChildrenTwo(
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
+            AmityProductTagBadge(
+                count = productTagCounts.getOrElse(1) { 0 },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 12.dp, bottom = 12.dp),
+                onClick = { onProductTagClick(postChildren[1]) }
+            )
         }
     }
 }
@@ -275,8 +410,13 @@ fun AmityPostMediaImageChildrenThree(
     postChildren: List<AmityPost>,
     images: List<AmityImage>,
     isVideoPost: Boolean,
+    onProductTagClick: (AmityPost) -> Unit = {},
     onClick: (AmityPost) -> Unit,
 ) {
+    val productTagCounts = remember(postChildren.joinToString(separator = "|") { "${it.getPostId()}@${it.getUpdatedAt()}" }) {
+        postChildren.map { getProductTagCount(it) }
+    }
+
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier.fillMaxSize()
@@ -301,6 +441,13 @@ fun AmityPostMediaImageChildrenThree(
                     modifier = modifier.align(Alignment.Center)
                 )
             }
+            AmityProductTagBadge(
+                count = productTagCounts.getOrElse(0) { 0 },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 12.dp, bottom = 12.dp),
+                onClick = { onProductTagClick(postChildren[0]) }
+            )
         }
 
         Row(
@@ -330,6 +477,13 @@ fun AmityPostMediaImageChildrenThree(
                         modifier = modifier.align(Alignment.Center)
                     )
                 }
+                AmityProductTagBadge(
+                    count = productTagCounts.getOrElse(1) { 0 },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 12.dp, bottom = 12.dp),
+                    onClick = { onProductTagClick(postChildren[1]) }
+                )
             }
 
             Box(
@@ -355,6 +509,13 @@ fun AmityPostMediaImageChildrenThree(
                         modifier = modifier.align(Alignment.Center)
                     )
                 }
+                AmityProductTagBadge(
+                    count = productTagCounts.getOrElse(2) { 0 },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 12.dp, bottom = 12.dp),
+                    onClick = { onProductTagClick(postChildren[2]) }
+                )
             }
         }
     }
@@ -366,8 +527,13 @@ fun AmityPostMediaImageChildrenFour(
     postChildren: List<AmityPost>,
     images: List<AmityImage>,
     isVideoPost: Boolean,
+    onProductTagClick: (AmityPost) -> Unit = {},
     onClick: (AmityPost) -> Unit,
 ) {
+    val productTagCounts = remember(postChildren.joinToString(separator = "|") { "${it.getPostId()}@${it.getUpdatedAt()}" }) {
+        postChildren.map { getProductTagCount(it) }
+    }
+
     Column(
         verticalArrangement = Arrangement.spacedBy(4.dp),
         modifier = modifier.fillMaxSize()
@@ -398,6 +564,13 @@ fun AmityPostMediaImageChildrenFour(
                         modifier = modifier.align(Alignment.Center)
                     )
                 }
+                AmityProductTagBadge(
+                    count = productTagCounts.getOrElse(0) { 0 },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 12.dp, bottom = 12.dp),
+                    onClick = { onProductTagClick(postChildren[0]) }
+                )
             }
         }
 
@@ -429,6 +602,13 @@ fun AmityPostMediaImageChildrenFour(
                         modifier = modifier.align(Alignment.Center)
                     )
                 }
+                AmityProductTagBadge(
+                    count = productTagCounts.getOrElse(1) { 0 },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 12.dp, bottom = 12.dp),
+                    onClick = { onProductTagClick(postChildren[1]) }
+                )
             }
             Box(
                 modifier = modifier
@@ -452,6 +632,13 @@ fun AmityPostMediaImageChildrenFour(
                         modifier = modifier.align(Alignment.Center)
                     )
                 }
+                AmityProductTagBadge(
+                    count = productTagCounts.getOrElse(2) { 0 },
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 12.dp, bottom = 12.dp),
+                    onClick = { onProductTagClick(postChildren[2]) }
+                )
             }
 
             Box(
@@ -471,21 +658,36 @@ fun AmityPostMediaImageChildrenFour(
                 )
 
                 if (postChildren.size > 4) {
+                    // Show +X overlay when more than 4 images - no badge shown
                     Box(
                         modifier = modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(0.5f))
+                            .background(amityColorBlack.copy(0.5f))
                     ) {
                         Text(
                             text = "+${postChildren.size - 3}",
                             style = AmityTheme.typography.titleLegacy.copy(
                                 fontSize = 20.sp,
                                 lineHeight = 24.sp,
-                                color = Color.White
+                                color = amityColorWhite
                             ),
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
+                } else {
+                    // Exactly 4 images - show play button if video and badge
+                    if (isVideoPost) {
+                        AmityPostMediaPlayButton(
+                            modifier = modifier.align(Alignment.Center)
+                        )
+                    }
+                    AmityProductTagBadge(
+                        count = productTagCounts.getOrElse(3) { 0 },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 12.dp, bottom = 12.dp),
+                        onClick = { onProductTagClick(postChildren[3]) }
+                    )
                 }
             }
         }
@@ -504,7 +706,62 @@ fun getChildPostData(post: AmityPost): List<AmityPost.Data> {
 
 fun getAltText(post: AmityPost): String {
     return (post.getData() as? AmityPost.Data.IMAGE)?.getImage()?.getAltText()
-        ?: "No description available"
+        ?: DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_no_description_available")
+}
+
+fun getProductTagCount(childPost: AmityPost): Int {
+    return childPost.getProductTags()
+        .filterIsInstance<AmityProductTag.Media>()
+        .size
+}
+
+fun getProductsFromTags(childPost: AmityPost): List<AmityProduct> {
+    return childPost.getProductTags()
+        .filterIsInstance<AmityProductTag.Media>()
+        .mapNotNull { it.product }
+}
+
+@Composable
+fun AmityProductTagBadge(
+    count: Int,
+    modifier: Modifier = Modifier,
+    showWhenEmpty: Boolean = false,
+    onClick: (() -> Unit)? = null,
+) {
+    if (count <= 0 && !showWhenEmpty) return
+
+    Row(
+        modifier = modifier
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable { onClick() }
+                } else {
+                    Modifier
+                }
+            )
+            .background(
+                color = amityColorBlack.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(999.dp)
+            )
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.amity_ic_product_tag_filled),
+            contentDescription = "Product tags",
+            tint = amityColorWhite,
+            modifier = Modifier.size(16.dp)
+        )
+        if (count > 0) {
+            Text(
+                text = count.toString(),
+                style = AmityTheme.typography.caption.copy(
+                    color = amityColorWhite
+                )
+            )
+        }
+    }
 }
 
 @Composable

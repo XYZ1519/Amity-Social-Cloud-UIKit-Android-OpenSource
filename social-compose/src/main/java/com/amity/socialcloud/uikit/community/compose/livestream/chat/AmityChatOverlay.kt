@@ -1,10 +1,8 @@
 package com.amity.socialcloud.uikit.community.compose.livestream.chat
 
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,29 +27,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.itemKey
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.helper.core.mention.AmityMentionMetadataGetter
 import com.amity.socialcloud.sdk.model.chat.message.AmityMessage
-import com.amity.socialcloud.sdk.model.core.error.AmityException
 import com.amity.socialcloud.sdk.model.core.flag.AmityContentFlagReason
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
@@ -63,15 +55,17 @@ import com.amity.socialcloud.uikit.common.ui.elements.BottomConfirmDeletePopup
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.ui.theme.amityLiveBadgeRed
+import com.amity.socialcloud.uikit.common.ui.theme.amityLivestreamChatBubbleBackground
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.livestream.chat.AmityLivestreamChatViewModel.AmityLiveStreamSheetUIState
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.community.compose.post.detail.menu.AmityReportOtherReasonScreen
 import com.amity.socialcloud.uikit.community.compose.post.detail.menu.AmityReportReasonListScreen
 import com.google.gson.JsonObject
-import kotlinx.coroutines.flow.distinctUntilChanged
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,7 +94,7 @@ fun ChatOverlay(
         AmitySocialBehaviorHelper.createLivestreamPageBehavior
     }
 
-    val messages = viewModel.getMessageList().collectAsLazyPagingItems()
+    val messages = remember(viewModel) { viewModel.getMessageList() }.collectAsLazyPagingItems()
 
     // Use metadata as the single source of truth for moderator status
     // This ensures immediate response to promote/demote actions via metadata updates
@@ -160,10 +154,18 @@ fun ChatOverlay(
                             viewModel.showDeleteConfirmation(message)
                         },
                         onUserNameClick = {
-                            if (userId != AmityCoreClient.getUserId()
+                            val isCoHostUser = coHostUserId != null && userId == coHostUserId
+                            if (isCoHostUser) {
+                                // Co-host: open the full "Co-host actions" sheet (badge +
+                                // manage-product-tags toggle + Remove from live). It is wired
+                                // via onCohostBadgeClick only on the host page (which owns the
+                                // room view model / product-permission logic); it's a no-op on
+                                // non-host pages, so no empty sheet appears there.
+                                onCohostBadgeClick()
+                            } else if (userId != AmityCoreClient.getUserId()
                                 && isCurrentUserModerator
                                 && userId != hostUserId) {
-                                val displayName = message.getCreator()?.getDisplayName() ?: "Unknown user"
+                                val displayName = message.getCreator()?.getDisplayName() ?: DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unknown_user_lowercase")
                                 viewModel.updateSheetUIState(
                                     AmityLiveStreamSheetUIState.OpenUserActionsSheet(
                                         userId = userId,
@@ -191,7 +193,7 @@ fun ChatOverlay(
                     viewModel.updateSheetUIState(AmityLiveStreamSheetUIState.CloseSheet)
                 },
                 sheetState = sheetState,
-                containerColor = Color(0xFF191919),
+                containerColor = AmityTheme.colors.background,
                 contentWindowInsets = { WindowInsets.waterfall },
             ) {
                 when(sheetUIState) {
@@ -224,7 +226,7 @@ fun ChatOverlay(
                                     viewModel.unflagMessage(
                                         messageId = messageId,
                                         onSuccess = {
-                                            pageScope?.showSnackbar("Message unreported")
+                                            pageScope?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_message_unreported"))
                                         }
                                     )
                                 }
@@ -240,11 +242,7 @@ fun ChatOverlay(
                                 }
                                 viewModel.updateSheetUIState(AmityLiveStreamSheetUIState.CloseSheet)
                             },
-                            canInviteCohost = canInviteCohost,
-                            onInviteCohost = { userId, user ->
-                                onInviteCohost(userId, user)
-                                viewModel.updateSheetUIState(AmityLiveStreamSheetUIState.CloseSheet)
-                             },
+                            isHostMessage = message.getCreatorId() == hostUserId
                         )
                     }
                     is AmityLiveStreamSheetUIState.OpenReportSheet -> {
@@ -347,7 +345,7 @@ fun ChatOverlay(
                 viewModel.deleteMessage(
                     onError = {
                         pageScope?.showSnackbar(
-                            message = "Unable to delete message. Please try again."
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_delete_message_failed")
                         )
                     }
                 )
@@ -378,7 +376,7 @@ fun ChatMessageItem(
         modifier = Modifier
             .fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = Color(0x4D636878) // Reduced opacity
+            containerColor = amityLivestreamChatBubbleBackground.copy(alpha = 0.3f) // Reduced opacity
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -402,12 +400,14 @@ fun ChatMessageItem(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Text(
-                            text = message.getCreator()?.getDisplayName() ?: "Unknown user",
-                            color = if (message.isDeleted()) Color(0xFF6E7487) else Color(0xFFA5A9B5),
+                            text = message.getCreator()?.getDisplayName() ?: DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unknown_user_lowercase"),
+                            color = if (message.isDeleted()) AmityTheme.colors.baseShade2 else AmityTheme.colors.baseShade1,
                             style = AmityTheme.typography.captionSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.clickableWithoutRipple {
                                 onUserNameClick()
-                            }
+                            }.weight(1f, false)
                         )
 
                         // Show brand badge if user is a brand
@@ -434,8 +434,10 @@ fun ChatMessageItem(
                             ModeratorBadge()
                         }
 
-                        // Show Muted badge only if current user is a moderator and message creator is muted
-                        if (isChannelModerator && isCreatorMuted && !message.isDeleted()) {
+                        // Show Muted badge if current user is a moderator viewing a muted creator,
+                        // or if the message belongs to the current user and they are muted.
+                        val isOwnMessage = message.getCreatorId() == AmityCoreClient.getUserId()
+                        if ((isChannelModerator || isOwnMessage) && isCreatorMuted && !message.isDeleted()) {
                             MutedBadge()
                         }
                     }
@@ -445,7 +447,7 @@ fun ChatMessageItem(
                                 id = R.drawable.amity_ic_livestream_chat_options
                             ),
                             contentDescription = "message options",
-                            tint = Color.White,
+                            tint = AmityTheme.colors.baseInverse,
                             modifier = Modifier
                                 .size(16.dp)
                                 .clickableWithoutRipple {
@@ -462,7 +464,7 @@ fun ChatMessageItem(
                                 id = R.drawable.amity_ic_delete_story
                             ),
                             contentDescription = "message options",
-                            tint = Color(0xFF6E7487),
+                            tint = AmityTheme.colors.baseShade2,
                             modifier = Modifier
                                 .size(16.dp)
                                 .clickableWithoutRipple {
@@ -476,9 +478,9 @@ fun ChatMessageItem(
                         mentionGetter = AmityMentionMetadataGetter(message.getMetadata() ?: JsonObject()),
                         mentionees = message.getMentionees(),
                         style = AmityTheme.typography.caption.copy(
-                            color = if (message.isDeleted()) Color(0xFF6E7487) else Color.White,
+                            color = if (message.isDeleted()) AmityTheme.colors.baseShade2 else AmityTheme.colors.baseInverse,
                         ),
-                        highlightColor = Color.White,
+                        highlightColor = AmityTheme.colors.baseInverse,
                         onLongPress = {},
                     )
                 }
@@ -489,7 +491,7 @@ fun ChatMessageItem(
                         id = R.drawable.amity_ic_livestream_chat_sending_fail
                     ),
                     contentDescription = "message sending failed icon",
-                    tint = Color.White,
+                    tint = AmityTheme.colors.baseInverse,
                     modifier = Modifier
                         .size(24.dp)
                         .clickableWithoutRipple {
@@ -503,13 +505,14 @@ fun ChatMessageItem(
 
 @Composable
 fun HostBadge(
+    modifier: Modifier = Modifier,
     isCoHost: Boolean = false,
     onCohostBadgeClick: ()-> Unit,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .background(
-                color = Color(0xFFFF305A),
+                color = amityLiveBadgeRed,
                 shape = RoundedCornerShape(4.dp)
             ),
         verticalAlignment = Alignment.CenterVertically
@@ -521,7 +524,7 @@ fun HostBadge(
                 R.drawable.amity_ic_livestream_host
             }),
             contentDescription = if (isCoHost) { "Co-host badge" } else {  "Host badge" },
-            tint = Color.White,
+            tint = AmityTheme.colors.baseInverse,
             modifier = Modifier
                 .size(12.dp)
                 .padding(start = 2.dp, end = 2.dp)
@@ -533,11 +536,11 @@ fun HostBadge(
         )
         Text(
             text = if (isCoHost) {
-                "Co-host"
+                DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cohost")
             } else {
-                "Host"
+                DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_host")
             },
-            color = Color.White,
+            color = AmityTheme.colors.baseInverse,
             style = AmityTheme.typography.captionSmall,
             modifier = Modifier.padding(end = 3.dp)
         )
@@ -549,7 +552,7 @@ fun ModeratorBadge() {
     Row(
         modifier = Modifier
             .background(
-                color = Color(0xFF40434E),
+                color = AmityTheme.colors.baseShade3,
                 shape = RoundedCornerShape(4.dp)
             ),
         verticalAlignment = Alignment.CenterVertically
@@ -557,13 +560,13 @@ fun ModeratorBadge() {
         Icon(
             painter = painterResource(id = R.drawable.amity_ic_moderator_social),
             contentDescription = "Moderator badge",
-            tint = Color.White,
+            tint = AmityTheme.colors.baseInverse,
             modifier = Modifier
                 .size(width = 12.dp, height = 9.dp)
                 .padding(start = 2.dp, top = 1.dp, bottom = 1.dp, end = 1.dp)
         )
         Text(
-            text = "Moderator",
+            text = DefaultAmitySocialStringProvider.getInstance().getString("amity_common_button_moderator"),
             color = AmityTheme.colors.baseShade3,
             style = AmityTheme.typography.captionSmall,
             modifier = Modifier.padding(end = 3.dp)
@@ -584,9 +587,9 @@ fun MutedBadge() {
 
 fun getContent(message: AmityMessage): String {
     return if (message.isDeleted()) {
-        "This message was deleted"
+        DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_message_deleted")
     } else {
-        (message.getData() as? AmityMessage.Data.TEXT)?.getText() ?: "Unsupport message type"
+        (message.getData() as? AmityMessage.Data.TEXT)?.getText() ?: DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_unsupported_message_type")
     }
 }
 
@@ -594,18 +597,16 @@ fun getContent(message: AmityMessage): String {
 @Composable
 fun AmityLivestreamMessageActionsContainer(
     modifier: Modifier = Modifier,
-    componentScope: AmityComposeComponentScope? = null,
     message: AmityMessage,
     isChannelModerator: Boolean,
     onDelete: () -> Unit,
     onReport: (String) -> Unit = {},
     onUnreport: (String) -> Unit = {},
-    canInviteCohost: Boolean = false,
-    onInviteCohost: (String, AmityUser?) -> Unit = { _, _ -> },
+    isHostMessage: Boolean = false,
 ) {
     Column(
         modifier = modifier
-            .background(Color(0xFF191919))
+            .background(AmityTheme.colors.background)
             .navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, bottom = 32.dp)
     ) {
@@ -613,8 +614,8 @@ fun AmityLivestreamMessageActionsContainer(
             if(!message.isFlaggedByMe()) {
                 AmityBottomSheetActionItem(
                     icon = R.drawable.amity_ic_report_comment,
-                    text = "Report message",
-                    color = Color.White,
+                    text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_report_message"),
+                    color = AmityTheme.colors.baseInverse,
                     modifier = modifier.testTag("comment_tray_component/bottom_sheet_report_comment_button"),
                 ) {
                     onReport(message.getMessageId())
@@ -622,18 +623,18 @@ fun AmityLivestreamMessageActionsContainer(
             } else {
                 AmityBottomSheetActionItem(
                     icon = R.drawable.amity_ic_unreport,
-                    text = "Unreport message",
-                    color = Color.White,
+                    text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unreport_message"),
+                    color = AmityTheme.colors.baseInverse,
                     modifier = modifier.testTag("comment_tray_component/bottom_sheet_unreport_comment_button"),
                 ) {
                     onUnreport(message.getMessageId())
                 }
             }
         }
-        if (message.getCreatorId() == AmityCoreClient.getUserId() || isChannelModerator) {
+        if (message.getCreatorId() == AmityCoreClient.getUserId() || (isChannelModerator && !isHostMessage)) {
             AmityBottomSheetActionItem(
                 icon = R.drawable.amity_ic_delete_story,
-                text = "Delete message",
+                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_delete_message"),
                 color = AmityTheme.colors.alert,
                 modifier = modifier.testTag("comment_tray_component/bottom_sheet_delete_comment_button"),
             ) {
@@ -663,7 +664,7 @@ fun AmityUserActionsSheet(
 
     Column(
         modifier = Modifier
-            .background(Color(0xFF191919))
+            .background(AmityTheme.colors.background)
             .navigationBarsPadding()
     ) {
         Column(
@@ -679,8 +680,11 @@ fun AmityUserActionsSheet(
             ) {
                 Text(
                     text = displayName,
-                    color = Color(0xFFEBECEF),
+                    color = AmityTheme.colors.base,
                     style = AmityTheme.typography.titleBold,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f, false),
+                    overflow = TextOverflow.Ellipsis,
                 )
 
                 // Show brand badge if user is a brand
@@ -696,7 +700,7 @@ fun AmityUserActionsSheet(
                 // Muted icon if user is muted
                 if (isMuted) {
                     Icon(
-                        painter = painterResource(id = R.drawable.amity_v4_ic_mute),
+                        painter = painterResource(id = R.drawable.amity_ic_mute_user),
                         contentDescription = "Muted badge",
                         tint = AmityTheme.colors.baseShade2,
                         modifier = Modifier
@@ -711,7 +715,7 @@ fun AmityUserActionsSheet(
                     modifier = Modifier
                         .padding(top = 4.dp)
                         .background(
-                            color = Color(0xFF40434E),
+                            color = AmityTheme.colors.baseShade3,
                             shape = RoundedCornerShape(4.dp)
                         ),
                     verticalAlignment = Alignment.CenterVertically
@@ -719,13 +723,13 @@ fun AmityUserActionsSheet(
                     Icon(
                         painter = painterResource(id = R.drawable.amity_ic_moderator_social),
                         contentDescription = "Moderator badge",
-                        tint = Color.White,
+                        tint = AmityTheme.colors.baseInverse,
                         modifier = Modifier
                             .size(width = 12.dp, height = 9.dp)
                             .padding(start = 2.dp, top = 1.dp, bottom = 1.dp, end = 1.dp)
                     )
                     Text(
-                        text = "Moderator",
+                        text = DefaultAmitySocialStringProvider.getInstance().getString("amity_common_button_moderator"),
                         color = AmityTheme.colors.baseShade3,
                         style = AmityTheme.typography.captionSmall,
                         modifier = Modifier.padding(end = 3.dp)
@@ -751,8 +755,8 @@ fun AmityUserActionsSheet(
         if (canInviteCohost) {
             AmityBottomSheetActionItem(
                 icon = R.drawable.amity_ic_invite_cohost_in_chat,
-                text = "Invite as co-host",
-                color = Color(0xFFEBECEF),
+                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_invite_as_co_host"),
+                color = AmityTheme.colors.base,
             ) {
                 onInviteCohost(userId, null)
                 onClose()
@@ -763,8 +767,8 @@ fun AmityUserActionsSheet(
         if (!isMuted) {
             AmityBottomSheetActionItem(
                 icon = if (isModerator) R.drawable.amity_ic_demote_moderator else R.drawable.amity_ic_promote_moderator,
-                text = if (isModerator) "Demote to member" else "Promote to moderator",
-                color = Color(0xFFEBECEF),
+                text = if (isModerator) DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_demote_to_member") else DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_promote_to_moderator"),
+                color = AmityTheme.colors.base,
             ) {
                 if (isModerator) {
                     showDemoteDialog = true
@@ -778,8 +782,8 @@ fun AmityUserActionsSheet(
         if (!isModerator) {
             AmityBottomSheetActionItem(
                 icon = if (isMuted) R.drawable.amity_ic_unmute_user else R.drawable.amity_ic_mute_user,
-                text = if (isMuted) "Unmute user" else "Mute user",
-                color = Color(0xFFEBECEF),
+                text = if (isMuted) DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unmute_user") else DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_mute_user"),
+                color = AmityTheme.colors.base,
             ) {
                 if (isMuted) {
                     showUnmuteDialog = true
@@ -795,22 +799,22 @@ fun AmityUserActionsSheet(
     // Promote confirmation dialog
     if (showPromoteDialog) {
         AmityAlertDialog(
-            dialogTitle = "Moderator promotion",
-            dialogText = "Are you sure you want to promote this member to moderator? They will gain access to all moderator permissions in this live stream.",
-            confirmText = "Promote",
-            dismissText = "Cancel",
+            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_moderator_promotion"),
+            dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_promote_moderator_description"),
+            confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_promote"),
+            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
             onConfirmation = {
                 showPromoteDialog = false
                 viewModel.promoteToModerator(
                     userId = userId,
                     onSuccess = {
-                        AmityUIKitSnackbar.publishSnackbarMessage("User promoted.")
-                        pageScope?.showSnackbar("User promoted to moderator")
+                        AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_user_promoted"))
+                        pageScope?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_user_promoted"))
                         onClose()
                     },
                     onError = {
-                        AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to promote user. Please try again.")
-                        pageScope?.showSnackbar("Failed to promote user. Please try again.")
+                        AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_promoted_failed"))
+                        pageScope?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_promoted_failed"))
                     }
                 )
             },
@@ -823,23 +827,23 @@ fun AmityUserActionsSheet(
     // Demote confirmation dialog
     if (showDemoteDialog) {
         AmityAlertDialog(
-            dialogTitle = "Moderator demotion",
-            dialogText = "Are you sure you want to demote this moderator? They will lose access to all moderator permissions in this live stream.",
-            confirmText = "Demote",
-            dismissText = "Cancel",
+            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_moderator_demotion"),
+            dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_demote_moderator_description"),
+            confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_demote"),
+            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
             confirmTextColor = AmityTheme.colors.alert,
             onConfirmation = {
                 showDemoteDialog = false
                 viewModel.demoteToMember(
                     userId = userId,
                     onSuccess = {
-                        AmityUIKitSnackbar.publishSnackbarMessage("User demoted.")
-                        pageScope?.showSnackbar("User demoted to member")
+                        AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_member_demote_success_toast"))
+                        pageScope?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_member_demote_success_toast"))
                         onClose()
                     },
                     onError = {
-                        AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to demote user. Please try again.")
-                        pageScope?.showSnackbar("Failed to demote user. Please try again.")
+                        AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_demoted_failed"))
+                        pageScope?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_demoted_failed"))
                     }
                 )
             },
@@ -852,23 +856,23 @@ fun AmityUserActionsSheet(
     // Mute confirmation dialog
     if (showMuteDialog) {
         AmityAlertDialog(
-            dialogTitle = "Confirm mute",
-            dialogText = "Are you sure you want to mute this user? They will no longer be able to send messages.",
-            confirmText = "Mute",
-            dismissText = "Cancel",
+            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_confirm_mute"),
+            dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_mute_user_description"),
+            confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_mute"),
+            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
             confirmTextColor = AmityTheme.colors.alert,
             onConfirmation = {
                 showMuteDialog = false
                 viewModel.muteUser(
                     userId = userId,
                     onSuccess = {
-                        AmityUIKitSnackbar.publishSnackbarMessage("User muted.")
-                        pageScope?.showSnackbar("User muted")
+                        AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_user_muted"))
+                        pageScope?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_user_muted"))
                         onClose()
                     },
                     onError = {
-                        AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to mute user. Please try again.")
-                        pageScope?.showSnackbar("Failed to mute user. Please try again.")
+                        AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_muted_failed"))
+                        pageScope?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_muted_failed"))
                     }
                 )
             },
@@ -881,22 +885,22 @@ fun AmityUserActionsSheet(
     // Unmute confirmation dialog
     if (showUnmuteDialog) {
         AmityAlertDialog(
-            dialogTitle = "Confirm unmute",
-            dialogText = "Are you sure you want to unmute this user? They can now send messages.",
-            confirmText = "Unmute",
-            dismissText = "Cancel",
+            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_confirm_unmute"),
+            dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_unmute_user_description"),
+            confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unmute"),
+            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
             onConfirmation = {
                 showUnmuteDialog = false
                 viewModel.unmuteUser(
                     userId = userId,
                     onSuccess = {
-                        AmityUIKitSnackbar.publishSnackbarMessage("User unmuted.")
-                        pageScope?.showSnackbar("User unmuted")
+                        AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_user_unmuted"))
+                        pageScope?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_user_unmuted"))
                         onClose()
                     },
                     onError = {
-                        AmityUIKitSnackbar.publishSnackbarErrorMessage("Failed to unmute user. Please try again.")
-                        pageScope?.showSnackbar("Failed to unmute user. Please try again.")
+                        AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_unmuted_failed"))
+                        pageScope?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_unmuted_failed"))
                     }
                 )
             },
@@ -918,12 +922,12 @@ private fun submitReport(
         messageId = messageId,
         reason = reason,
         onSuccess = {
-            pageScope?.showSnackbar("Message reported")
+            pageScope?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_message_reported"))
             viewModel.updateSheetUIState(AmityLiveStreamSheetUIState.CloseSheet)
         },
         onError = { error ->
             onError()
-            pageScope?.showSnackbar("Failed to report message. Please try again.", drawableRes = R.drawable.amity_ic_warning)
+            pageScope?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_message_report_failed"), drawableRes = R.drawable.amity_ic_warning)
         }
     )
 }

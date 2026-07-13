@@ -56,10 +56,8 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
-import com.amity.socialcloud.sdk.model.chat.member.AmityMembershipType
 import com.amity.socialcloud.sdk.model.core.error.AmityError
 import com.amity.socialcloud.sdk.model.core.error.AmityException
-import com.amity.socialcloud.uikit.common.common.views.AmityColorShade
 import com.amity.socialcloud.uikit.common.model.AmityMessageReactions
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
@@ -69,9 +67,11 @@ import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.isSignedIn
 import com.amity.socialcloud.uikit.common.utils.isVisitor
-import com.amity.socialcloud.uikit.common.utils.shade
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.community.compose.livestream.room.shared.AmityProductTaggingButton
+import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
@@ -94,6 +94,10 @@ fun AmityLivestreamMessageComposeBar(
     onToggleMicrophone: (() -> Unit)? = null,
     onSwitchCamera: (() -> Unit)? = null,
     onOpenInviteSheet: (() -> Unit)? = null,
+    isProductSettingsEnabled: Boolean = false,
+    taggedProductsCount: Int = 0,
+    canManageProducts: Boolean = false,
+    onTaggedProductClick: (() -> Unit)? = null,
 ) {
     val viewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
         "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
@@ -157,7 +161,7 @@ fun AmityLivestreamMessageComposeBar(
             modifier = modifier
                 .fillMaxWidth()
                 .background(
-                    if (isFocused) Color(0xFF191919)
+                    if (isFocused) AmityTheme.colors.background
                     else Color.Transparent
                 )
         ) {
@@ -177,7 +181,7 @@ fun AmityLivestreamMessageComposeBar(
 
             if (shouldShowComposeBar) {
                 HorizontalDivider(
-                    color = Color(0xFF292B32),
+                    color = AmityTheme.colors.baseShade4,
                 )
             }
 
@@ -185,17 +189,27 @@ fun AmityLivestreamMessageComposeBar(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Host can always see product tagging button
+                if (isProductSettingsEnabled && (canManageProducts || taggedProductsCount > 0) && (isCurrentUserStreamHost || !isPendingApproval)) {
+                    AmityProductTaggingButton(
+                        taggedProductsCount = taggedProductsCount,
+                        onClick = { onTaggedProductClick?.invoke() }
+                    )
+                }
                 if (isPendingApproval) {
                     AmityLivestreamPendingApprovalComposeBar()
+                } else if (isChannelMuted && !isCurrentUserStreamHost) {
+                    // Read-only mode applies to everyone (members, non-members, visitors):
+                    // show "This live stream is now read-only." before the non-member message.
+                    AmityLivestreamReadOnlyComposeBar(
+                        modifier = Modifier.weight(1f),
+                    )
                 } else if (isNonMember) {
                     AmityLivestreamNonMemberComposeBar(
                         modifier = Modifier.weight(1f)
-                    )
-                } else if (isChannelMuted && !isCurrentUserStreamHost) {
-                    AmityLivestreamReadOnlyComposeBar(
-                        modifier = Modifier.weight(1f),
                     )
                 } else if (isUserMuted && !isCurrentUserStreamHost) {
                     AmityLivestreamReadOnlyComposeBar(
@@ -212,12 +226,12 @@ fun AmityLivestreamMessageComposeBar(
                                 .weight(1f)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(
-                                    if (isFocused) Color(0xFF292B32)
+                                    if (isFocused) AmityTheme.colors.baseShade4
                                     else Color.Transparent
                                 )
                                 .border(
                                     width = if (isFocused) 0.dp else 1.dp,
-                                    color = Color(0xFFA5A9B5),
+                                    color = AmityTheme.colors.secondaryShade1,
                                     shape = RoundedCornerShape(20.dp)
                                 )
                                 .focusRequester(focusRequester)
@@ -239,9 +253,9 @@ fun AmityLivestreamMessageComposeBar(
                                 }
                                 .testTag("message_composer_text_field"),
                             text = messageText,
-                            textStyle = AmityTheme.typography.body.copy(color = Color(0xFFEBECEF)),
+                            textStyle = AmityTheme.typography.body.copy(color = AmityTheme.colors.base),
                             maxLines = 1,
-                            hint = "Chat...",
+                            hint = amitySocialString("amity_social_placeholder_chat_hint"),
                             enabled = (isChannelModerator || isCurrentUserStreamHost || (!isUserMuted && !isChannelMuted)) && AmityCoreClient.isSignedIn() && !isNonMember,
                             shape = RoundedCornerShape(20.dp),
                             innerPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
@@ -283,16 +297,17 @@ fun AmityLivestreamMessageComposeBar(
                                 onError = { exception ->
                                     shouldClearText = false
 
+                                    val stringProvider = DefaultAmitySocialStringProvider.getInstance()
                                     val errorMessage: String = if (exception is AmityException) {
                                         when (AmityError.from(exception.code)) {
-                                            AmityError.BAN_WORD_FOUND -> "Your message wasn't sent as it contained a blocked word."
-                                            AmityError.LINK_NOT_ALLOWED -> "Your message wasn't sent as it contained a link that's not allowed."
+                                            AmityError.BAN_WORD_FOUND -> stringProvider.getString("amity_social_label_msg_blocked_word")
+                                            AmityError.LINK_NOT_ALLOWED -> stringProvider.getString("amity_social_label_msg_link_not_allowed")
                                             else -> exception.message
-                                                ?: "This message failed to be sent. Please try again."
+                                                ?: stringProvider.getString("amity_social_toast_message_send_failed")
                                         }
                                     } else {
                                         exception.message
-                                            ?: "This message failed to be sent. Please try again."
+                                            ?: stringProvider.getString("amity_social_toast_message_send_failed")
                                     }
                                     pageScope?.showSnackbar(
                                         message = errorMessage
@@ -444,7 +459,7 @@ fun MessageComposeErrorPopup(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Unable to send message",
+                            text = amitySocialString("amity_social_label_unable_to_send_message"),
                             fontSize = 17.sp,
                             lineHeight = 22.sp,
                             fontWeight = FontWeight(600),
@@ -453,7 +468,7 @@ fun MessageComposeErrorPopup(
                             color = AmityTheme.colors.baseInverse,
                         )
                         Text(
-                            text = "Your message is too long. Please shorten your message and try again.",
+                            text = amitySocialString("amity_social_label_your_message_is_too_long_please_shorten_your_message_an"),
                             fontSize = 13.sp,
                             lineHeight = 16.sp,
                             fontWeight = FontWeight(400),
@@ -476,7 +491,7 @@ fun MessageComposeErrorPopup(
                             modifier = Modifier.weight(1f)
                         ) {
                             Text(
-                                text = "OK",
+                                text = amitySocialString("amity_social_button_ok"),
                                 fontSize = 17.sp,
                                 lineHeight = 22.sp,
                                 fontWeight = FontWeight(600),
@@ -501,7 +516,7 @@ fun AmityLivestreamNonMemberComposeBar(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "Join community to interact with live stream",
+            text = amitySocialString("amity_social_status_join_community_to_interact_with_live_stream"),
             style = AmityTheme.typography.body,
             color = AmityTheme.colors.secondaryShade2,
             textAlign = TextAlign.Center,
@@ -525,15 +540,15 @@ fun AmityLivestreamReadOnlyComposeBar(
             modifier = Modifier
                 .size(20.dp)
                 .align(Alignment.CenterVertically),
-            tint = Color(0xFF898E9E),
+            tint = AmityTheme.colors.baseShade1,
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = if (isMemberMuted) "You have been muted." else "This live stream is now read-only.",
+            text = if (isMemberMuted) amitySocialString("amity_social_label_you_have_been_muted") else amitySocialString("amity_social_status_livestream_read_only"),
             fontSize = 14.sp,
             lineHeight = 20.sp,
             fontWeight = FontWeight(400),
-            color = Color(0xFF898E9E),
+            color = AmityTheme.colors.baseShade1,
             modifier = Modifier
                 .align(Alignment.CenterVertically)
                 .weight(1f)
@@ -553,11 +568,11 @@ fun AmityLivestreamPendingApprovalComposeBar(
             .padding(start = 12.dp)
     ) {
         Text(
-            text = "This live stream has started, but with limited visibility until the post has been approved.",
+            text = amitySocialString("amity_social_status_this_live_stream_has_started_but_with_limited_visibilit"),
             fontSize = 14.sp,
             lineHeight = 20.sp,
             fontWeight = FontWeight(400),
-            color = Color(0xFF898E9E),
+            color = AmityTheme.colors.baseShade1,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .align(Alignment.CenterVertically)
