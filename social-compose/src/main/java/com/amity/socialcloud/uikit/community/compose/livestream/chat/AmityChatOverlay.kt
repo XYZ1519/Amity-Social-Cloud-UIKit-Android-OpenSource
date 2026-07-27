@@ -24,6 +24,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -32,11 +33,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -101,6 +108,25 @@ fun ChatOverlay(
     val isCurrentUserModerator by viewModel.isUserModerator(AmityCoreClient.getUserId())
         .collectAsState(initial = false)
 
+    // A streamer (host or co-host) can moderate chat regardless of the channel-moderator
+    // metadata flag — matching iOS UIKit, which gates moderation on `isStreamer || isModerator`
+    // (AmityLiveStreamChatFeed). Without this, a co-host is blocked until the promotion metadata
+    // propagates (or if it never does), so they cannot open the user actions sheet.
+    val currentUserId = AmityCoreClient.getUserId()
+    val isCurrentUserStreamer = currentUserId == streamHostUserId ||
+            (coHostUserId != null && currentUserId == coHostUserId)
+    val canModerate = isCurrentUserModerator || isCurrentUserStreamer
+
+    // Keep the channel "moderators" metadata in sync with the co-host,
+    // refreshHostAndCoHostId: only the host promotes the accepted co-host to channel moderator
+    // (and demotes them when the co-host slot clears). Driven off co-host changes, which the
+    // page derives from room participant updates.
+    LaunchedEffect(coHostUserId, streamHostUserId) {
+        val isHost = !streamHostUserId.isNullOrBlank() &&
+                streamHostUserId == AmityCoreClient.getUserId()
+        viewModel.syncCoHostModeratorRole(coHostUserId = coHostUserId, isHost = isHost)
+    }
+
     val hostUserId = streamHostUserId
 
     var messageText by remember { mutableStateOf("") }
@@ -122,6 +148,7 @@ fun ChatOverlay(
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
+                .topFadingEdge()
                 .padding(horizontal = 16.dp),
             reverseLayout = true
         ) {
@@ -139,14 +166,14 @@ fun ChatOverlay(
 
                     ChatMessageItem(
                         message = message,
-                        isChannelModerator = (isCurrentUserModerator && message.getCreatorId() != streamHostUserId),
+                        isChannelModerator = (canModerate && message.getCreatorId() != streamHostUserId),
                         hostUserId = hostUserId,
                         coHostUserId = coHostUserId,
                         isMessageCreatorModerator = viewModel.isUserModerator(userId),
                         isMessageCreatorMuted = viewModel.isUserMuted(userId),
                         onOpenAction = {
                             viewModel.updateSheetUIState(
-                                AmityLiveStreamSheetUIState.OpenSheet(message, (isCurrentUserModerator && message.getCreatorId() != streamHostUserId))
+                                AmityLiveStreamSheetUIState.OpenSheet(message, (canModerate && message.getCreatorId() != streamHostUserId))
                             )
                             viewModel.setTargetDeletedMessage(message)
                         },
@@ -163,7 +190,7 @@ fun ChatOverlay(
                                 // non-host pages, so no empty sheet appears there.
                                 onCohostBadgeClick()
                             } else if (userId != AmityCoreClient.getUserId()
-                                && isCurrentUserModerator
+                                && canModerate
                                 && userId != hostUserId) {
                                 val displayName = message.getCreator()?.getDisplayName() ?: DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unknown_user_lowercase")
                                 viewModel.updateSheetUIState(
@@ -201,7 +228,7 @@ fun ChatOverlay(
                         val message = (sheetUIState as AmityLiveStreamSheetUIState.OpenSheet).message
                         AmityLivestreamMessageActionsContainer(
                             message = message,
-                            isChannelModerator = isCurrentUserModerator,
+                            isChannelModerator = canModerate,
                             onReport = { messageId ->
                                 if (AmityCoreClient.isVisitor()) {
                                     behavior.handleVisitorUserAction()
@@ -552,7 +579,7 @@ fun ModeratorBadge() {
     Row(
         modifier = Modifier
             .background(
-                color = AmityTheme.colors.baseShade3,
+                color = AmityTheme.colors.secondaryShade3,
                 shape = RoundedCornerShape(4.dp)
             ),
         verticalAlignment = Alignment.CenterVertically
@@ -560,14 +587,14 @@ fun ModeratorBadge() {
         Icon(
             painter = painterResource(id = R.drawable.amity_ic_moderator_social),
             contentDescription = "Moderator badge",
-            tint = AmityTheme.colors.baseInverse,
+            tint = AmityTheme.colors.base,
             modifier = Modifier
                 .size(width = 12.dp, height = 9.dp)
                 .padding(start = 2.dp, top = 1.dp, bottom = 1.dp, end = 1.dp)
         )
         Text(
             text = DefaultAmitySocialStringProvider.getInstance().getString("amity_common_button_moderator"),
-            color = AmityTheme.colors.baseShade3,
+            color = AmityTheme.colors.base,
             style = AmityTheme.typography.captionSmall,
             modifier = Modifier.padding(end = 3.dp)
         )
@@ -744,7 +771,7 @@ fun AmityUserActionsSheet(
                 .padding(top = 12.dp)
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(AmityTheme.colors.base)
+                .background(AmityTheme.colors.baseShade4)
         )
 
         Column(
@@ -931,3 +958,26 @@ private fun submitReport(
         }
     )
 }
+
+/**
+ * Fades the top edge of a scrolling container to transparent so chat messages
+ * dissolve as they scroll up off the top instead of clipping abruptly.
+ *
+ * Uses an offscreen compositing layer so the [BlendMode.DstIn] mask only affects
+ * this content and not the video/other UI drawn behind it. (An earlier attempt
+ * applied the blend without an offscreen layer, which bled into other UI parts.)
+ */
+private fun Modifier.topFadingEdge(fadeHeight: Dp = 48.dp): Modifier =
+    this
+        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            drawRect(
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, Color.Black),
+                    startY = 0f,
+                    endY = fadeHeight.toPx(),
+                ),
+                blendMode = BlendMode.DstIn,
+            )
+        }
