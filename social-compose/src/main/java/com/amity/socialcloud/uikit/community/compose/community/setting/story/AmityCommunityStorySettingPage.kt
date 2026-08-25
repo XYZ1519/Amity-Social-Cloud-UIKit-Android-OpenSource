@@ -82,7 +82,7 @@ fun AmityCommunityStorySettingPage(
                 Switch(
                     checked = isChecked,
                     colors = SwitchDefaults.colors(
-                        checkedTrackColor = AmityTheme.colors.highlight,
+                        checkedTrackColor = AmityTheme.colors.primary,
                         uncheckedBorderColor = AmityTheme.colors.baseShade3,
                         uncheckedThumbColor = AmityTheme.colors.baseInverse,
                         uncheckedTrackColor = AmityTheme.colors.baseShade3,

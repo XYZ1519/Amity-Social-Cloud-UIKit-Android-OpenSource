@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.api.social.post.query.AmityFeedSource
@@ -175,6 +176,16 @@ fun AmityUserProfilePage(
     val imagePostListState by viewModel.imagePostListState.collectAsState()
     val videoPostListState by viewModel.videoPostListState.collectAsState()
     val clipPostListState by viewModel.clipPostListState.collectAsState()
+    val isFeedUnauthorized by remember(userPosts) {
+        derivedStateOf {
+            val feedError = AmityError.from(
+                (userPosts.loadState.mediator?.refresh as? LoadState.Error)?.error
+            )
+            feedError == AmityError.UNAUTHORIZED_ERROR || feedError == AmityError.PERMISSION_DENIED
+        }
+    }
+    val isPrivateFeed = postListState == AmityUserProfilePageViewModel.PostListState.ERROR &&
+            isFeedUnauthorized
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val feedFilter = listOf(
@@ -300,7 +311,8 @@ fun AmityUserProfilePage(
                             currentFilter = feedFilter[selectedFilterIndex],
                             onFilterLaunch = {
                                 showFeedFilterSheet = true
-                            }
+                            },
+                            showFilter = !isBlockedByMe && !isPrivateFeed
                         )
                     }
                 }
@@ -356,7 +368,8 @@ fun AmityUserProfilePage(
                             currentFilter = feedFilter[selectedFilterIndex],
                             onFilterLaunch = {
                                 showFeedFilterSheet = true
-                            }
+                            },
+                            showFilter = !isBlockedByMe && !isPrivateFeed
                         )
 
                     }

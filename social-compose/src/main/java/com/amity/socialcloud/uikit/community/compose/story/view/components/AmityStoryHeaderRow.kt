@@ -270,9 +270,9 @@ fun AmityStoryHeaderRow(
                         if (isOfficialCommunity) {
                             Spacer(modifier.width(2.dp))
                             Image(
-                                painter = painterResource(R.drawable.amity_ic_verified_community),
+                                painter = painterResource(R.drawable.amity_ic_verified_white),
                                 contentDescription = "Community Official Icon",
-                                modifier = modifier.size(20.dp)
+                                modifier = modifier.size(16.dp)
                             )
                         }
                     }

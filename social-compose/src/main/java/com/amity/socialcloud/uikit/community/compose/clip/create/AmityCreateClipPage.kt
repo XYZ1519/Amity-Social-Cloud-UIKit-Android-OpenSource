@@ -371,7 +371,7 @@ fun AmityCreateClipPage(
                         .fillMaxSize()
                         .padding(16.dp),
                     title = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_permission_title_allow_camera_mic_access"),
-                    description = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_status_allow_camera_desc"),
+                    description = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_status_allow_camera_clip_desc"),
                     onOpenSettingClick = {
                         val intent =
                             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {

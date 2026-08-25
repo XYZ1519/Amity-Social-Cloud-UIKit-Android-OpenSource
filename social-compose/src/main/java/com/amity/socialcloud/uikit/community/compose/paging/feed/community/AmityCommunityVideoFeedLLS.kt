@@ -48,7 +48,7 @@ fun LazyListScope.amityCommunityVideoFeedLLS(
     onViewPost: ((String, AmityPostCategory) -> Unit)? = null,
 ) {
     item {
-        var debouncedAvailablePostIds by remember { mutableStateOf(emptySet<String>()) }
+        var debouncedAvailablePostIds by remember { mutableStateOf<Set<String>?>(null) }
 
         val currentPostIds = (0 until videoPosts.itemCount).mapNotNull { index ->
             videoPosts[index]?.getPostId()

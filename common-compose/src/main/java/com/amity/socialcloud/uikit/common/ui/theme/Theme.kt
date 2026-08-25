@@ -145,3 +145,20 @@ fun isUIKitInDarkTheme(): Boolean {
     // value as false for the lifetime of the process.
     return AmityUIKitConfigController.shouldUIKitInDarkTheme()
 }
+
+/**
+ * Renders [content] against the GLOBAL palette, ignoring any page or component scope in effect.
+ *
+ * For modals. A dialog inherits the composition that opened it, and the media surfaces -- clip
+ * capture, clip draft, clip feed, livestream, livestream-terminated -- pin an identical dark theme
+ * for BOTH modes so their canvas stays dark whatever the device is doing. That is right for the
+ * page and wrong for a sheet presented over it, which otherwise comes out dark on a light device.
+ */
+@Composable
+fun AmityGlobalPalette(content: @Composable () -> Unit) {
+    val colors = AmityUIKitColors.applyConfiguration(
+        AmityUIKitConfigController.getGlobalTheme(),
+        AmityUIKitConfigController.shouldUIKitInDarkTheme(),
+    )
+    CompositionLocalProvider(LocalAmityColors provides colors) { content() }
+}

@@ -314,19 +314,18 @@ fun AmityPostMediaPreviewDialog(
                 ) {
                     val (closeBtn, muteBtn, counter, menuBtn) = createRefs()
 
-                    AmityMenuButton(
-                        size = 32.dp,
-                        iconPadding = 8.dp,
-                        background = amityColorBaseShade4,
-                        tint = amityColorBase,
+                    Image(
+                        painter = painterResource(R.drawable.amity_v4_image_preview_close),
+                        contentDescription = "Close",
                         modifier = Modifier
-                            .zIndex(Float.MAX_VALUE).constrainAs(closeBtn) {
-                            top.linkTo(parent.top, margin = 16.dp)
-                            start.linkTo(parent.start, margin = 16.dp)
-                        },
-                    ) {
-                        onDismiss()
-                    }
+                            .zIndex(Float.MAX_VALUE)
+                            .size(24.dp)
+                            .clickableWithoutRipple { onDismiss() }
+                            .constrainAs(closeBtn) {
+                                top.linkTo(parent.top, margin = 16.dp)
+                                start.linkTo(parent.start, margin = 16.dp)
+                            },
+                    )
 
                     if (isVideoPost) {
                         Image(

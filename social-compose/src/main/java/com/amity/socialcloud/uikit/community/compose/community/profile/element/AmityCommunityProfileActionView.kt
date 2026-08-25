@@ -108,6 +108,14 @@ fun AmityCommunityPendingPost(
             .asFlow()
             .collectAsState(initial = false)
 
+        // Reviewing join requests is gated on ADD_COMMUNITY_USER, not EDIT_COMMUNITY, so a role
+        // that can approve members but not edit the community still sees the banner.
+        val hasAddUserPermission by AmityCoreClient.hasPermission(AmityPermission.ADD_COMMUNITY_USER)
+            .atCommunity(community.getCommunityId())
+            .check()
+            .asFlow()
+            .collectAsState(initial = false)
+
         val pendingPosts = remember {
             AmitySocialClient.newFeedRepository()
                 .getCommunityFeed(community.getCommunityId())
@@ -146,6 +154,7 @@ fun AmityCommunityPendingPost(
             pendingPostItemCount,
             joinRequestItemCount,
             isModerator,
+            hasAddUserPermission,
             community,
             pendingRequestsStr,
             communityPostLabelStr,
@@ -169,7 +178,8 @@ fun AmityCommunityPendingPost(
                 val showPendingPostsInfo =
                     postReviewEnabled && hasPendingPosts && community.isJoined()
                 val showJoinRequestsInfo =
-                    communityRequiresJoinApproval && hasPendingJoinRequests && isModerator
+                    communityRequiresJoinApproval && hasPendingJoinRequests &&
+                            (isModerator || hasAddUserPermission)
 
                 var title = pendingRequestsStr
                 var desc = ""

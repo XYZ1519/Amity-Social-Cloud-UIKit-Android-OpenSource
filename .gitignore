@@ -102,3 +102,6 @@ captures/
 .check_hardcoded_kt_files.tmp
 .kotlin/
 .worktrees/
+
+# written by .scripts/upload-internal-store.sh
+output.json

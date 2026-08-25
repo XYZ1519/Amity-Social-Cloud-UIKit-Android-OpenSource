@@ -142,16 +142,12 @@ fun AmityCommunityPendingInviteMemberPage(
 
                         AmityCommunityPendingInviteMemberPageViewModel.UserListState.LOADING -> {
                             item {
-                                if (keyword == null) {
-                                    AmityEmptyUserListComponent(modifier)
-                                } else {
-                                    AmityUserListShimmer(
-                                        modifier = modifier.padding(
-                                            horizontal = 16.dp,
-                                            vertical = 8.dp
-                                        )
+                                AmityUserListShimmer(
+                                    modifier = modifier.padding(
+                                        horizontal = 16.dp,
+                                        vertical = 8.dp
                                     )
-                                }
+                                )
                             }
                         }
 

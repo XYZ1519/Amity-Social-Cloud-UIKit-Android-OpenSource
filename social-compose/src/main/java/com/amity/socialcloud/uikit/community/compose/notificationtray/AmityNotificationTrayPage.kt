@@ -123,8 +123,7 @@ fun AmityNotificationTrayPage(
                         text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_notification_title_notifications"),
                         style = AmityTheme.typography.titleBold,
                         modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .padding(start = 36.dp)
+                            .align(Alignment.Center)
                     )
 
                 }

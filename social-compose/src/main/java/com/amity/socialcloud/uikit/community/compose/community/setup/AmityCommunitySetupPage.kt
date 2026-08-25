@@ -456,17 +456,19 @@ fun AmityCommunitySetupPage(
                         contentScale = ContentScale.Crop,
                         modifier = modifier.fillMaxWidth(),
                     )
-                    Box(
-                        modifier = modifier
-                            .fillMaxSize()
-                            .background(amityColorBlack.copy(alpha = 0.4f))
-                    )
+                    if (avatar != null) {
+                        Box(
+                            modifier = modifier
+                                .fillMaxSize()
+                                .background(amityColorBlack.copy(alpha = 0.4f))
+                        )
+                    }
                     Icon(
-                        painter = painterResource(R.drawable.amity_ic_camera2),
+                        painter = painterResource(R.drawable.amity_ic_camera),
                         contentDescription = "Upload avatar",
                         tint = amityColorWhite,
                         modifier = modifier
-                            .size(28.dp)
+                            .size(32.dp)
                             .align(Alignment.Center)
                     )
                 }
@@ -566,16 +568,27 @@ fun AmityCommunitySetupPage(
                 )
 
                 Spacer(modifier = modifier.height(24.dp))
-                AmityBaseElement(
-                    pageScope = getPageScope(),
-                    elementId = "community_category_title"
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = modifier.padding(horizontal = 16.dp)
                 ) {
+                    AmityBaseElement(
+                        pageScope = getPageScope(),
+                        elementId = "community_category_title"
+                    ) {
+                        Text(
+                            text = amitySocialConfigString("amity_social_label_community_setup_categories_title"),
+                            style = AmityTheme.typography.titleLegacy,
+                            modifier = modifier.testTag(getAccessibilityId())
+                        )
+                    }
                     Text(
-                        text = amitySocialConfigString("amity_social_label_community_setup_categories_title"),
-                        style = AmityTheme.typography.titleLegacy,
-                        modifier = modifier
-                            .padding(horizontal = 16.dp)
-                            .testTag(getAccessibilityId())
+                        text = " " + DefaultAmitySocialStringProvider.getInstance().getString(
+                            "amity_social_label_optional",
+                        ),
+                        style = AmityTheme.typography.bodyLegacy.copy(
+                            color = AmityTheme.colors.baseShade3,
+                        )
                     )
                 }
                 Spacer(modifier = modifier.height(18.dp))
@@ -715,6 +728,7 @@ fun AmityCommunitySetupPage(
                             )
                         }
                     }
+                    Spacer(modifier.width(12.dp))
                     AmityFilledRadioIndicator(
                         selected = privacyMode == AmityCommunitySetupPrivacyMode.PUBLIC,
                         onClick = {
@@ -786,6 +800,7 @@ fun AmityCommunitySetupPage(
                             )
                         }
                     }
+                    Spacer(modifier.width(12.dp))
                     AmityFilledRadioIndicator(
                         selected = privacyMode == AmityCommunitySetupPrivacyMode.PRIVATE_VISIBLE,
                         onClick = {
@@ -857,6 +872,7 @@ fun AmityCommunitySetupPage(
                             )
                         }
                     }
+                    Spacer(modifier.width(12.dp))
                     AmityFilledRadioIndicator(
                         selected = privacyMode == AmityCommunitySetupPrivacyMode.PRIVATE_HIDDEN,
                         onClick = {
@@ -1140,7 +1156,6 @@ fun AmityCommunitySetupPage(
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier
                                     .testTag(getAccessibilityId())
-                                    .fillMaxWidth()
                             )
                         }
                     }
@@ -1155,6 +1170,7 @@ fun AmityCommunitySetupPage(
                 dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_community_setup_dialog_change_privacy_message"),
                 confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_confirm_button"),
                 dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_cancel_button"),
+                dismissTextColor = AmityTheme.colors.highlight,
                 onConfirmation = {
                     showPrivacyConfirmDialog = false
                     updateCommunity(

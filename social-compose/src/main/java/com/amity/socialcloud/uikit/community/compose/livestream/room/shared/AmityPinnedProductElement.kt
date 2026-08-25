@@ -33,6 +33,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.error
+import coil3.request.fallback
+import coil3.request.placeholder
 import com.amity.socialcloud.sdk.model.core.product.AmityProduct
 import com.amity.socialcloud.sdk.model.core.product.AmityProductStatus
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
@@ -96,6 +99,9 @@ fun LivestreamPinnedProductElement(
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(product.getThumbnailUrl())
+                            .placeholder(R.drawable.amity_ic_product_tagging_placeholder_light)
+                            .fallback(R.drawable.amity_ic_product_tagging_placeholder_light)
+                            .error(R.drawable.amity_ic_product_tagging_placeholder_light)
                             .build(),
                         contentDescription = product.getProductName(),
                         contentScale = ContentScale.Crop,

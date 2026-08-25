@@ -73,6 +73,8 @@ data class AmityUIKitConfig(
         val toastBackgroundColor: String? = null,
         @SerializedName("highlight_color")
         val highlightColor: String? = null,
+        @SerializedName("primary_shade1_color")
+        val primaryShade1Color: String? = null,
         @SerializedName("secondary_shade2_color")
         val secondaryShade2: String? = null,
         @SerializedName("secondary_shade3_color")

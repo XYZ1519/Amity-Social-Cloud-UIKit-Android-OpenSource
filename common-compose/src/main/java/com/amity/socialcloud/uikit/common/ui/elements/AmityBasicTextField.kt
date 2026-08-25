@@ -81,7 +81,7 @@ fun AmityBasicTextField(
         enabled = enabled,
         readOnly = readOnly,
         textStyle = mergedTextStyle,
-        cursorBrush = SolidColor(if (isError) AmityTheme.colors.alert else AmityTheme.colors.highlight),
+        cursorBrush = SolidColor(if (isError) AmityTheme.colors.alert else AmityTheme.colors.primary),
         visualTransformation = visualTransformation,
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,

@@ -52,7 +52,7 @@ fun AmityVideoAndClipChipSelector(
             ) {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = if (isSelected) AmityTheme.colors.highlight else AmityTheme.colors.baseShade4,
+                    color = if (isSelected) AmityTheme.colors.primary else AmityTheme.colors.baseShade4,
                     modifier = Modifier.clickableWithoutRipple {
                         if (!isSelected) {
                             onTabSelected(index)

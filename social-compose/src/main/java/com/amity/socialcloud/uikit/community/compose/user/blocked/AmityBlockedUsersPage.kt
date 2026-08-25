@@ -75,6 +75,10 @@ fun AmityBlockedUsersPage(
         ) {
             AmityToolBar(
                 pageScope = getPageScope(),
+                // PDT-4653: AmityToolBar's title defaults to "", so omitting it left the page
+                // with a back arrow and no header.
+                title = DefaultAmitySocialStringProvider.getInstance()
+                    .getString("amity_social_label_manage_blocked_users"),
                 onBackClick = {
                     context.closePageWithResult(Activity.RESULT_CANCELED)
                 }

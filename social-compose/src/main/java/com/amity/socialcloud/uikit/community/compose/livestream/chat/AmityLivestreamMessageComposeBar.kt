@@ -63,6 +63,7 @@ import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.elements.AmityTextField
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
+import com.amity.socialcloud.uikit.common.ui.theme.AmityGlobalPalette
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.isSignedIn
@@ -451,61 +452,63 @@ fun MessageComposeErrorPopup(
             usePlatformDefaultWidth = false
         )
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
+        AmityGlobalPalette {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(AmityTheme.colors.baseShade4)
-                    .width(270.dp)
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
             ) {
-                Column {
-                    Column(
-                        modifier = Modifier.padding(19.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = amitySocialString("amity_social_label_unable_to_send_message"),
-                            fontSize = 17.sp,
-                            lineHeight = 22.sp,
-                            fontWeight = FontWeight(600),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth(),
-                            color = AmityTheme.colors.baseInverse,
-                        )
-                        Text(
-                            text = amitySocialString("amity_social_label_your_message_is_too_long_please_shorten_your_message_an"),
-                            fontSize = 13.sp,
-                            lineHeight = 16.sp,
-                            fontWeight = FontWeight(400),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth(),
-                            color = AmityTheme.colors.baseInverse,
-                        )
-                    }
-                    HorizontalDivider(
-                        thickness = 1.dp,
-                        color = AmityTheme.colors.secondaryShade1
-                    )
-                    Row(
-                        modifier = Modifier
-                            .height(41.dp)
-                            .fillMaxWidth()
-                    ) {
-                        TextButton(
-                            onClick = { onDismiss.invoke() },
-                            modifier = Modifier.weight(1f)
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(AmityTheme.colors.baseShade4)
+                        .width(270.dp)
+                ) {
+                    Column {
+                        Column(
+                            modifier = Modifier.padding(19.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = amitySocialString("amity_social_button_ok"),
+                                text = amitySocialString("amity_social_label_unable_to_send_message"),
                                 fontSize = 17.sp,
                                 lineHeight = 22.sp,
                                 fontWeight = FontWeight(600),
-                                color = AmityTheme.colors.primary,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                                color = AmityTheme.colors.baseInverse,
                             )
+                            Text(
+                                text = amitySocialString("amity_social_label_your_message_is_too_long_please_shorten_your_message_an"),
+                                fontSize = 13.sp,
+                                lineHeight = 16.sp,
+                                fontWeight = FontWeight(400),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                                color = AmityTheme.colors.baseInverse,
+                            )
+                        }
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = AmityTheme.colors.secondaryShade1
+                        )
+                        Row(
+                            modifier = Modifier
+                                .height(41.dp)
+                                .fillMaxWidth()
+                        ) {
+                            TextButton(
+                                onClick = { onDismiss.invoke() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = amitySocialString("amity_social_button_ok"),
+                                    fontSize = 17.sp,
+                                    lineHeight = 22.sp,
+                                    fontWeight = FontWeight(600),
+                                    color = AmityTheme.colors.primary,
+                                )
+                            }
                         }
                     }
                 }

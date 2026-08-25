@@ -103,7 +103,7 @@ fun AmityUserFollowRelationshipButton(
         } else {
             Button(
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = AmityTheme.colors.highlight,
+                    containerColor = AmityTheme.colors.primary,
                 ),
                 shape = RoundedCornerShape(4.dp),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),

@@ -181,7 +181,7 @@ fun AmityCommentComposerBar(
                 autoFocus = replyAutoFocus || shouldFocusKeyboard,
                 focusTrigger = lastReplyCommentId,
                 enableUrlHighlighting = true,
-                urlColor = AmityTheme.colors.highlight,
+                urlColor = AmityTheme.colors.primary,
                 onValueChange = {
                     commentText = it
                 },

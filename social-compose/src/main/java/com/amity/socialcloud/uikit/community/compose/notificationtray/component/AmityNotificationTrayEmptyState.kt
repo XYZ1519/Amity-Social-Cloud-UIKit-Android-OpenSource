@@ -1,10 +1,11 @@
 package com.amity.socialcloud.uikit.community.compose.notificationtray.component
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,11 +35,13 @@ fun AmityNotificationTrayEmptyState(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             val iconRes = getConfig().getIcon()
-            Image(
+            Icon(
                 painter = painterResource(
                     if (iconRes != 0) iconRes else R.drawable.amity_ic_notification_tray_empty
                 ),
-                contentDescription = null
+                tint = AmityTheme.colors.baseShade4,
+                contentDescription = null,
+                modifier = Modifier.size(60.dp)
             )
             Spacer(Modifier.height(8.dp))
             Text(

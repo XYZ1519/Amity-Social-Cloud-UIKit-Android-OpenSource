@@ -292,7 +292,7 @@ fun AmityCommunityJoinButton(
             confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_leave"),
             dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
             confirmTextColor = AmityTheme.colors.alert,
-            dismissTextColor = AmityTheme.colors.highlight,
+            dismissTextColor = AmityTheme.colors.primary,
             onConfirmation = {
                 showLeaveCommunityDialog = false
                 coroutineScope.launch {

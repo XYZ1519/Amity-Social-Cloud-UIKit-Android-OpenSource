@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.waterfall
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -79,6 +80,12 @@ fun AmityClipModalBottomSheet(
             sheetState = sheetState,
             containerColor = AmityTheme.colors.background,
             contentWindowInsets = { WindowInsets.waterfall },
+            // Paired with statusBarsPadding: the clip stays visible behind the status bar, so the
+            // icons must stay light rather than be picked from this sheet's own pale surface.
+            properties = ModalBottomSheetProperties(
+                isAppearanceLightStatusBars = false,
+                isAppearanceLightNavigationBars = true,
+            ),
             modifier = modifier.statusBarsPadding()
         ) {
             when (sheetUIState) {

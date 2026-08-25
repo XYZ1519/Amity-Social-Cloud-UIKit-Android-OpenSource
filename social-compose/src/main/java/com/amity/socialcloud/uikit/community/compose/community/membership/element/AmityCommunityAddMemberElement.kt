@@ -224,6 +224,7 @@ fun AmityCommunityAddMemberElement(
 fun AmityCommunityAddMemberButton(
     modifier: Modifier = Modifier,
     pageScope: AmityComposePageScope? = null,
+    textKey: String = "amity_social_button_setup_add_member_button",
     onClick: () -> Unit,
 ) {
     AmityBaseElement(
@@ -252,7 +253,7 @@ fun AmityCommunityAddMemberButton(
             }
             Spacer(modifier.height(4.dp))
             Text(
-                text = amitySocialConfigString("amity_social_button_setup_add_member_button"),
+                text = amitySocialConfigString(textKey),
                 style = AmityTheme.typography.caption,
                 overflow = TextOverflow.Ellipsis,
                 maxLines = 1,

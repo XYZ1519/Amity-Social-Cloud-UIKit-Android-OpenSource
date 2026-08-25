@@ -93,7 +93,7 @@ fun AmityTabRow(
                             }
                         }
                 ) {
-                    val highlightColor = AmityTheme.colors.highlight
+                    val selectedColor = AmityTheme.colors.primary
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -118,7 +118,7 @@ fun AmityTabRow(
                             Text(
                                 text = title,
                                 style = titleStyle.copy(
-                                    color = if (isSelected) highlightColor else AmityTheme.colors.baseShade3
+                                    color = if (isSelected) selectedColor else AmityTheme.colors.baseShade3
                                 ),
                             )
                         }
@@ -129,7 +129,7 @@ fun AmityTabRow(
                             .height(2.dp)
                             .fillMaxWidth()
                             .background(
-                                color = if (isSelected) highlightColor else Color.Transparent,
+                                color = if (isSelected) selectedColor else Color.Transparent,
                                 shape = RoundedCornerShape(topStart = 1.dp, topEnd = 1.dp)
                             )
                     )

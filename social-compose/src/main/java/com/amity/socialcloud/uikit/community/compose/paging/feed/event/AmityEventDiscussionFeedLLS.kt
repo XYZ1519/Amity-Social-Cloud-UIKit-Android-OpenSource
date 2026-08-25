@@ -27,6 +27,7 @@ fun LazyListScope.amityEventDiscussionFeedLLS(
     announcementPosts: LazyPagingItems<AmityPinnedPost>,
     excludedPostIds: List<String> = emptyList(),
     eventHostId: String? = null,
+    isNonMemberOfCommunity: Boolean? = null,
     onClipClick: (AmityPost) -> Unit = {},
     onClick: (AmityPost, AmityPostCategory) -> Unit,
 ) {
@@ -64,6 +65,8 @@ fun LazyListScope.amityEventDiscussionFeedLLS(
                     hideMenuButton = false,
                     hideTarget = true,
                     isEventHost = isEventHost,
+                    eventHostId = eventHostId,
+                    isNonMemberOfCommunity = isNonMemberOfCommunity,
                     onClipClick = { childPost ->
                         onClipClick(childPost)
                     },

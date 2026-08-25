@@ -211,7 +211,7 @@ fun AmityCommunityInvitationBanner(
                         Text(
                             text = amitySocialString("amity_social_button_decline"),
                             style = AmityTheme.typography.bodyBold,
-                            color = AmityTheme.colors.baseShade1,
+                            color = AmityTheme.colors.base,
                         )
                     }
                 }

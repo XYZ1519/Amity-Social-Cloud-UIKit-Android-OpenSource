@@ -94,7 +94,7 @@ fun AmityNotificationTrayItemView(
                 iconPadding = 8.dp,
                 placeholder = CommonComposeR.drawable.amity_ic_default_profile1,
                 placeholderTint = amityColorWhite,
-                placeholderBackground = AmityTheme.colors.primaryShade2,
+                placeholderBackground = AmityTheme.colors.primaryShade1,
             )
         } else if (data?.getActionType() == "event") {
             if (isEventCreated) {

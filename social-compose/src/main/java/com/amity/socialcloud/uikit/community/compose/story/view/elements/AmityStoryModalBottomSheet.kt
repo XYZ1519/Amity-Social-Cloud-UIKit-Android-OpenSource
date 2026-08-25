@@ -4,9 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.waterfall
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -75,7 +77,15 @@ fun AmityStoryModalBottomSheet(
             sheetState = sheetState,
             containerColor = AmityTheme.colors.background,
             contentWindowInsets = { WindowInsets.waterfall },
+            // The gap and the icon colour have to be set together. statusBarsPadding leaves the
+            // story visible behind the status bar, which means the icons must stay light -- the
+            // sheet would otherwise pick them from its own pale surface and lose them on the black.
+            properties = ModalBottomSheetProperties(
+                isAppearanceLightStatusBars = false,
+                isAppearanceLightNavigationBars = true,
+            ),
             modifier = modifier
+                .statusBarsPadding()
                 .semantics {
                     testTagsAsResourceId = true
                 },

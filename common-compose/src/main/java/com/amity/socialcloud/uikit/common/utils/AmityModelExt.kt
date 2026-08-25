@@ -15,7 +15,7 @@ fun AmityComment.isCreatorCommunityModerator(): Boolean {
         ?.getCreatorMember()
         ?.getRoles()
         ?.any {
-            it == AmityConstants.MODERATOR_ROLE || it == AmityConstants.COMMUNITY_MODERATOR_ROLE
+            it == AmityConstants.MODERATOR_ROLE || it == AmityConstants.COMMUNITY_MODERATOR_ROLE || it == AmityConstants.CHANNEL_MODERATOR_ROLE
         } ?: false
 }
 

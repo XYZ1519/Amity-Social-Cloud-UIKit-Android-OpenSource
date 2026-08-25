@@ -353,7 +353,7 @@ fun AmityDraftClipPage(
                 onConfirmation = { context.closePage() },
                 onDismissRequest = { openAlertDialog = false },
                 confirmTextColor = AmityTheme.colors.alert,
-                dismissTextColor = AmityTheme.colors.highlight,
+                dismissTextColor = AmityTheme.colors.primary,
             )
         }
     }

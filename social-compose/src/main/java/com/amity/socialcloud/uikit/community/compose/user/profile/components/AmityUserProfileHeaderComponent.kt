@@ -261,6 +261,10 @@ fun AmityUserProfileHeaderComponent(
                                         userId = user.getUserId(),
                                         selectedTab = AmityUserRelationshipPageTab.FOLLOWER,
                                     )
+                                } else if (AmityCoreClient.isVisitor()) {
+                                    behavior.handleVisitorUserAction()
+                                } else if (userFollowInfo?.getStatus() != AmityFollowStatus.ACCEPTED) {
+                                    behavior.handleNonFollowerAction()
                                 }
                             }
                         ) {

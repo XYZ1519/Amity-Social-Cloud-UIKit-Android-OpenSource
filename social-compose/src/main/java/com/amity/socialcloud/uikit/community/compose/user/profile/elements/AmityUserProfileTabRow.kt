@@ -39,7 +39,8 @@ fun AmityUserProfileTabRow(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     currentFilter: String,
-    onFilterLaunch: () -> Unit
+    onFilterLaunch: () -> Unit,
+    showFilter: Boolean = true
 ) {
 //    AmityBaseElement(
 //        pageScope = pageScope,
@@ -79,7 +80,7 @@ fun AmityUserProfileTabRow(
                         .fillMaxWidth()
                         .height(2.dp)
                         .background(
-                            color = if (selectedIndex == 0) AmityTheme.colors.highlight else Color.Transparent,
+                            color = if (selectedIndex == 0) AmityTheme.colors.primary else Color.Transparent,
                             shape = RoundedCornerShape(
                                 topStart = 1.dp,
                                 topEnd = 1.dp
@@ -114,7 +115,7 @@ fun AmityUserProfileTabRow(
                         .fillMaxWidth()
                         .height(2.dp)
                         .background(
-                            color = if (selectedIndex == 1) AmityTheme.colors.highlight else Color.Transparent,
+                            color = if (selectedIndex == 1) AmityTheme.colors.primary else Color.Transparent,
                             shape = RoundedCornerShape(
                                 topStart = 1.dp,
                                 topEnd = 1.dp
@@ -129,6 +130,8 @@ fun AmityUserProfileTabRow(
             color = AmityTheme.colors.divider,
             modifier = modifier,
         )
+
+        if (!showFilter) return@Column
 
         Row(
             verticalAlignment = Alignment.CenterVertically,

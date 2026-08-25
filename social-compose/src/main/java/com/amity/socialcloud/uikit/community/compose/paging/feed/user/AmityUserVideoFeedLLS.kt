@@ -136,7 +136,7 @@ fun LazyListScope.amityUserVideoFeedLLS(
             PostListState.SUCCESS -> {
                 item {
                     // Debounced availablePostIds to prevent excessive updates
-                    var debouncedAvailablePostIds by remember { mutableStateOf(emptySet<String>()) }
+                    var debouncedAvailablePostIds by remember { mutableStateOf<Set<String>?>(null) }
 
                     // Calculate current post IDs
                     val currentPostIds = (0 until videoPosts.itemCount).mapNotNull { index ->

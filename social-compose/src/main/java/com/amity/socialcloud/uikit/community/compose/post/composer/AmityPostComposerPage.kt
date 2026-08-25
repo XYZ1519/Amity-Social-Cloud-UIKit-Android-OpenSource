@@ -142,6 +142,9 @@ fun AmityPostComposerPage(
 ) {
     val maxTitleChar = 150
 
+    // Clip captions are capped at 2200 characters; plain posts stay uncapped.
+    val maxClipCaptionChar = 2200
+
     val context = LocalContext.current
 
     val isInEditMode by remember {
@@ -312,12 +315,9 @@ fun AmityPostComposerPage(
     // Initialize detectedUrls from post's existing links in edit mode
     LaunchedEffect(post) {
         if (post != null) {
-            viewModel.updateDetectedUrls(listOf())
-            /* Remove until support hyperlink edit
-            val initialLinks = post?.getLinks()?.toList() ?: emptyList()
-            if (initialLinks.isNotEmpty()) {
-                viewModel.updateDetectedUrls(initialLinks)
-            }*/
+            // PDT-4615: Edit mode used to clear the links outright, so a post opened for editing
+            // lost the link preview it was published with. Seed them from the post instead.
+            viewModel.restoreEditModeLinks(post?.getLinks()?.toList() ?: emptyList())
         }
     }
 
@@ -325,6 +325,15 @@ fun AmityPostComposerPage(
     val detectedUrls by viewModel.detectedUrls.collectAsState()
     val previewMetadata by viewModel.linkPreviewMetadata.collectAsState()
     val isLinkPreviewDismissed by viewModel.isLinkPreviewDismissed.collectAsState()
+
+    // PDT-4615: links restored from a saved post already carry their preview metadata. Without
+    // this, edit mode would count as "still fetching": the preview would shimmer forever and the
+    // save button would stay disabled, since previewMetadata is only set by a network fetch.
+    val hasStoredLinkMetadata = detectedUrls.firstOrNull()?.let { link ->
+        !link.getDomain().isNullOrEmpty() ||
+                !link.getTitle().isNullOrEmpty() ||
+                !link.getImageUrl().isNullOrEmpty()
+    } == true
 
     // Title field state
     var titleText by remember { mutableStateOf(postTitle) }
@@ -349,6 +358,7 @@ fun AmityPostComposerPage(
         postCreationEvent,
         previewMetadata,
         detectedUrls.size,
+        hasStoredLinkMetadata,
         isLinkPreviewDismissed,
         initialLinkPreviewWasShown,
         currentMediaProductTags,
@@ -383,7 +393,8 @@ fun AmityPostComposerPage(
         // Check if we're waiting for link preview metadata
         val isWaitingForLinkMetadata = detectedUrls.isNotEmpty() &&
                 !isLinkPreviewDismissed &&
-                previewMetadata == null
+                previewMetadata == null &&
+                !hasStoredLinkMetadata
 
         derivedStateOf {
             if (isOperationInProgress) {
@@ -929,7 +940,7 @@ fun AmityPostComposerPage(
                                             postText = localPostText.trim(),
                                             postTitle = titleText.trim(),
                                             mentionedUsers = mentionedUsers,
-                                            hashtags = hashtags,
+                                            hashtags = hashtags.parseHashtagIndices(localPostText),
                                             links = detectedUrls,
                                         )
                                     }
@@ -1071,6 +1082,7 @@ fun AmityPostComposerPage(
                             .padding(horizontal = 16.dp, vertical = 20.dp),
                         value = localPostText,
                         maxLines = 30,
+                        maxChar = if (isEditClipMode) maxClipCaptionChar else Int.MAX_VALUE,
                         hintText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_placeholder_post_composer_body_placeholder"),
                         mentionedUser = selectedUserToMention,
                         mentionedProduct = selectedProductToMention,
@@ -1190,6 +1202,7 @@ fun AmityPostComposerPage(
                         .padding(horizontal = 16.dp, vertical = 20.dp),
                     value = localPostText,
                     maxLines = 30,
+                    maxChar = if (isCreateClipMode) maxClipCaptionChar else Int.MAX_VALUE,
                     hintText = if (isCreateClipMode) captionPlaceholder else textPostPlaceholder,
                     mentionedUser = selectedUserToMention,
                     mentionedProduct = selectedProductToMention,
@@ -1303,11 +1316,14 @@ fun AmityPostComposerPage(
         val title = firstLink?.getTitle() ?: previewMetadata?.getTitle()
         val imageUrl = firstLink?.getImageUrl() ?: previewMetadata?.getImageUrl()
         val hasValidMetadata = !domain.isNullOrEmpty() || !title.isNullOrEmpty() || !imageUrl.isNullOrEmpty()
-        val isLoadingMetadata = detectedUrls.isNotEmpty() && previewMetadata == null && !isLinkPreviewDismissed
+        val isLoadingMetadata = detectedUrls.isNotEmpty() && previewMetadata == null &&
+                !isLinkPreviewDismissed && !hasStoredLinkMetadata
 
 
 
-        if ((detectedUrls.isNotEmpty() || previewMetadata != null) && !isLinkPreviewDismissed && (hasValidMetadata || isLoadingMetadata) && !isInEditMode) {
+        // PDT-4615: no !isInEditMode gate here - it is what suppressed the preview when editing
+        // a post. Seeding the links from the post is pointless while that gate stands.
+        if ((detectedUrls.isNotEmpty() || previewMetadata != null) && !isLinkPreviewDismissed && (hasValidMetadata || isLoadingMetadata)) {
             item {
                 Column(
                     modifier = Modifier
@@ -1477,18 +1493,23 @@ fun AmityPostComposerPage(
     }
 }
 
-    // Attachment bar - positioned at bottom center (OUTSIDE Column, INSIDE root Box)
-    Box(
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .onSizeChanged { size ->
-                attachmentHeightPx = size.height
-            }
+    // Attachment bar - positioned at bottom center (OUTSIDE Column, INSIDE root Box).
+    // PDT-4546: hidden in clip mode, which has no attachment bar.
+    if (options is AmityPostComposerOptions.AmityPostComposerCreateOptions ||
+        options is AmityPostComposerOptions.AmityPostComposerEditOptions
     ) {
-        AmityMediaAttachmentElement(
-            modifier = Modifier.fillMaxWidth(),
-            pageScope = getPageScope(),
-        )
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .onSizeChanged { size ->
+                    attachmentHeightPx = size.height
+                }
+        ) {
+            AmityMediaAttachmentElement(
+                modifier = Modifier.fillMaxWidth(),
+                pageScope = getPageScope(),
+            )
+        }
     }
     } // Close root Box
 
@@ -1572,7 +1593,7 @@ fun AmityPostComposerPage(
                     postText = localPostText.trim(),
                     postTitle = titleText.trim(),
                     mentionedUsers = mentionedUsers,
-                    hashtags = hashtags,
+                    hashtags = hashtags.parseHashtagIndices(localPostText),
                     links = detectedUrls,
                     productTags = null, // Don't pass any product tags since catalogue is disabled
                     attachmentProductTags = null,
@@ -1648,7 +1669,15 @@ fun AmityPostComposerPage(
                     showProductSelectionDialog = false
                     selectedMediaForTagging = null
                     hasUnsavedProductTagChanges = false
-                    getPageScope().showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_product_tags_added"))
+                    // PDT-4607: this sheet both adds and edits tags. Announcing "added" after a
+                    // removal is wrong, so fall back to the "updated" wording whenever the media
+                    // already carried tags before this sheet was confirmed.
+                    getPageScope().showSnackbar(
+                        DefaultAmitySocialStringProvider.getInstance().getString(
+                            if (existingTags.isEmpty()) "amity_social_label_product_tags_added"
+                            else "amity_social_label_product_tags_updated"
+                        )
+                    )
                 },
                 onProductToggled = {
                     hasUnsavedProductTagChanges = true
@@ -1696,11 +1725,14 @@ fun AmityPostComposerPage(
 
     if (showPendingPostDialog) {
         AmityAlertDialog(
-            dialogTitle = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_posts_sent_for_review"),
-            dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_post_pending_approval"),
+            dialogTitle = if (isInEditMode || isEditClipMode) DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_post_will_be_sent_for_review") else DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_posts_sent_for_review"),
+            dialogText = if (isInEditMode || isEditClipMode) DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_edited_post_pending_approval") else DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_post_pending_approval"),
             dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
         ) {
             showPendingPostDialog = false
+            if (isInEditMode || isEditClipMode) {
+                AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_post_sent_for_review"))
+            }
             context.closePageWithResult(Activity.RESULT_OK)
         }
     }

@@ -11,6 +11,15 @@ on:
         description: 'Released version, e.g. 4.23.2'
         required: true
         type: string
+      repo:
+        description: 'Repository to announce, owner/name. Defaults to this repository. Use it for forks such as ...-TrueID.'
+        required: false
+        type: string
+      product:
+        description: 'Product label in the message, e.g. "Android UIKit TrueID". Defaults to "Android UIKit".'
+        required: false
+        default: 'Android UIKit'
+        type: string
       target:
         description: 'Which announcement to send'
         required: true
@@ -45,10 +54,18 @@ jobs:
           BOT_EKO_CHAT_URL: ${{ secrets.BOT_EKO_CHAT_URL }}
           BOT_EKO_CHAT_ACCESS_TOKEN: ${{ secrets.BOT_EKO_CHAT_ACCESS_TOKEN }}
           VERSION: ${{ github.event.inputs.version }}
+          REPO: ${{ github.event.inputs.repo || github.repository }}
+          PRODUCT: ${{ github.event.inputs.product }}
         run: |
-          gh release view "$VERSION" --repo "${{ github.repository }}" --json tagName -q .tagName
-          release_url="${{ github.server_url }}/${{ github.repository }}/releases/tag/$VERSION"
-          echo -e "🚀 Product : Android UIKit $VERSION \n Environment: Jitpack release \n$release_url" > payload.txt
+          # GITHUB_TOKEN is scoped to this repository, so a release in another private repo
+          # (e.g. the TrueID fork) cannot be verified from here — the caller owns that check.
+          if [ "$REPO" = "${{ github.repository }}" ]; then
+            gh release view "$VERSION" --repo "$REPO" --json tagName -q .tagName
+          else
+            echo "repo=$REPO is not this repository: existence not verified here"
+          fi
+          release_url="${{ github.server_url }}/$REPO/releases/tag/$VERSION"
+          echo -e "🚀 Product : $PRODUCT $VERSION \n Environment: Jitpack release \n$release_url" > payload.txt
           cat payload.txt
           if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
             echo "dry run - message not sent"

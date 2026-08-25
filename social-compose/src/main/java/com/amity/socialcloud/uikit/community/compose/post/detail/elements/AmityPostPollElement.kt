@@ -294,6 +294,8 @@ fun AmityPostPollElement(
             style = AmityTheme.typography.bodyLegacy,
             boldWhenMatches = boldedText?.let { listOf(it) } ?: emptyList(),
             intialExpand = style == AmityPostContentComponentStyle.DETAIL,
+            readMoreUnderlined = false,
+            readMoreInline = true,
             onClick = onClick,
             onMentionedUserClick = onMentionedUserClick,
             onHashtagClick = onHashtagClick,
@@ -890,6 +892,15 @@ fun AmityPostPollElement(
                                         .doOnComplete {
                                             selectedIndices.clear()
                                             isResultState = false
+                                            // The ViewModel state outlives this composable and is
+                                            // preferred on every render path, so clear the stored
+                                            // selection too or the option stays highlighted.
+                                            viewModel.updatePollState(
+                                                post.getPostId(),
+                                                isExpanded = isOptionsExpanded,
+                                                isResultMode = false,
+                                                selectedOption = mutableListOf(),
+                                            )
                                             val text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_vote_removed")
                                             pageScope?.showSnackbar(
                                                 message = text,

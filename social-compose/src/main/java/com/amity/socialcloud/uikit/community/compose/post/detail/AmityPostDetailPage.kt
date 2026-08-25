@@ -99,6 +99,7 @@ fun AmityPostDetailPage(
     rootId: String? = null,
     replyToCommentId: String? = null,
     eventHostId: String? = null,
+    eventTargetCommunityId: String? = null,
     autoFocusCommentInput: Boolean = false,
 ) {
     val context = LocalContext.current
@@ -165,6 +166,24 @@ fun AmityPostDetailPage(
                 )
             }
         }
+    }
+
+    // PDT-4512: an event discussion post lives in the event's internal discussion community, which
+    // parent-community members are NOT joined to, so the post's own target community reports them
+    // as non-members and the composer was hidden. Gate on the parent community instead -- the same
+    // correction PDT-3346 made for the discussion "create post" button. Until it loads, assume
+    // membership so the composer does not flicker away from members.
+    val eventTargetCommunity by remember(eventTargetCommunityId) {
+        eventTargetCommunityId
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { viewModel.getCommunity(it) }
+            ?: kotlinx.coroutines.flow.flowOf(null)
+    }.collectAsState(initial = null)
+
+    val isNotMember = if (!eventTargetCommunityId.isNullOrEmpty()) {
+        eventTargetCommunity?.isJoined() == false
+    } else {
+        sheetViewModel.isNotMember(post)
     }
 
     val replyContext by commentViewModel.replyContext.collectAsState()
@@ -344,6 +363,8 @@ fun AmityPostDetailPage(
                                     hideTarget = hideTarget,
                                     hideMenuButton = true,
                                     isEventHost = isEventHost,
+                                    eventHostId = eventHostId,
+                                    isNonMemberOfCommunity = isNotMember,
                                 )
                                 HorizontalDivider(
                                     color = AmityTheme.colors.baseShade4,
@@ -385,7 +406,7 @@ fun AmityPostDetailPage(
                             },
                             l2TargetId = if (isL2) commentId else null,
                             expandReplies = parentId != null,
-                            fromNonMemberCommunity = sheetViewModel.isNotMember(post)
+                            fromNonMemberCommunity = isNotMember
                         )
 
                         item {
@@ -393,7 +414,7 @@ fun AmityPostDetailPage(
                         }
                     }
 
-                    if (!sheetViewModel.isNotMember(post) && editingCommentId == null && AmityCoreClient.isSignedIn()) {
+                    if (post != null && !isNotMember && editingCommentId == null && AmityCoreClient.isSignedIn()) {
                         AmityCommentComposerBar(
                             modifier = Modifier.offset(y = commentComposeBarBottomOffset),
                             componentScope = getComponentScope(),

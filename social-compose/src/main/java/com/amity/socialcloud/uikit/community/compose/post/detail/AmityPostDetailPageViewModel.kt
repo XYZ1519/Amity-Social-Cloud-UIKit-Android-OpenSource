@@ -9,6 +9,7 @@ import com.amity.socialcloud.sdk.model.core.error.AmityException
 import com.amity.socialcloud.sdk.model.core.events.AmityPostEvents
 import com.amity.socialcloud.sdk.model.core.reaction.AmityReactionReferenceType
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
+import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
 import com.amity.socialcloud.uikit.common.base.AmityBaseViewModel
 import com.amity.socialcloud.uikit.common.utils.AmityConstants
@@ -48,6 +49,17 @@ open class AmityPostDetailPageViewModel : AmityBaseViewModel() {
         return AmityCoreClient.getCurrentUser()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
+    }
+
+    // PDT-4512: event discussion posts target the internal discussion community, so the parent
+    // community has to be observed separately to answer "is this user a member?".
+    fun getCommunity(communityId: String): Flow<AmityCommunity> {
+        return AmitySocialClient.newCommunityRepository()
+            .getCommunity(communityId)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .asFlow()
+            .catch { }
     }
 
     open fun getPost(postId: String): Flow<AmityPost> {

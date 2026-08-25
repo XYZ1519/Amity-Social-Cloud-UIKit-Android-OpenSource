@@ -122,7 +122,7 @@ fun AmityCommunityNotificationSettingPage(
                     checked = isChecked,
                     enabled = isNotificationEnabled,
                     colors = SwitchDefaults.colors(
-                        checkedTrackColor = AmityTheme.colors.highlight,
+                        checkedTrackColor = AmityTheme.colors.primary,
                         uncheckedBorderColor = AmityTheme.colors.baseShade3,
                         uncheckedThumbColor = amityColorWhite,
                         uncheckedTrackColor = AmityTheme.colors.baseShade3,

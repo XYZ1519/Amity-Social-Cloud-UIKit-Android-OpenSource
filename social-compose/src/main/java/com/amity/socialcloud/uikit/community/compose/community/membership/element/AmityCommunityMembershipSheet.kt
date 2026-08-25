@@ -36,7 +36,7 @@ fun AmityCommunityMembershipSheet(
 ) {
     val context = LocalContext.current
 
-    val hasEditPermission by viewModel.hasEditPermission().subscribeAsState(initial = false)
+    val hasAssignRolePermission by viewModel.hasAssignRolePermission().subscribeAsState(initial = false)
     val hasRemovePermission by viewModel.hasRemovePermission().subscribeAsState(initial = false)
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -84,7 +84,7 @@ fun AmityCommunityMembershipSheet(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = modifier.padding(start = 16.dp, end = 16.dp, bottom = 32.dp)
                     ) {
-                        if (hasEditPermission) {
+                        if (hasAssignRolePermission) {
                             if (member.isModerator()) {
                                 AmityBottomSheetActionItem(
                                     icon = R.drawable.amity_ic_demote_moderator,

@@ -181,7 +181,7 @@ fun AmityEventInfoComponent(
                     mentionGetter = AmityMentionMetadataGetter(JsonObject()),
                     mentionees = emptyList(),
                     style = AmityTheme.typography.body,
-                    highlightColor = AmityTheme.colors.highlight,
+                    highlightColor = AmityTheme.colors.primary,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
                 

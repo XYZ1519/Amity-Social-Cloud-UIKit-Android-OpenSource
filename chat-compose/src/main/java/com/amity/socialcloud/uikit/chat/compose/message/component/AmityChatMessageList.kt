@@ -1,5 +1,7 @@
 package com.amity.socialcloud.uikit.chat.compose.message.component
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +47,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import com.amity.socialcloud.uikit.chat.compose.localization.amityChatString
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
@@ -148,7 +151,10 @@ fun AmityChatMessageList(
         }.first { (sourceRefresh, mediatorRefresh, itemCount) ->
             sourceRefresh is LoadState.NotLoading && (
                 itemCount > 0 ||
-                mediatorRefresh is LoadState.NotLoading
+                // Settle on either success OR error — an errored mediator (offline with nothing
+                // cached) must still dismiss the "Loading chat…" toast, otherwise it hangs forever
+                // over the error state.
+                mediatorRefresh !is LoadState.Loading
             )
         }
         viewModel.finishLoading()
@@ -238,7 +244,11 @@ fun AmityChatMessageList(
     ) {
         val loadState = messages.loadState.refresh
         val isLoading = loadState is LoadState.Loading
-        val isError = loadState is LoadState.Error
+        // Match iOS: the terminal error may only replace the list while the first load is still in
+        // flight (nothing cached yet). Once messages are on the device, a later refresh failure
+        // (reconnect, transient timeout, mediator error) keeps showing them instead of blanking to
+        // an unrecoverable error. The error state offers a tap-to-retry, like the live variant/iOS.
+        val isError = loadState is LoadState.Error && messages.itemCount == 0
 
         if (isError) {
             Row(
@@ -249,6 +259,15 @@ fun AmityChatMessageList(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.amity_ic_message_list_reload),
+                        contentDescription = "Reload button",
+                        modifier = Modifier
+                            .width(28.dp)
+                            .height(24.dp)
+                            .clickable { messages.refresh() },
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = amityChatString("chat.load.error"),
                         style = AmityTheme.typography.bodyLegacy.copy(

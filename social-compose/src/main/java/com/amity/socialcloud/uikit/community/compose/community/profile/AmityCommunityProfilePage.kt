@@ -55,6 +55,7 @@ import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.utils.closePage
 import com.amity.socialcloud.uikit.common.utils.getIcon
 import com.amity.socialcloud.uikit.common.utils.isSignedIn
 import com.amity.socialcloud.uikit.common.utils.isVisitor
@@ -313,9 +314,21 @@ fun AmityCommunityProfilePage(
     var selectedMediaTabIndex by remember { mutableIntStateOf(0) }
     val mediaTabTitles = listOf(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_tab_tab_photos"), DefaultAmitySocialStringProvider.getInstance().getString("amity_social_tab_tab_videos"), DefaultAmitySocialStringProvider.getInstance().getString("amity_social_tab_tab_clips"))
 
+    // PDT-4672: closing a community only finished the settings page, dropping the user back onto
+    // this page, which then saw a deleted community and rendered "Something went wrong". There is
+    // nothing left to show once the community is gone, so leave and let the caller -- My
+    // Communities -- come back to the front. state.error still gets the error page: a failed fetch
+    // is recoverable and must not silently close the page.
+    val isCommunityClosed = state.community?.isDeleted() == true
+    LaunchedEffect(isCommunityClosed) {
+        if (isCommunityClosed) {
+            context.closePage()
+        }
+    }
+
     AmityBasePage(pageId = "community_profile_page") {
         Scaffold { padding ->
-            if (state.community?.isDeleted() == true || state.error != null) {
+            if (isCommunityClosed || state.error != null) {
                 AmityPostErrorPage()
             } else {
                 PullToRefreshBox(

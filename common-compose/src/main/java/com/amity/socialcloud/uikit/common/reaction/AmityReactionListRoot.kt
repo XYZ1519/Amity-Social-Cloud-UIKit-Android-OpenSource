@@ -161,7 +161,7 @@ fun AmityReactionTab(
                 } else {
                     "$count"
                 }
-                val highlightColor = AmityTheme.colors.highlight
+                val selectedColor = AmityTheme.colors.primary
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
@@ -173,7 +173,7 @@ fun AmityReactionTab(
                             val x = size.width - strokeWidth
                             val y = size.height - strokeWidth
                             drawLine(
-                                color = if (isSelected) highlightColor else Color.Transparent,
+                                color = if (isSelected) selectedColor else Color.Transparent,
                                 start = Offset(0f, y),// bottom-left point of the box
                                 end = Offset(x, y),// bottom-right point of the box
                                 strokeWidth = strokeWidth
@@ -200,7 +200,7 @@ fun AmityReactionTab(
                     Text(
                         text = displayText,
                         style = AmityTheme.typography.titleLegacy.copy(
-                            color = if (isSelected) AmityTheme.colors.highlight else AmityTheme.colors.baseShade2
+                            color = if (isSelected) AmityTheme.colors.primary else AmityTheme.colors.baseShade2
                         ),
                         modifier = modifier.padding(vertical = 12.dp)
                     )

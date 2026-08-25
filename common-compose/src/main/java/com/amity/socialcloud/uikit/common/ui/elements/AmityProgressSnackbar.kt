@@ -37,7 +37,7 @@ fun AmityProgressSnackbar(
         ) {
 
             CircularProgressIndicator(
-                color = AmityTheme.colors.highlight,
+                color = AmityTheme.colors.primary,
                 trackColor = amityColorWhite,
                 strokeWidth = 2.dp,
                 modifier = modifier.size(24.dp),

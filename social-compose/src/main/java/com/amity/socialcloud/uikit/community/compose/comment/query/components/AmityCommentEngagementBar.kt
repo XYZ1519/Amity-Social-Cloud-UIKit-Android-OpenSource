@@ -301,34 +301,32 @@ fun AmityCommentEngagementBar(
                         .testTag("comment_list/comment_bubble_reaction_button")
                 )
 
-                if (!fromNonMemberCommunity || comment.getParentId() != null) {
-                    Text(
-                        text = amitySocialString("amity_social_button_reply"),
-                        style = AmityTheme.typography.captionLegacy.copy(
-                            color = AmityTheme.colors.baseShade2,
-                        ),
-                        modifier = modifier
-                            .clickable {
-                                if (AmityCoreClient.isVisitor()) {
-                                    behavior.handleVisitorUserAction()
-                                } else if (fromNonMemberCommunity) {
-                                    behavior.handleNonMemberAction()
-                                }  else {
-                                    // L0 → child = L1 (parentId = L0.id)
-                                    // L1 → child = L2 (parentId = L1.id)
-                                    // L2 → sibling L2 (parentId = L2.getParentId() = L1.id)
-                                    val parentIdForReply = if (isL2Comment && comment.getParentId() != null) {
-                                        comment.getParentId()!!
-                                    } else {
-                                        comment.getCommentId()
-                                    }
-                                    viewModel.setReplyContext(comment, parentIdForReply)
-                                    onReply(comment.getCommentId())
+                Text(
+                    text = amitySocialString("amity_social_button_reply"),
+                    style = AmityTheme.typography.captionLegacy.copy(
+                        color = AmityTheme.colors.baseShade2,
+                    ),
+                    modifier = modifier
+                        .clickable {
+                            if (AmityCoreClient.isVisitor()) {
+                                behavior.handleVisitorUserAction()
+                            } else if (fromNonMemberCommunity) {
+                                behavior.handleNonMemberAction()
+                            }  else {
+                                // L0 → child = L1 (parentId = L0.id)
+                                // L1 → child = L2 (parentId = L1.id)
+                                // L2 → sibling L2 (parentId = L2.getParentId() = L1.id)
+                                val parentIdForReply = if (isL2Comment && comment.getParentId() != null) {
+                                    comment.getParentId()!!
+                                } else {
+                                    comment.getCommentId()
                                 }
+                                viewModel.setReplyContext(comment, parentIdForReply)
+                                onReply(comment.getCommentId())
                             }
-                            .testTag("comment_list/comment_bubble_reply_button")
-                    )
-                }
+                        }
+                        .testTag("comment_list/comment_bubble_reply_button")
+                )
 
                 if (allowAction) {
                     Icon(

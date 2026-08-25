@@ -28,6 +28,7 @@ fun AmityCommentView(
     includeDeleted: Boolean = true,
     showEngagementRow: Boolean,
     isEventHost: Boolean = false,
+    eventHostId: String? = null,
     onReply: (String) -> Unit,
     onEdit: (String?) -> Unit,
     replyTargetId: String? = null,
@@ -76,6 +77,7 @@ fun AmityCommentView(
                     previewLines = previewLines,
                     isExpanded = expandReplies,
                     isL2Thread = false,
+                    eventHostId = eventHostId,
                     fromNonMemberCommunity = fromNonMemberCommunity,
                     onReply = onReply,
                 )
@@ -95,6 +97,7 @@ fun AmityCommentView(
             includeDeleted = includeDeleted,
             showEngagementRow = showEngagementRow,
             isEventHost = isEventHost,
+            eventHostId = eventHostId,
             onReply = onReply,
             onEdit = onEdit,
             replyTargetId = replyTargetId,

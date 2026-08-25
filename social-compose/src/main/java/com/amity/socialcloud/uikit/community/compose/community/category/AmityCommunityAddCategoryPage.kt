@@ -50,6 +50,7 @@ import com.amity.socialcloud.uikit.community.compose.community.category.element.
 import com.amity.socialcloud.uikit.community.compose.community.category.element.AmityCommunityCategoryList
 import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.common.ui.theme.amityDisabledColor
 
 @Composable
 fun AmityCommunityAddCategoryPage(
@@ -195,6 +196,7 @@ fun AmityCommunityAddCategoryPage(
                 )
 
                 Spacer(modifier = modifier.height(16.dp))
+                val canAddCategory = selectedCategories.isNotEmpty()
                 Button(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = AmityTheme.colors.primary,
@@ -202,7 +204,7 @@ fun AmityCommunityAddCategoryPage(
                     ),
                     shape = RoundedCornerShape(4.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    enabled = selectedCategories.isNotEmpty(),
+                    enabled = canAddCategory,
                     modifier = modifier
                         .height(40.dp)
                         .fillMaxWidth()
@@ -213,8 +215,12 @@ fun AmityCommunityAddCategoryPage(
                 ) {
                     Text(
                         text = amitySocialString("amity_social_button_add_category"),
+                        // PDT-4622: the container already dims when disabled, but pinning the label
+                        // to solid white left the button reading as actionable at 0/10. Dim the
+                        // label by the same amount so the disabled state matches iOS.
                         style = AmityTheme.typography.captionLegacy.copy(
-                            color = amityColorWhite,
+                            color = if (canAddCategory) amityColorWhite
+                            else amityDisabledColor(amityColorWhite),
                         ),
                     )
                 }

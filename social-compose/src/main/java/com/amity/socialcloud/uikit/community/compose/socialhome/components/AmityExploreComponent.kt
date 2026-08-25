@@ -75,6 +75,9 @@ fun AmityExploreComponent(
 
 
     PullToRefreshBox(
+        // PDT-4657: pullRefreshState was created and handed to the indicator, but never to the
+        // box, so the box drove its own separate state and the indicator never tracked the drag.
+        state = pullRefreshState,
         isRefreshing = isRefreshing,
         onRefresh = {
             viewModel.setRefreshing()

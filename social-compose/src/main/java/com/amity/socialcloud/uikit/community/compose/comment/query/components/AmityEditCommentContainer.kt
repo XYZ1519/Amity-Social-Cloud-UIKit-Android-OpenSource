@@ -152,7 +152,7 @@ fun AmityEditCommentContainer(
                     mentionMetadata = mentionGetter.getMentionedUsers(),
                     mentionees = comment.getMentionees(),
                     enableUrlHighlighting = true,
-                    urlColor = AmityTheme.colors.highlight,
+                    urlColor = AmityTheme.colors.primary,
                     urlHighlights = initialUrlHighlights,
                     onValueChange = {
                         localCommentText = it

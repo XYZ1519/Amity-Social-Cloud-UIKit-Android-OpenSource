@@ -258,7 +258,7 @@
     <string name="amity_social_button_edit_reply">Edit reply</string>
     <string name="amity_social_button_edit_tags">Edit tags</string>
     <string name="amity_social_button_edit_user_save_button">Save</string>
-    <string name="amity_social_button_edited_suffix">(edited)</string>
+    <string name="amity_social_button_edited_suffix">\u0020(edited)</string>
     <string name="amity_social_button_event_setup_ends_on">Ends on</string>
     <string name="amity_social_button_event">Event</string>
     <string name="amity_social_button_event_detail_header_status_cancelled">Cancelled</string>
@@ -364,7 +364,7 @@
     <string name="amity_social_button_post_content_comment_button">Comment</string>
     <string name="amity_social_button_post_content_share_button">Share</string>
     <string name="amity_social_button_post_declined">Post declined.</string>
-    <string name="amity_social_button_post_deleted">Post deleted</string>
+    <string name="amity_social_button_post_deleted">Post deleted.</string>
     <string name="amity_social_button_post_reported">Post reported.</string>
     <string name="amity_social_button_post_to">Post to</string>
     <string name="amity_social_button_post_unreported">Post unreported.</string>
@@ -448,6 +448,7 @@
     <string name="amity_social_button_view">View</string>
     <string name="amity_social_button_view_all">View all</string>
     <string name="amity_social_button_view_post">View post</string>
+    <string name="amity_social_leaving_stage">Leaving stage…</string>
     <string name="amity_social_overlay_leaving_stage_description">You\'ll return to the livestream as a viewer shortly.</string>
     <string name="amity_social_button_vote">Vote</string>
     <string name="amity_social_button_vote_removed">Vote removed.</string>
@@ -761,6 +762,8 @@
     <string name="amity_social_modal_dialog_featured_post_edit_warning">The post you\'re editing has been featured globally. If you edit your post, it would need to be re-approved, and will no longer be globally featured.</string>
     <string name="amity_social_modal_dialog_generic_error">Oops! something went wrong. Please try again later.</string>
     <string name="amity_social_modal_dialog_hashtag_limit">You can only add hashtag up to %d hashtags per post.</string>
+    <string name="amity_social_modal_dialog_content_too_many_users_mentioned">You can only mention up to %d users per message.</string>
+    <string name="amity_social_too_many_users_mentioned">Too many users mentioned</string>
     <string name="amity_social_modal_dialog_join_request_sent">Requested to join the community. You\'ll be notified once your request is accepted.</string>
     <string name="amity_social_modal_dialog_leave_button">Leave</string>
     <string name="amity_social_modal_dialog_leave_community_description">If you change your mind, you\'ll have to request to join again.</string>
@@ -851,7 +854,7 @@
     <string name="amity_social_placeholder_event_link_hint">Event link</string>
     <string name="amity_social_placeholder_event_setup_event_details_placeholder">Share what this event is all about</string>
     <string name="amity_social_placeholder_hint_poll_headline">Give your poll a headline</string>
-    <string name="amity_social_placeholder_hint_poll_question">What\'s your poll question?</string>
+    <string name="amity_social_placeholder_hint_poll_question">What would you like to ask?</string>
     <string name="amity_social_placeholder_hyperlink_name_hint">Name your link</string>
     <string name="amity_social_placeholder_hyperlink_url_hint">https://example.com</string>
     <string name="amity_social_placeholder_image_alt_text_hint_message">Describe this photo briefly to help visually impaired users understand its content</string>
@@ -912,7 +915,7 @@
     <string name="amity_social_status_set_up_your_camera_mic_and_lighting_before_the_livestre">Set up your camera, mic, and lighting before the livestream begins.</string>
     <string name="amity_social_status_this_live_stream_has_started_but_with_limited_visibilit">This live stream has started, but with limited visibility until the post has been approved.</string>
     <string name="amity_social_status_this_live_stream_has_started_however_it_will_have_limit">This live stream has started. However, it will have limited visibility until your post has been approved.</string>
-    <string name="amity_social_status_upcoming_events">Upcoming</string>
+    <string name="amity_social_status_upcoming_events">Upcoming events</string>
     <string name="amity_social_status_event_info_stream_status_upcoming_live">UPCOMING LIVE</string>
     <string name="amity_social_status_when_enabled_co_host_can_add_or_remove_tagged_products_">When enabled, co-host can add or remove tagged products and pin or unpin a product during the live stream.</string>
     <string name="amity_social_status_you_can_start_setting_up_live_15_minutes_before_the_eve">You can start setting up live 15 minutes before the event starts.</string>
@@ -1064,6 +1067,7 @@
 
     <!-- New keys: Group C camera permission remap -->
     <string name="amity_social_status_allow_camera_desc">This lets you record and live stream\nfrom this device.</string>
+    <string name="amity_social_status_allow_camera_clip_desc">This lets you record videos\nfrom this device.</string>
     <string name="amity_social_permission_camera_access_denied">Please grant camera permission in settings.</string>
 
     <!-- Restored keys: removed incorrectly in commit 4e9775450 -->
@@ -1169,6 +1173,9 @@
     <string name="amity_social_label_invitation_unavailable">Invitation is no longer valid.</string>
     <string name="amity_social_label_joined_community">You joined %s.</string>
     <string name="amity_social_modal_dialog_post_pending_approval">Your post has been submitted to the pending list. It will be published once approved by the community moderator.</string>
+    <string name="amity_social_modal_dialog_title_post_will_be_sent_for_review">Post will be sent for review</string>
+    <string name="amity_social_modal_dialog_edited_post_pending_approval">Posting in this community requires approval. Your edited post will be published once approved by the community moderator.</string>
+    <string name="amity_social_toast_post_sent_for_review">Post sent for review.</string>
     <string name="amity_social_label_choose_different_image">Please choose a different image to upload.</string>
     <string name="amity_social_modal_dialog_title_unsaved_changes">Unsaved changes</string>
     <string name="amity_social_toast_error_create_post_failed">Failed to create post. Please try again.</string>

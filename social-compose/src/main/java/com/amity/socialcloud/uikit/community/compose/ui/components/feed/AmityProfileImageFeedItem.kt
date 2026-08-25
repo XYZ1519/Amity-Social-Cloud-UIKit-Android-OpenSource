@@ -58,6 +58,8 @@ import com.amity.socialcloud.uikit.community.compose.post.composer.components.Al
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityProductTagBadge
 import com.amity.socialcloud.uikit.common.ui.theme.amityMediaSurface
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBase
+import com.amity.socialcloud.uikit.common.ui.theme.amityColorBaseShade4
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -246,6 +248,8 @@ fun AmityProfileImageFeedItemPreviewDialog(
                         icon = R.drawable.amity_ic_close2,
                         size = 32.dp,
                         iconPadding = 8.dp,
+                        background = amityColorBaseShade4,
+                        tint = amityColorBase,
                         modifier = Modifier
                             .zIndex(Float.MAX_VALUE).constrainAs(closeBtn) {
                                 top.linkTo(parent.top, margin = 16.dp)

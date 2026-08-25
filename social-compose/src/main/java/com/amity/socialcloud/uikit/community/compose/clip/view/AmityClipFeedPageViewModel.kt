@@ -20,6 +20,7 @@ import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.PublishSubject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,9 +46,19 @@ class AmityClipFeedPageViewModel : AmityBaseViewModel() {
     private val _amityClips = MutableStateFlow<PagingData<AmityPost>>(PagingData.empty())
     val amityClips: StateFlow<PagingData<AmityPost>> = _amityClips.asStateFlow()
 
+    // PDT-4554: UserClipFeed / CommunityClipFeed render from shared paging data built with
+    // includeDeleted(false). A clip deleted while it is on screen is never re-emitted there, so the
+    // viewer kept watching a clip that no longer exists. Track deletions of the clip being watched.
+    private val _deletedClipIds = MutableStateFlow<Set<String>>(emptySet())
+    val deletedClipIds: StateFlow<Set<String>> = _deletedClipIds.asStateFlow()
+
+    private var observedClipId: String? = null
+    private var observeClipJob: kotlinx.coroutines.Job? = null
+
     private val _clipUrl = MutableStateFlow<String>("")
     val clipUrl = _clipUrl.asStateFlow()
 
+    private var parentPostJob: Job? = null
     private val _parentPost = MutableStateFlow<AmityPost?>(null)
     val parentPost: StateFlow<AmityPost?> = _parentPost.asStateFlow()
 
@@ -64,6 +75,35 @@ class AmityClipFeedPageViewModel : AmityBaseViewModel() {
 
     init {
         observeReactionChange()
+    }
+
+    /**
+     * Observe the live post behind the clip currently on screen so that a deletion by its owner
+     * reaches the viewer. Safe to call on every page change: re-observing the same clip is a no-op.
+     */
+    fun observeClipDeletion(postId: String) {
+        if (postId.isEmpty() || observedClipId == postId) return
+        observedClipId = postId
+        observeClipJob?.cancel()
+        observeClipJob = viewModelScope.launch {
+            AmitySocialClient.newPostRepository()
+                .getPost(postId = postId)
+                .asFlow()
+                .catch { error ->
+                    if (AmityError.from(error) == AmityError.ITEM_NOT_FOUND) {
+                        markClipDeleted(postId)
+                    }
+                }
+                .collect { post ->
+                    if (post.isDeleted()) {
+                        markClipDeleted(postId)
+                    }
+                }
+        }
+    }
+
+    fun markClipDeleted(postId: String) {
+        _deletedClipIds.update { it + postId }
     }
 
     fun queryClipOnGlobalFeed() {
@@ -219,10 +259,14 @@ class AmityClipFeedPageViewModel : AmityBaseViewModel() {
 
 
     fun getParentPost(parentPostId: String) {
-        viewModelScope.launch {
+        if (parentPostId.isBlank()) return
+
+        // One job at a time: this is called again on every swipe, and a collector left running for
+        // the previous clip would keep writing its own parent into the shared state.
+        parentPostJob?.cancel()
+        parentPostJob = viewModelScope.launch {
             AmitySocialClient.newPostRepository()
                 .getPost(parentPostId)
-                .take(1)
                 .asFlow()
                 .flowOn(Dispatchers.IO)
                 .distinctUntilChanged() // Only emit when data actually changes
@@ -284,6 +328,12 @@ class AmityClipFeedPageViewModel : AmityBaseViewModel() {
                         action.onSuccess()
                     }
                     .doOnError { error ->
+                        // PDT-4554: reacting to a clip its owner just deleted fails with
+                        // ITEM_NOT_FOUND. Treat that as confirmation the clip is gone so the
+                        // viewer is shown the deleted state instead of a generic failure.
+                        if (AmityError.from(error) == AmityError.ITEM_NOT_FOUND) {
+                            markClipDeleted(action.postId)
+                        }
                         action.onError(error)
                     }
                     .onErrorComplete()

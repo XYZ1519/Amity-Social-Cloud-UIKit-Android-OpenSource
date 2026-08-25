@@ -157,6 +157,7 @@ object AmitySocialThaiStrings {
         // Livestream
         "amity_social_status_cohost_left" to "ผู้ร่วมโฮสต์ออกจากการถ่ายทอดสดแล้ว",
         "amity_social_button_view_post" to "ดูโพสต์",
+        "amity_social_leaving_stage" to "กำลังออกจากเวที…",
         "amity_social_overlay_leaving_stage_description" to "คุณกำลังกลับไปเป็นผู้ชมเร็วๆนี้",
 
         // Permissions
@@ -2073,6 +2074,8 @@ object AmitySocialThaiStrings {
         "amity_social_modal_alert_remove_cohost_message" to "คุณแน่ใจว่าต้องการลบผู้ร่วมดำเนินรายการนี้ออกจากการถ่ายทอดสดไหม? พวกเขาจะหยุดออกอากาศทันทีและกลับมาเป็นผู้ชม",
         "amity_social_modal_alert_remove_cohost_title" to "ลบผู้ร่วมดำเนินรายการออกจากการถ่ายทอดสด",
         "amity_social_modal_clip_alert_unsupported_video_title" to "ประเภทวิดีโอไม่รองรับ",
+        "amity_social_modal_dialog_edited_post_pending_approval" to "การโพสต์ในชุมชนนี้ต้องได้รับการอนุมัติ โพสต์ที่คุณแก้ไขจะได้รับการเผยแพร่เมื่อผู้ดูแลชุมชนอนุมัติ",
+        "amity_social_modal_dialog_title_post_will_be_sent_for_review" to "โพสต์จะถูกส่งเพื่อตรวจสอบ",
         "amity_social_modal_event_detail_alert_delete_event_title" to "ลบกิจกรรมนี้?",
         "amity_social_modal_event_detail_alert_leave_without_finishing_title" to "ออกโดยไม่เสร็จสิ้น?",
         "amity_social_modal_event_setup_leave_alert_title" to "ออกจากการตั้งค่ากิจกรรม?",
@@ -2123,6 +2126,7 @@ object AmitySocialThaiStrings {
         "amity_social_toast_membership_add_failed" to "ไม่สามารถเพิ่มสมาชิกในชุมชนนี้ได้",
         "amity_social_toast_poll_create_posting_toast" to "กำลังโพสต์…",
         "amity_social_toast_poll_post_unavailable_toast" to "โพสต์นี้ไม่มีให้บริการอีกต่อไป",
+        "amity_social_toast_post_sent_for_review" to "ส่งโพสต์เพื่อตรวจสอบแล้ว",
         "amity_social_toast_post_unavailable_toast_message" to "โพสต์นี้ไม่มีให้บริการอีกต่อไป",
         "amity_social_toast_remove_co_host_failed_toast" to "ไม่สามารถลบผู้ร่วมดำเนินรายการได้",
         "amity_social_toast_report_reason_success_toast_message" to "รายงาน %s แล้ว",

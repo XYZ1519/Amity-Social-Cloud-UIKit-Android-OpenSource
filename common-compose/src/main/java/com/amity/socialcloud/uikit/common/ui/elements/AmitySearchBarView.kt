@@ -66,7 +66,7 @@ fun AmitySearchBarView(
     val iconTint = searchIconTint
     val textColor = AmityTheme.colors.base
     val hintColor = AmityTheme.colors.baseShade2
-    val cursorColor = AmityTheme.colors.highlight
+    val cursorColor = AmityTheme.colors.primary
     val searchIcon = searchIconRes ?: R.drawable.amity_ic_search
 
     LaunchedEffect(requestFocus) {

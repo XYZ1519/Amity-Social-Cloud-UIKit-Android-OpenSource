@@ -133,7 +133,8 @@ data class AmityColors(
 
         return AmityUIKitColors.copy(
             primary = primary,
-            primaryShade1 = primary.shade(AmityColorShade.SHADE1),
+            primaryShade1 = theme.primaryShade1Color?.asColor(primary.shade(AmityColorShade.SHADE1))
+                ?: primary.shade(AmityColorShade.SHADE1),
             primaryShade2 = primary.shade(AmityColorShade.SHADE2),
             primaryShade3 = amityColorPrimaryShade3,
             primaryShade4 = primary.shade(AmityColorShade.SHADE4),

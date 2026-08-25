@@ -542,7 +542,11 @@ fun AmityEventDetailPage(
                                         pinPosts = pinPosts,
                                         communityPosts = communityPosts,
                                         excludedPostIds = excludedPostIds,
-                                        eventHostId = null,
+                                        // PDT-4606: the event host is its creator, same source the
+                                        // "Hosted by" section renders. Passing null here meant no
+                                        // Host badge ever surfaced on discussion posts or comments.
+                                        eventHostId = event?.getCreator()?.getUserId(),
+                                        isNonMemberOfCommunity = targetCommunity?.isJoined() == false,
                                         onClick = { post, _ ->
                                             val behavior =
                                                 AmitySocialBehaviorHelper.eventDetailPageBehavior
@@ -553,6 +557,9 @@ fun AmityEventDetailPage(
                                                 postId = post.getPostId(),
                                                 category = AmityPostCategory.GENERAL,
                                                 autoFocusCommentInput = true,
+                                                eventHostId = event?.getCreator()?.getUserId(),
+                                                eventTargetCommunityId = event?.getTargetCommunity()
+                                                    ?.getCommunityId(),
                                             )
                                         }
                                     )
@@ -917,7 +924,7 @@ fun AmityEventDetailPage(
                                 roundedCornerShape = RoundedCornerShape(24.dp),
                                 placeholder = R.drawable.amity_ic_community_placeholder,
                                 placeholderTint = amityColorWhite,
-                                placeholderBackground = AmityTheme.colors.primaryShade2,
+                                placeholderBackground = AmityTheme.colors.primaryShade1,
                                 iconPadding = 24.dp,
                                 modifier = Modifier.align(Alignment.Center)
                             )
@@ -1319,7 +1326,7 @@ private fun EventTabRow(
                         .fillMaxWidth()
                         .height(2.dp)
                         .background(
-                            color = if (selectedIndex == 0) AmityTheme.colors.highlight else Color.Transparent,
+                            color = if (selectedIndex == 0) AmityTheme.colors.primary else Color.Transparent,
                             shape = RoundedCornerShape(
                                 topStart = 1.dp,
                                 topEnd = 1.dp
@@ -1353,7 +1360,7 @@ private fun EventTabRow(
                         .fillMaxWidth()
                         .height(2.dp)
                         .background(
-                            color = if (selectedIndex == 1) AmityTheme.colors.highlight else Color.Transparent,
+                            color = if (selectedIndex == 1) AmityTheme.colors.primary else Color.Transparent,
                             shape = RoundedCornerShape(
                                 topStart = 1.dp,
                                 topEnd = 1.dp

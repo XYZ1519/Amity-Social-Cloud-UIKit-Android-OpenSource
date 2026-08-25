@@ -53,13 +53,16 @@ open class AmityEventDetailPageBehavior : AmityBaseBehavior() {
         postId: String,
         category: AmityPostCategory,
         autoFocusCommentInput: Boolean = false,
+        eventHostId: String? = null,
+        eventTargetCommunityId: String? = null,
     ) {
         val intent = AmityPostDetailPageActivity.newIntent(
             context = context.pageContext,
             id = postId,
             category = category,
             hideTarget = true,
-            eventHostId = null,
+            eventHostId = eventHostId,
+            eventTargetCommunityId = eventTargetCommunityId,
             autoFocusCommentInput = autoFocusCommentInput,
         )
         context.pageContext.startActivity(intent)

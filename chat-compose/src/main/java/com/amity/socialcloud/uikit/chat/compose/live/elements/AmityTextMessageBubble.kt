@@ -264,7 +264,7 @@ fun BaseMessageBubble(
                                 .border(
                                     width = 1.dp,
                                     color = if (hasMentionedMe) {
-                                        AmityTheme.colors.highlight
+                                        AmityTheme.colors.primary
                                     } else {
                                         Color.Transparent
                                     },

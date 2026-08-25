@@ -113,6 +113,9 @@ fun AmityPostContentElement(
                 hashtagGetter = hashtagGetter,
                 productTags = productTags,
                 style = AmityTheme.typography.body,
+                // PDT-4654: readMoreInline defaults to false, which drops "See more" onto its own
+                // line with no ellipsis. The design continues the truncated text as "… See more".
+                readMoreInline = true,
                 intialExpand = style == AmityPostContentComponentStyle.DETAIL,
                 boldWhenMatches = boldedText?.let { listOf(it) } ?: emptyList(),
                 onClick = onClick,

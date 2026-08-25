@@ -90,6 +90,7 @@ fun AmityPostEngagementView(
     isPostDetailPage: Boolean,
     shareButtonClick: (postId:String) -> Unit = {},
     onCommentAction: (() -> Unit)? = null,
+    isNonMemberOfCommunity: Boolean? = null,
 ) {
     val context = LocalContext.current
     val behavior = remember {
@@ -143,9 +144,10 @@ fun AmityPostEngagementView(
     var lastHapticIndex by remember { mutableStateOf<Int?>(null) }
     val haptics = LocalHapticFeedback.current
     val reactions = remember { AmitySocialReactions.getList() }
-    val fromNonMemberCommunity = remember(post) {
+    val postTargetNonMember = remember(post) {
         (post.getTarget() as? AmityPost.Target.COMMUNITY)?.getCommunity()?.isJoined() == false
     }
+    val fromNonMemberCommunity = isNonMemberOfCommunity ?: postTargetNonMember
     val localFocus = LocalFocusManager.current
 
     // Update the reaction state when the post's reactions change
@@ -194,8 +196,6 @@ fun AmityPostEngagementView(
                         reactionCount = reactionCount,
                     )
                 }
-            } else {
-                Box {}
             }
 
 

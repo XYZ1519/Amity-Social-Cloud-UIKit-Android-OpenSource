@@ -72,6 +72,7 @@ fun AmitySingleCommentView(
     includeDeleted: Boolean = true,
     showEngagementRow: Boolean,
     isEventHost: Boolean = false,
+    eventHostId: String? = null,
     onReply: (String) -> Unit,
     onEdit: (String?) -> Unit,
     replyTargetId: String? = null,
@@ -94,6 +95,12 @@ fun AmitySingleCommentView(
     }
     var showDeleteBannedWordCommentDialog by remember { mutableStateOf(false) }
     var showReactionListSheet by remember { mutableStateOf(false) }
+
+    // PDT-4606: replies are rendered by the same composable, so the host badge has to be
+    // decided from this comment's own creator rather than inherited from the L0 comment.
+    // isEventHost stays honoured for callers that still pre-compute it.
+    val isCreatorEventHost = isEventHost ||
+            (eventHostId != null && comment.getCreator()?.getUserId() == eventHostId)
 
     // Thread connector line state (only for L1 comments with L2 replies)
     val showThreadLine = isReplyComment && !isL2Comment
@@ -151,7 +158,7 @@ fun AmitySingleCommentView(
                         modifier = modifier,
                         comment = comment,
                         previewLines = previewLines,
-                        isEventHost = isEventHost,
+                        isEventHost = isCreatorEventHost,
                         shouldHighlight = shouldHighlight,
                         onClick = {
                             if (!allowAction) {
@@ -295,6 +302,7 @@ fun AmitySingleCommentView(
                     previewLines = previewLines,
                     isExpanded = expandReplies,
                     isL2Thread = isReplyComment,
+                    eventHostId = eventHostId,
                     threadLineState = if (showThreadLine) threadLineState else null,
                     fromNonMemberCommunity = fromNonMemberCommunity,
                     onReply = onReply
@@ -326,7 +334,7 @@ fun AmitySingleCommentView(
             confirmText = amitySocialString("amity_social_button_delete"),
             dismissText = amitySocialString("amity_social_button_cancel"),
             confirmTextColor = AmityTheme.colors.alert,
-            dismissTextColor = AmityTheme.colors.highlight,
+            dismissTextColor = AmityTheme.colors.primary,
             onConfirmation = {
                 AmitySocialClient.newCommentRepository()
                     .softDeleteComment(comment.getCommentId())

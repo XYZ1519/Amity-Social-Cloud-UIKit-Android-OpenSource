@@ -579,12 +579,11 @@ fun AmityPollPostComposerPage(
                                     .onFocusChanged { focus ->
                                         isFocused = focus.isFocused
                                     }
-                                    .heightIn(min = 112.dp)
                                     .background(
                                         color = Color.Transparent,
                                         shape = RoundedCornerShape(4.dp)
                                     )
-                                    .padding(4.dp),
+                                    .padding(horizontal = 4.dp),
                                 value = question,
                                 hintText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_placeholder_hint_poll_question"),
                                 maxLines = 30,
@@ -596,7 +595,7 @@ fun AmityPollPostComposerPage(
                                     fontSize = 16.sp  // Match font size with post composer
                                 ),
                                 hintColor = AmityTheme.colors.baseShade3,
-                                contentPadding = PaddingValues(vertical = 10.dp), // Minimal padding in the text field itself
+                                contentPadding = PaddingValues(vertical = 16.dp), // Minimal padding in the text field itself
                                 verticalPadding = 0.dp,
                                 horizontalPadding = 0.dp,
                                 backgroundColor = Color.Transparent,
@@ -1130,7 +1129,7 @@ fun AmityPollPostComposerPage(
                         confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_discard"),
                         dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_keep_editing"),
                         confirmTextColor = AmityTheme.colors.alert,
-                        dismissTextColor = AmityTheme.colors.highlight,
+                        dismissTextColor = AmityTheme.colors.primary,
                         onConfirmation = {
                             context.closePageWithResult(Activity.RESULT_CANCELED)
                         },
@@ -1306,7 +1305,7 @@ fun AmityPollPostComposerPage(
                                                 fontSize = 17.sp,
                                                 lineHeight = 22.sp,
                                                 fontWeight = FontWeight(600),
-                                                color = AmityTheme.colors.highlight,
+                                                color = AmityTheme.colors.primary,
                                             )
                                         }
                                     }
@@ -1328,7 +1327,7 @@ fun AmityPollPostComposerPage(
                                                 fontSize = 17.sp,
                                                 lineHeight = 22.sp,
                                                 fontWeight = FontWeight(600),
-                                                color = AmityTheme.colors.highlight,
+                                                color = AmityTheme.colors.primary,
                                             )
                                         }
                                     }
@@ -1501,7 +1500,7 @@ fun AmityPollDurationOptionItem(
                 modifier = Modifier.testTag(text),
                 selected = isSelected,
                 colors = RadioButtonDefaults.colors(
-                    selectedColor = AmityTheme.colors.highlight,
+                    selectedColor = AmityTheme.colors.primary,
                     unselectedColor = AmityTheme.colors.baseShade2,
                 ),
                 onClick = onSelected,

@@ -109,8 +109,8 @@ fun AmityMentionTextField(
     contentPadding: PaddingValues = PaddingValues(vertical = verticalPadding, horizontal = horizontalPadding),
     backgroundColor: Color = Color.Transparent,
     hintColor: Color = AmityTheme.colors.baseShade2,
-    mentionColor: Color = AmityTheme.colors.highlight,
-    hashtagColor: Color = AmityTheme.colors.highlight,
+    mentionColor: Color = AmityTheme.colors.primary,
+    hashtagColor: Color = AmityTheme.colors.primary,
     cursorColor: Color = AmityTheme.colors.primary,
     enableUrlHighlighting: Boolean = false,
     urlColor: Color = AmityTheme.colors.primary,
@@ -122,6 +122,7 @@ fun AmityMentionTextField(
     mentionSuggestions: (@Composable (onDismiss: () -> Unit) -> Unit)? = null,
 ) {
     val maxHashtag = 30
+    val maxMention = 30
 
     // Setup focus
     val focusManager = LocalFocusManager.current
@@ -207,6 +208,7 @@ fun AmityMentionTextField(
     }
 
     var showHashtagExceedDialog by remember { mutableStateOf(false) }
+    var showMentionExceedDialog by remember { mutableStateOf(false) }
 
     // Initialize mentions from metadata
     LaunchedEffect(initialMentions) {
@@ -299,7 +301,11 @@ fun AmityMentionTextField(
 
             // Find the @ character that triggered this mention
             val mentionStart = text.lastIndexOf('@', selection - 1)
-            if (mentionStart >= 0) {
+            if (mentions.size >= maxMention) {
+                showMentionExceedDialog = true
+                onMentionAdded()
+                onQueryToken(null)
+            } else if (mentionStart >= 0) {
                 // Calculate the positions
                 val beforeMention = text.substring(0, mentionStart)
                 val afterMention = if (selection < text.length) text.substring(selection) else ""
@@ -766,6 +772,15 @@ fun AmityMentionTextField(
         HashtagsExceedDialog(
             onDismiss = {
                 showHashtagExceedDialog = false
+            }
+        )
+    }
+
+    if (showMentionExceedDialog) {
+        MentionsExceedDialog(
+            maxMention = maxMention,
+            onDismiss = {
+                showMentionExceedDialog = false
             }
         )
     }
@@ -1321,6 +1336,22 @@ fun HashtagsExceedDialog(
     AmityAlertDialog(
         dialogTitle = amitySocialString("amity_social_modal_post_composer_hashtag_limit_alert_title"),
         dialogText = amitySocialString("amity_social_modal_dialog_hashtag_limit", 30),
+        dismissText = amitySocialString("amity_social_button_ok"),
+        onDismissRequest = onDismiss,
+    )
+}
+
+@Composable
+fun MentionsExceedDialog(
+    maxMention: Int,
+    onDismiss: () -> Unit = {},
+) {
+    AmityAlertDialog(
+        dialogTitle = amitySocialString("amity_social_too_many_users_mentioned"),
+        dialogText = amitySocialString(
+            "amity_social_modal_dialog_content_too_many_users_mentioned",
+            maxMention,
+        ),
         dismissText = amitySocialString("amity_social_button_ok"),
         onDismissRequest = onDismiss,
     )

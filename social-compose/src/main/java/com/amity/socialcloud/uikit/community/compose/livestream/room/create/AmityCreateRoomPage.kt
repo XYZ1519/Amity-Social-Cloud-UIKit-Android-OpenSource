@@ -1536,6 +1536,29 @@ fun AmityCreateRoomPage(
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.End,
                         ) {
+                            // Mic toggle, mirroring the community branch: streaming to a user
+                            // feed took this path, which only had the camera-flip control.
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .align(Alignment.CenterVertically)
+                                    .clickableWithoutRipple {
+                                        userEnabledMic = !userEnabledMic
+                                        focusManager.clearFocus()
+                                    }
+                                    .testTag("toggle_microphone_button")
+                            ) {
+                                Image(
+                                    painter = if (!userEnabledMic) {
+                                        painterResource(R.drawable.amity_ic_room_unmute_button)
+                                    } else {
+                                        painterResource(R.drawable.amity_ic_room_mute_button)
+                                    },
+                                    contentDescription = "",
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(9.dp))
                             Box(
                                 modifier = Modifier
                                     .size(36.dp)
@@ -1680,7 +1703,7 @@ fun AmityCreateRoomPage(
                     confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_create_livestream_discard_livestream_dialog_confirm_text"),
                     dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_cancel_button"),
                     confirmTextColor = AmityTheme.colors.alert,
-                    dismissTextColor = AmityTheme.colors.highlight,
+                    dismissTextColor = AmityTheme.colors.primary,
                     onConfirmation = {
                         context.closePageWithResult(Activity.RESULT_CANCELED)
                     },
@@ -1699,7 +1722,7 @@ fun AmityCreateRoomPage(
                     confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_create_livestream_end_livestream_dialog_confirm_text"),
                     dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_cancel_button"),
                     confirmTextColor = AmityTheme.colors.alert,
-                    dismissTextColor = AmityTheme.colors.highlight,
+                    dismissTextColor = AmityTheme.colors.primary,
                     onConfirmation = {
                         endLivestream(
                             context = context,
@@ -1744,8 +1767,8 @@ fun AmityCreateRoomPage(
                     dialogText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_confirm_invite_cohost_message").format(it.second?.getDisplayName() ?: "the user"),
                     confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_invite_co_host"),
                     dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_cancel_button"),
-                    confirmTextColor = AmityTheme.colors.highlight,
-                    dismissTextColor = AmityTheme.colors.highlight,
+                    confirmTextColor = AmityTheme.colors.primary,
+                    dismissTextColor = AmityTheme.colors.primary,
                     onConfirmation = {
                         viewModel.inviteCohost(userId = it.first, user = it.second)
                         showInviteConfirmDialog = null
@@ -1765,7 +1788,7 @@ fun AmityCreateRoomPage(
                     confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_confirm"),
                     dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_cancel_button"),
                     confirmTextColor = AmityTheme.colors.alert,
-                    dismissTextColor = AmityTheme.colors.highlight,
+                    dismissTextColor = AmityTheme.colors.primary,
                     onConfirmation = {
                         uiState
                             .invitation
@@ -1787,7 +1810,7 @@ fun AmityCreateRoomPage(
                     confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_remove"),
                     dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_cancel_button"),
                     confirmTextColor = AmityTheme.colors.alert,
-                    dismissTextColor = AmityTheme.colors.highlight,
+                    dismissTextColor = AmityTheme.colors.primary,
                     onConfirmation = {
                         val roomId = uiState.room?.getRoomId()
                         val coHostUserId = uiState.cohostUserId
@@ -2242,7 +2265,7 @@ fun AmityViewerListItem(
         Box(
             modifier = Modifier
                 .alpha( if (onInviteClick == null && onRemoveClick == null && onCancelClick == null) 0.3f else 1f)
-                .background( if (isCancel) { AmityTheme.colors.baseShade3 } else { AmityTheme.colors.highlight}, RoundedCornerShape(8.dp))
+                .background( if (isCancel) { AmityTheme.colors.baseShade3 } else { AmityTheme.colors.primary}, RoundedCornerShape(8.dp))
                 .padding(horizontal = 20.dp, vertical = 8.dp)
                 .clickableWithoutRipple{
                     if (isCancel) {

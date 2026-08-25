@@ -48,14 +48,14 @@ fun AmityCommunitySettingRadioGroupItem(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
             .fillMaxWidth()
-            .clickableWithoutRipple { onSelected() },
+            .clickableWithoutRipple { onSelected() }
+            .padding(horizontal = 16.dp),
     ) {
         Text(
             text = text,
             style = AmityTheme.typography.bodyLegacy,
             modifier = modifier
                 .weight(1f)
-                .padding(start = 16.dp)
                 .testTag(text)
         )
 

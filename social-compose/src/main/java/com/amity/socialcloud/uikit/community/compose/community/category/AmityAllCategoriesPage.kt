@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -159,12 +158,6 @@ fun AmityAllCategoriesPage(
                                         .padding(top = 2.dp)
                                 )
 
-                            }
-
-                            if (index < categories.itemCount - 1) {
-                                HorizontalDivider(
-                                    color = AmityTheme.colors.divider
-                                )
                             }
                         }
                     }

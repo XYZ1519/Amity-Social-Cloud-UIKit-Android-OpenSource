@@ -140,6 +140,9 @@ fun AmityCommentContentContainer(
             mentionees = comment.getMentionees(),
             linkPositions = commentLinks,
             style = AmityTheme.typography.bodyLegacy,
+            // PDT-4654: match the post body -- "… See more" continues the text instead of
+            // starting a new line.
+            readMoreInline = true,
             previewLines = previewLines,
             modifier = modifier.testTag("comment_list/comment_bubble_comment_text_view"),
             onMentionedUserClick = {

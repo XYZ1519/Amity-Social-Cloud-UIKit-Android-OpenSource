@@ -40,12 +40,10 @@ fun AmityTextField(
     BasicTextField(
         value = text,
         onValueChange = {
-            if (maxCharacters == -1) {
-                onValueChange(it)
-            } else if (it.length <= maxCharacters) {
-                onValueChange(it)
-            } else {
-                onValueChange(it.take(maxCharacters))
+            when {
+                maxCharacters == -1 || it.length <= maxCharacters -> onValueChange(it)
+                it.startsWith(text) -> onValueChange(it.take(maxCharacters))
+                else -> Unit
             }
         },
         enabled = enabled,
@@ -55,7 +53,7 @@ fun AmityTextField(
         modifier = modifier
             .fillMaxWidth()
             .background(Color.Transparent),
-        cursorBrush = androidx.compose.ui.graphics.SolidColor(AmityTheme.colors.highlight),
+        cursorBrush = androidx.compose.ui.graphics.SolidColor(AmityTheme.colors.primary),
         decorationBox = { innerTextField ->
            Box(
                 modifier = Modifier

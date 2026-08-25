@@ -69,7 +69,7 @@ fun AmityCommunityProfileTabRow(
                             .fillMaxWidth()
                             .height(2.dp)
                             .background(
-                                color = if (selectedIndex == 0) AmityTheme.colors.highlight else Color.Transparent,
+                                color = if (selectedIndex == 0) AmityTheme.colors.primary else Color.Transparent,
                                 shape = RoundedCornerShape(
                                     topStart = 1.dp,
                                     topEnd = 1.dp
@@ -102,7 +102,7 @@ fun AmityCommunityProfileTabRow(
                             .fillMaxWidth()
                             .height(2.dp)
                             .background(
-                                color = if (selectedIndex == 1) AmityTheme.colors.highlight else Color.Transparent,
+                                color = if (selectedIndex == 1) AmityTheme.colors.primary else Color.Transparent,
                                 shape = RoundedCornerShape(
                                     topStart = 1.dp,
                                     topEnd = 1.dp
@@ -135,7 +135,7 @@ fun AmityCommunityProfileTabRow(
                             .fillMaxWidth()
                             .height(2.dp)
                             .background(
-                                color = if (selectedIndex == 2) AmityTheme.colors.highlight else Color.Transparent,
+                                color = if (selectedIndex == 2) AmityTheme.colors.primary else Color.Transparent,
                                 shape = RoundedCornerShape(
                                     topStart = 1.dp,
                                     topEnd = 1.dp
@@ -170,7 +170,7 @@ fun AmityCommunityProfileTabRow(
                             .fillMaxWidth()
                             .height(2.dp)
                             .background(
-                                color = if (selectedIndex == 3) AmityTheme.colors.highlight else Color.Transparent,
+                                color = if (selectedIndex == 3) AmityTheme.colors.primary else Color.Transparent,
                                 shape = RoundedCornerShape(
                                     topStart = 1.dp,
                                     topEnd = 1.dp

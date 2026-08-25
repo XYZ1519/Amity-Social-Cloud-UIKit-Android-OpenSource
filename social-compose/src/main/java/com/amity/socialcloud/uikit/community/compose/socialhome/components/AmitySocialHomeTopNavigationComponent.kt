@@ -160,33 +160,35 @@ fun AmitySocialHomeTopNavigationComponent(
                     else -> {}
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
-
                 var expanded by remember { mutableStateOf(false) }
-                when (selectedTab) {
-                    AmitySocialHomePageTab.FOR_YOU,
-                    AmitySocialHomePageTab.FOLLOWING,
-                    AmitySocialHomePageTab.COMMUNITIES,
-                    AmitySocialHomePageTab.EVENTS,
-                    AmitySocialHomePageTab.CLIPS
-                        -> {
-                        AmityBaseElement(
-                            pageScope = pageScope,
-                            componentScope = getComponentScope(),
-                            elementId = "post_creation_button"
-                        ) {
-                            AmitySocialHomeNavigationButton(
-                                icon = getConfig().getIcon(),
-                                background = AmityTheme.colors.baseShade4,
-                                iconSize = 16.dp,
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .testTag(getAccessibilityId()),
-                                onClick = {
-                                    // Always show Create Post Menu for all tabs
-                                    expanded = true
-                                },
-                            )
+                if (AmityCoreClient.isSignedIn()) {
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    when (selectedTab) {
+                        AmitySocialHomePageTab.FOR_YOU,
+                        AmitySocialHomePageTab.FOLLOWING,
+                        AmitySocialHomePageTab.COMMUNITIES,
+                        AmitySocialHomePageTab.EVENTS,
+                        AmitySocialHomePageTab.CLIPS
+                            -> {
+                            AmityBaseElement(
+                                pageScope = pageScope,
+                                componentScope = getComponentScope(),
+                                elementId = "post_creation_button"
+                            ) {
+                                AmitySocialHomeNavigationButton(
+                                    icon = getConfig().getIcon(),
+                                    background = AmityTheme.colors.baseShade4,
+                                    iconSize = 16.dp,
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .testTag(getAccessibilityId()),
+                                    onClick = {
+                                        // Always show Create Post Menu for all tabs
+                                        expanded = true
+                                    },
+                                )
+                            }
                         }
                     }
                 }

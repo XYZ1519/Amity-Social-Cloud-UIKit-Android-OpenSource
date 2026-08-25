@@ -83,6 +83,7 @@ fun AmityCommunityInviteMemberList(
                         if (item == null) {
                             AmityCommunityAddMemberButton(
                                 pageScope = pageScope,
+                                textKey = "amity_social_button_community_add_member_button",
                                 onClick = onAddAction,
                             )
                         } else {

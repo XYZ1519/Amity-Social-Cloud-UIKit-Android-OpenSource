@@ -240,7 +240,7 @@ fun AmityCommunitySettingPage(
                 ) {
                     AmityCommunitySettingItem(
                         modifier = modifier.testTag(getAccessibilityId()),
-                        title = amitySocialConfigString("amity_social_button_edit_profile"),
+                        title = amitySocialConfigString("amity_social_setting_setting_edit_profile"),
                         icon = {
                             Box(
                                 modifier = modifier
@@ -576,7 +576,7 @@ fun AmityCommunitySettingPage(
         if (showLeaveCommunityDialog) {
             AmityAlertDialog(
                 dialogTitle = amitySocialString("amity_social_modal_dialog_title_leave_community"),
-                dialogText = amitySocialString("amity_social_modal_dialog_banned_from_community"),
+                dialogText = amitySocialString("amity_social_modal_dialog_leave_community_description"),
                 confirmText = amitySocialString("amity_social_button_leave"),
                 dismissText = amitySocialString("amity_social_button_cancel"),
                 confirmTextColor = AmityTheme.colors.alert,

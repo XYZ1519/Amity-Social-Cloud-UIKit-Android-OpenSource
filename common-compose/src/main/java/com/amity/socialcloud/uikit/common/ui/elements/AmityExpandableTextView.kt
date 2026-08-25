@@ -108,7 +108,7 @@ fun AmityExpandableText(
                     val start = mentionItem.getIndex()
                     val end = mentionItem.getIndex().plus(mentionItem.getLength()).inc()
                     addStyle(
-                        style = SpanStyle(AmityTheme.colors.highlight),
+                        style = SpanStyle(AmityTheme.colors.primary),
                         start = start,
                         end = end,
                     )
@@ -124,7 +124,7 @@ fun AmityExpandableText(
                 val start = mentionItem.getIndex()
                 val end = mentionItem.getIndex().plus(mentionItem.getLength()).inc()
                 addStyle(
-                    style = SpanStyle(AmityTheme.colors.highlight),
+                    style = SpanStyle(AmityTheme.colors.primary),
                     start = start,
                     end = end,
                 )
@@ -140,7 +140,7 @@ fun AmityExpandableText(
                 val start = hashtagItem.getIndex()
                 val end = hashtagItem.getIndex().plus(hashtagItem.getLength()).inc()
                 addStyle(
-                    style = SpanStyle(AmityTheme.colors.highlight),
+                    style = SpanStyle(AmityTheme.colors.primary),
                     start = start,
                     end = end,
                 )
@@ -161,7 +161,7 @@ fun AmityExpandableText(
                     val isArchived = productTag.product?.getStatus() == AmityProductStatus.ARCHIVED
                     if (!isArchived) {
                         addStyle(
-                            style = SpanStyle(AmityTheme.colors.highlight),
+                            style = SpanStyle(AmityTheme.colors.primary),
                             start = start,
                             end = safeEnd,
                         )
@@ -179,7 +179,7 @@ fun AmityExpandableText(
             resolvedLinks.forEach {
                 addStyle(
                     style = SpanStyle(
-                        color = AmityTheme.colors.highlight
+                        color = AmityTheme.colors.primary
                     ),
                     start = it.start,
                     end = it.end,

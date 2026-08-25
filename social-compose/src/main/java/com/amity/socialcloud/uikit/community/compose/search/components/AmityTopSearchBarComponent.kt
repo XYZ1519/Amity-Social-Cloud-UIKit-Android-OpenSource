@@ -141,7 +141,7 @@ fun AmityTopSearchBarComponent(
                     textStyle = AmityTheme.typography.bodyLegacy.copy(
                         color = AmityTheme.colors.base,
                     ),
-                    cursorBrush = SolidColor(AmityTheme.colors.highlight),
+                    cursorBrush = SolidColor(AmityTheme.colors.primary),
                     modifier = modifier
                         .weight(1f)
                         .padding(vertical = 14.dp)

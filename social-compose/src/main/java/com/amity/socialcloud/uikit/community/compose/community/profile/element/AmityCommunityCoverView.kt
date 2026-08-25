@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -64,6 +65,7 @@ import com.amity.socialcloud.uikit.community.compose.community.profile.component
 import com.amity.socialcloud.uikit.community.compose.utils.BlurImage
 import com.amity.socialcloud.uikit.community.compose.utils.gaussianBlur
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
+import com.amity.socialcloud.uikit.community.compose.R
 
 @Composable
 fun AmityCommunityCoverView(
@@ -270,16 +272,16 @@ fun AmityCommunityCoverView(
                         ) {
                             // Private badge - before community name
                             if (!community.isPublic()) {
-                                Box(modifier = Modifier
-                                    .size(24.dp)
-                                    .padding(top = 4.dp, end = 8.dp)
-                                ) {
+                                // No .size() wrapper here: it clamped the 20x16 icon into a
+                                // 24dp box minus padding, i.e. 16x20, which distorted the lock.
+                                Box(modifier = Modifier.padding(end = 8.dp)) {
                                     AmityBaseElement(
                                         elementId = "community_private_badge"
                                     ) {
                                         Image(
-                                            painter = painterResource(id = getConfig().getIcon()),
+                                            painter = painterResource(id = R.drawable.amity_ic_lock_badge),
                                             contentDescription = "Private community icon",
+                                            colorFilter = ColorFilter.tint(amityColorWhite),
                                             modifier = Modifier
                                                 .width(20.dp)
                                                 .height(16.dp)

@@ -1325,7 +1325,7 @@ fun AmityCreateLivestreamPage(
                     confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_create_livestream_discard_livestream_dialog_confirm_text"),
                     dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_cancel_button"),
                     confirmTextColor = AmityTheme.colors.alert,
-                    dismissTextColor = AmityTheme.colors.highlight,
+                    dismissTextColor = AmityTheme.colors.primary,
                     onConfirmation = {
                         context.closePageWithResult(Activity.RESULT_CANCELED)
                     },
@@ -1344,7 +1344,7 @@ fun AmityCreateLivestreamPage(
                     confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_create_livestream_end_livestream_dialog_confirm_text"),
                     dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_cancel_button"),
                     confirmTextColor = AmityTheme.colors.alert,
-                    dismissTextColor = AmityTheme.colors.highlight,
+                    dismissTextColor = AmityTheme.colors.primary,
                     onConfirmation = {
                         streamBroadcaster?.let {
                             endLivestream(

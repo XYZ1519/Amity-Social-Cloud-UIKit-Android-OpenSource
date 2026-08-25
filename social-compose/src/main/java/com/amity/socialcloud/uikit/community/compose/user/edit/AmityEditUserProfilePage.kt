@@ -124,6 +124,7 @@ fun AmityEditUserProfilePage(
             ) {
                 AmityToolBar(
                     pageScope = getPageScope(),
+                    title = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_edit_profile"),
                     onBackClick = {
                         if (isSaveButtonEnabled) {
                             showUnsavedDialog = true
@@ -171,6 +172,7 @@ fun AmityEditUserProfilePage(
                         )
                     }
 
+                    Spacer(modifier.height(4.dp))
                     AmityTextField(
                         text = displayName,
                         hint = amitySocialConfigString("amity_social_label_edit_user_display_name_title"),
@@ -180,7 +182,7 @@ fun AmityEditUserProfilePage(
                         onValueChange = {
                             displayName = it
                         },
-                        innerPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                        innerPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                         modifier = modifier,
                     )
                 }
@@ -230,15 +232,16 @@ fun AmityEditUserProfilePage(
                         )
                     }
 
+                    Spacer(modifier.height(4.dp))
                     AmityTextField(
                         text = about,
                         hint = amitySocialConfigString("amity_social_placeholder_edit_user_about_hint"),
-                        maxLines = 5,
+                        maxLines = 7,
                         maxCharacters = UserAboutLimit,
                         onValueChange = {
                             about = it
                         },
-                        innerPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+                        innerPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                         modifier = modifier,
                     )
                 }
@@ -280,7 +283,7 @@ fun AmityEditUserProfilePage(
                         onClick = {
                             if (shouldDisabledClicking) return@Button
                             viewModel.updateUser(
-                                displayName = displayName,
+                                displayName = displayName.takeIf { shouldAllowDisplayNameEditing },
                                 description = about,
                                 avatarUri = avatarUri,
                                 onSuccess = {
@@ -293,6 +296,7 @@ fun AmityEditUserProfilePage(
                                     AmityUIKitSnackbar.publishSnackbarErrorMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_profile_save_failed"))
                                 },
                                 onInappropriateImageError = {
+                                    shouldDisabledClicking = false
                                     showInappropriateImageDialog = true
                                 },
                                 onBlockedWordError = {

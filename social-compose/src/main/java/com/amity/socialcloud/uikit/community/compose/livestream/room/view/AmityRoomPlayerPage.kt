@@ -894,31 +894,48 @@ fun AmityRoomPlayerPage(
                                     //Disable leaving transition
                                     isLeaving
                                         -> {
-                                        Spacer(Modifier.weight(1f))
-                                        CircularProgressIndicator(
+                                        // The co-host tile starts at half the height (see
+                                        // trackHeightRatio in AmityStreamerView) and draws its
+                                        // username pill on a 36dp row 16dp inside it. Centring
+                                        // this block on the page put the title above that row and
+                                        // ran the description straight through the username, so
+                                        // anchor it to the seam and share the pill's row instead.
+                                        Box(
                                             modifier = Modifier
-                                                .width(40.dp)
-                                                .height(40.dp),
-                                            color = AmityTheme.colors.baseInverse,
-                                            trackColor = amityColorGray,
-                                            strokeWidth = 2.dp,
-                                            strokeCap = StrokeCap.Round
-                                        )
-                                        Spacer(Modifier.height(13.dp))
-                                        Text(
-                                            text = "Leaving stage…",
-                                            color = AmityTheme.colors.baseInverse,
-                                            style = AmityTheme.typography.titleLegacy.copy(
-                                                fontWeight = FontWeight.SemiBold
+                                                .fillMaxWidth()
+                                                .fillMaxHeight(0.5f),
+                                            contentAlignment = Alignment.BottomCenter
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier
+                                                    .width(40.dp)
+                                                    .height(40.dp),
+                                                color = AmityTheme.colors.baseInverse,
+                                                trackColor = amityColorGray,
+                                                strokeWidth = 2.dp,
+                                                strokeCap = StrokeCap.Round
                                             )
-                                        )
+                                        }
+                                        Spacer(Modifier.height(16.dp))
+                                        Box(
+                                            modifier = Modifier.height(36.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = amitySocialString("amity_social_leaving_stage"),
+                                                color = AmityTheme.colors.baseInverse,
+                                                style = AmityTheme.typography.titleLegacy.copy(
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            )
+                                        }
+                                        Spacer(Modifier.height(8.dp))
                                         Text(
                                             text = amitySocialString("amity_social_overlay_leaving_stage_description"),
                                             style = AmityTheme.typography.caption.copy(
                                                 color = AmityTheme.colors.baseInverse
                                             ),
                                         )
-                                        Spacer(Modifier.weight(1f))
                                     }
                                     liveKitRoomState == Room.State.DISCONNECTED && !isStarting -> {
                                         Row(
@@ -1756,7 +1773,7 @@ fun AmityRoomPlayerPage(
                 confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_leave"),
                 dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
                 confirmTextColor = AmityTheme.colors.alert,
-                dismissTextColor = AmityTheme.colors.highlight,
+                dismissTextColor = AmityTheme.colors.primary,
                 onConfirmation = {
                     viewModel.setIsStreamerMode(false)
                     showLeaveBackstageDialog = false
@@ -1776,7 +1793,7 @@ fun AmityRoomPlayerPage(
                 confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_leave"),
                 dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
                 confirmTextColor = AmityTheme.colors.alert,
-                dismissTextColor = AmityTheme.colors.highlight,
+                dismissTextColor = AmityTheme.colors.primary,
                 onConfirmation = {
                     viewModel.setIsLeaving(true)
                     leaveRoom(
@@ -1812,7 +1829,7 @@ fun AmityRoomPlayerPage(
                 confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_leave"),
                 dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
                 confirmTextColor = AmityTheme.colors.alert,
-                dismissTextColor = AmityTheme.colors.highlight,
+                dismissTextColor = AmityTheme.colors.primary,
                 onConfirmation = {
                     viewModel.setIsLeaving(true)
                     leaveLivestream(
@@ -2029,10 +2046,11 @@ fun CommunityRoomPlayerHeader(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        Spacer(Modifier.width(4.dp))
                         if (target.getCommunity()?.isOfficial() == true) {
                             AmityBaseElement(elementId = "community_official_badge") {
                                 Image(
-                                    painter = painterResource(id = getConfig().getIcon()),
+                                    painter = painterResource(id = R.drawable.amity_v4_verified_badge),
                                     contentDescription = "Verified Community",
                                     modifier = Modifier
                                         .size(16.dp)

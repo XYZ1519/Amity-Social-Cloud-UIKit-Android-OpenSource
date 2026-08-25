@@ -173,6 +173,7 @@ object AmitySocialStrings {
         // Livestream
         "amity_social_status_cohost_left" to R.string.amity_social_status_cohost_left,
         "amity_social_button_view_post" to R.string.amity_social_button_view_post,
+        "amity_social_leaving_stage" to R.string.amity_social_leaving_stage,
         "amity_social_overlay_leaving_stage_description" to R.string.amity_social_overlay_leaving_stage_description,
 
         // Permissions
@@ -698,6 +699,8 @@ object AmitySocialStrings {
         "amity_social_modal_dialog_remove_story_link" to R.string.amity_social_modal_dialog_remove_story_link,
         "amity_social_modal_dialog_upload_failed" to R.string.amity_social_modal_dialog_upload_failed,
         "amity_social_modal_dialog_hashtag_limit" to R.string.amity_social_modal_dialog_hashtag_limit,
+        "amity_social_modal_dialog_content_too_many_users_mentioned" to R.string.amity_social_modal_dialog_content_too_many_users_mentioned,
+        "amity_social_too_many_users_mentioned" to R.string.amity_social_too_many_users_mentioned,
         "amity_social_modal_dialog_link_limit" to R.string.amity_social_modal_dialog_link_limit,
         "amity_social_modal_dialog_product_tag_limit" to R.string.amity_social_modal_dialog_product_tag_limit,
         "amity_social_modal_dialog_unsaved_products" to R.string.amity_social_modal_dialog_unsaved_products,
@@ -705,6 +708,9 @@ object AmitySocialStrings {
         "amity_social_modal_dialog_banned_from_community" to R.string.amity_social_modal_dialog_banned_from_community,
         "amity_social_modal_dialog_livestream_time_limit" to R.string.amity_social_modal_dialog_livestream_time_limit,
         "amity_social_modal_dialog_post_pending_approval" to R.string.amity_social_modal_dialog_post_pending_approval,
+        "amity_social_modal_dialog_title_post_will_be_sent_for_review" to R.string.amity_social_modal_dialog_title_post_will_be_sent_for_review,
+        "amity_social_modal_dialog_edited_post_pending_approval" to R.string.amity_social_modal_dialog_edited_post_pending_approval,
+        "amity_social_toast_post_sent_for_review" to R.string.amity_social_toast_post_sent_for_review,
         "amity_social_button_block" to R.string.amity_social_button_block,
         "amity_social_label_choose_different_image" to R.string.amity_social_label_choose_different_image,
         "amity_social_label_choose_different_video" to R.string.amity_social_label_choose_different_video,
@@ -1145,6 +1151,7 @@ object AmitySocialStrings {
         "amity_social_you_havent_joined_any_communities" to R.string.amity_social_you_havent_joined_any_communities,
         // Group C camera permission remap
         "amity_social_status_allow_camera_desc" to R.string.amity_social_status_allow_camera_desc,
+        "amity_social_status_allow_camera_clip_desc" to R.string.amity_social_status_allow_camera_clip_desc,
         "amity_social_permission_camera_access_denied" to R.string.amity_social_permission_camera_access_denied,
 
         // Restored: keys removed incorrectly in commit 4e9775450

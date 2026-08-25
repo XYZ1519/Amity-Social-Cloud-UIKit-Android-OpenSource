@@ -791,8 +791,8 @@ private fun AmityProductSelectionBottomBar(
 
         Button(
             colors = ButtonDefaults.buttonColors(
-                containerColor = componentScope.getComponentTheme()?.primaryColor?.asColor() ?: AmityTheme.colors.highlight,
-                disabledContainerColor = componentScope.getComponentTheme()?.primaryColor?.asColor()?.copy(alpha = 0.3f) ?: AmityTheme.colors.highlight.shade(AmityColorShade.SHADE2),
+                containerColor = componentScope.getComponentTheme()?.primaryColor?.asColor() ?: AmityTheme.colors.primary,
+                disabledContainerColor = componentScope.getComponentTheme()?.primaryColor?.asColor()?.copy(alpha = 0.3f) ?: AmityTheme.colors.primary.shade(AmityColorShade.SHADE2),
             ),
             shape = RoundedCornerShape(4.dp),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),

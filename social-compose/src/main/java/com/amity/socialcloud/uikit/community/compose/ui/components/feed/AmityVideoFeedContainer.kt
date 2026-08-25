@@ -38,7 +38,9 @@ import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
 
 @Composable
 fun AmityVideoFeedContainer(
-    availablePostIds: Set<String> = emptySet(), // Pass current available post IDs
+    // null until the feed has loaded. An empty set means "loaded and everything is gone", which
+    // is exactly the case the previous isNotEmpty() sentinel could not express.
+    availablePostIds: Set<String>? = null,
     showMenuButton: Boolean = true,
     content: @Composable (
         openDialog: (AmityPost, onViewOriginalPost: (() -> Unit)?) -> Unit
@@ -55,7 +57,7 @@ fun AmityVideoFeedContainer(
         val postId = post.getPostId()
 
         // Check if the current dialog's post still exists in the available post IDs
-        val isItemDeleted = availablePostIds.isNotEmpty() && !availablePostIds.contains(postId)
+        val isItemDeleted = availablePostIds != null && !availablePostIds.contains(postId)
 
         if (isItemDeleted) {
             VideoNotAvailableDialog(

@@ -40,7 +40,6 @@ fun LazyListScope.amityCommentListLLS(
 ) {
     commentTarget?.let { target ->
         item(key = "highlighted_comment_${target.getCommentId()}") {
-            val isEventHost = eventHostId != null && target.getCreator()?.getUserId() == eventHostId
             AmityCommentView(
                 modifier = modifier
                     .let { if (showBounceEffect && replyTargetId == null) it.bounceEffect() else it },
@@ -52,7 +51,7 @@ fun LazyListScope.amityCommentListLLS(
                 includeDeleted = includeDeleted,
                 comment = target,
                 allowInteraction = shouldAllowInteraction,
-                isEventHost = isEventHost,
+                eventHostId = eventHostId,
                 onReply = onReply,
                 onEdit = onEdit,
                 replyTargetId = replyTargetId,
@@ -75,7 +74,6 @@ fun LazyListScope.amityCommentListLLS(
                     is AmityListItem.CommentItem -> {
                         // Skip this item if it matches our highlighted comment ID
                         if (commentTarget == null || data.comment.getCommentId() != commentTarget.getCommentId()) {
-                            val isEventHost = eventHostId != null && data.comment.getCreator()?.getUserId() == eventHostId
                             AmityCommentView(
                                 modifier = modifier,
                                 componentScope = componentScope,
@@ -87,7 +85,7 @@ fun LazyListScope.amityCommentListLLS(
                                 comment = data.comment,
                                 allowInteraction = shouldAllowInteraction,
                                 showEngagementRow = showEngagementRow,
-                                isEventHost = isEventHost,
+                                eventHostId = eventHostId,
                                 onReply = onReply,
                                 onEdit = onEdit,
                                 l2TargetId = l2TargetId,

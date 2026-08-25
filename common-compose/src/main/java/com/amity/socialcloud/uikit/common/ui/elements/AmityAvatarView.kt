@@ -91,7 +91,7 @@ fun AmityCommunityAvatarWithRoundedCornerView(
                 modifier = Modifier
                     .size(size)
                     .clip(roundedCornerShape)
-                    .background(AmityTheme.colors.baseShade3)
+                    .background(AmityTheme.colors.primaryShade1)
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.amity_ic_community_placeholder),
@@ -423,7 +423,7 @@ fun AmityAvatarView(
                 modifier = Modifier
                     .size(size)
                     .clip(CircleShape)
-                    .background(AmityTheme.colors.primaryShade2)
+                    .background(AmityTheme.colors.primaryShade1)
             ) {
                 Image(
                     painter = painterResource(id = placeholder),

@@ -130,6 +130,7 @@ fun AmityClipFeedPage(
 
     val isClipLoading by viewModel.isLoading.collectAsState()
     val isClipError by viewModel.isError.collectAsState()
+    val deletedClipIds by viewModel.deletedClipIds.collectAsState()
 
     // Create pager state
     val pagerState = rememberPagerState(
@@ -248,6 +249,19 @@ fun AmityClipFeedPage(
                 AmityClipLoadStateError(
                     onReloadClick = {
                         initializeClipQuery(type, viewModel)
+                    }
+                )
+            } else if (deletedClipIds.isNotEmpty() &&
+                getClipCount(type, amityClip, amityClips) == 0
+            ) {
+                // PDT-4554: the clip being watched was the last one in this feed, so the query has
+                // now dropped it and the pager has no pages left. Hold the deleted state here --
+                // otherwise the viewer is bounced to the "no clips yet" empty screen, which is for
+                // opening an already-empty feed and reads as if the clip never existed.
+                LaunchedEffect(Unit) { exoPlayer.pause() }
+                AmityClipPostDeleted(
+                    onNextClipClick = {
+                        context.closePageWithResult(Activity.RESULT_OK)
                     }
                 )
             } else if (shouldShowEmptyState(type, amityClip, amityClips)) {
@@ -390,7 +404,18 @@ fun AmityClipFeedPage(
                     }
 
                     clip?.let { clipData ->
-                        isPostDeleted = clipData.isDeleted() || isClipError == AmityError.ITEM_NOT_FOUND.code.toString()
+                        // PDT-4554: the shared paging data this feed renders from excludes deleted
+                        // posts and never re-emits one deleted mid-watch, so isDeleted() alone stays
+                        // false. Observe the live post for the clip on screen instead.
+                        if (page == pagerState.currentPage) {
+                            LaunchedEffect(clipData.getPostId()) {
+                                viewModel.observeClipDeletion(clipData.getPostId())
+                            }
+                        }
+
+                        isPostDeleted = clipData.isDeleted() ||
+                                clipData.getPostId() in deletedClipIds ||
+                                isClipError == AmityError.ITEM_NOT_FOUND.code.toString()
                         if (isPostDeleted) {
                             exoPlayer.pause()
                             AmityClipPostDeleted(
@@ -419,6 +444,7 @@ fun AmityClipFeedPage(
                                     community = communityData
                                 } else {
                                     toolbarTitle = clipData.getCreator()?.getDisplayName() ?: ""
+                                    community = null
                                 }
                             }
 

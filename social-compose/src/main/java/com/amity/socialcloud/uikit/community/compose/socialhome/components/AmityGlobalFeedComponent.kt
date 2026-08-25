@@ -56,6 +56,10 @@ fun AmityGlobalFeedComponent(
         componentId = "global_feed"
     ) {
         PullToRefreshBox(
+            // PDT-4657: pullRefreshState was created and handed to the indicator, but never
+            // to the box, so the box drove its own separate state and the indicator never
+            // tracked the drag -- the pull read as doing nothing.
+            state = pullRefreshState,
             isRefreshing = isRefreshing,
             onRefresh = onRefresh,
             indicator = {

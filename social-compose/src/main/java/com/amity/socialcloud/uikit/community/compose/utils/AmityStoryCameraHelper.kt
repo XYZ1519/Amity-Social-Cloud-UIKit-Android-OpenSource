@@ -54,6 +54,26 @@ object AmityStoryCameraHelper {
         cameraExecutor.shutdown()
     }
 
+    fun queryFlashAvailability(
+        context: Context,
+        isBackCameraSelected: Boolean,
+        onResult: (Boolean) -> Unit,
+    ) {
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
+        cameraProviderFuture.addListener({
+            val cameraSelector =
+                if (isBackCameraSelected) CameraSelector.DEFAULT_BACK_CAMERA
+                else CameraSelector.DEFAULT_FRONT_CAMERA
+            val hasFlashUnit = try {
+                cameraProviderFuture.get().getCameraInfo(cameraSelector).hasFlashUnit()
+            } catch (e: Exception) {
+                Log.d(TAG, "unable to read flash availability: ${e.message}")
+                false
+            }
+            onResult(hasFlashUnit)
+        }, ContextCompat.getMainExecutor(context))
+    }
+
     fun startCamera(
         context: Context,
         lifecycleOwner: LifecycleOwner,

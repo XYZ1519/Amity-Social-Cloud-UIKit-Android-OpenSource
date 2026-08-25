@@ -43,6 +43,7 @@ fun AmityEventDiscussionFeedComponent(
     lazyListState: LazyListState,
     header: LazyListScope.() -> Unit,
     shouldRefresh: Boolean = false,
+    eventHostId: String? = null,
 ) {
     val context = LocalContext.current
     val behavior by lazy {
@@ -133,7 +134,9 @@ fun AmityEventDiscussionFeedComponent(
                 pinPosts = pinPosts,
                 communityPosts = communityPosts,
                 excludedPostIds = excludedPostIds,
-                eventHostId = null,
+                // PDT-4606: forwarded so the Host badge can resolve; hardcoding null here
+                // suppressed it for every post and comment in the discussion feed.
+                eventHostId = eventHostId,
                 onClick = { post, _ ->
                     behavior.goToPostDetailPage(
                         AmityCommunityProfilePageBehavior.Context(
@@ -161,6 +164,7 @@ fun LazyListScope.amityEventDiscussionFeedItems(
     communityPosts: LazyPagingItems<AmityListItem>,
     excludedPostIds: List<String> = emptyList(),
     eventHostId: String? = null,
+    isNonMemberOfCommunity: Boolean? = null,
     onClick: (AmityPost, AmityPostCategory) -> Unit
 ) {
     // Render feed items directly in the parent LazyListScope
@@ -172,6 +176,7 @@ fun LazyListScope.amityEventDiscussionFeedItems(
         announcementPosts = announcementPosts,
         excludedPostIds = excludedPostIds,
         eventHostId = eventHostId,
+        isNonMemberOfCommunity = isNonMemberOfCommunity,
         onClick = onClick
     )
 }

@@ -90,10 +90,12 @@ fun AmitySelectedMediaComponent(
     var containerWidth by remember { mutableStateOf(0) }
     val density = LocalDensity.current
 
+    // PDT-4611: three columns squeezed each thumbnail to a third of the width, so the grid
+    // collapsed to a third of the height used by the one- and two-image layouts. Wrap at two
+    // columns instead, keeping thumbnails at a readable half-width square.
     val columnCount = when (selectedMediaFiles.size) {
         1 -> 1
-        2 -> 2
-        else -> 3
+        else -> 2
     }
 
     val spacing = 8.dp
@@ -415,7 +417,7 @@ fun AmitySelectedMediaElement(
                     modifier = Modifier
                         .align(Alignment.Center)
                         .size(24.dp),
-                    color = AmityTheme.colors.highlight,
+                    color = AmityTheme.colors.primary,
                     progress = media.currentProgress / 100f,
                     strokeWidth = 3.dp
                 )

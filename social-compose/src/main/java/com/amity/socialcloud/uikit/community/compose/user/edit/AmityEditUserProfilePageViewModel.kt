@@ -24,7 +24,7 @@ class AmityEditUserProfilePageViewModel : AmityBaseViewModel() {
     }
 
     fun updateUser(
-        displayName: String,
+        displayName: String?,
         description: String,
         avatarUri: Uri?,
         onSuccess: (AmityUser) -> Unit,
@@ -75,8 +75,12 @@ class AmityEditUserProfilePageViewModel : AmityBaseViewModel() {
                         val error = uploadStatus.getError()
                         if (error.code == 500000) {
                             onInappropriateImageError()
+                        } else {
+                            onError(error.message ?: DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_error_upload_image_failed"))
                         }
                     }
+
+                    is AmityUploadResult.CANCELLED -> onError(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_error_upload_image_failed"))
 
                     else -> {}
                 }
@@ -90,7 +94,7 @@ class AmityEditUserProfilePageViewModel : AmityBaseViewModel() {
     }
 
     private fun editUser(
-        displayName: String,
+        displayName: String?,
         description: String,
         avatar: AmityImage?,
         onSuccess: (AmityUser) -> Unit,
@@ -98,9 +102,9 @@ class AmityEditUserProfilePageViewModel : AmityBaseViewModel() {
         onBlockedWordError: () -> Unit,
     ) {
         AmityCoreClient.editUser()
-            .displayName(displayName)
             .description(description)
             .apply {
+                if (displayName != null) displayName(displayName)
                 if (avatar != null) avatar(avatar)
             }
             .build()

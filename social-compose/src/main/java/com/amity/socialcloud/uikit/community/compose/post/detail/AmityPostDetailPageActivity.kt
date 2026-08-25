@@ -31,6 +31,7 @@ class AmityPostDetailPageActivity : AppCompatActivity() {
         val rootId = intent.getStringExtra(EXTRA_PARAM_ROOT_ID)
         val replyToCommentId = intent.getStringExtra(EXTRA_PARAM_REPLY_TO)
         val eventHostId = intent.getStringExtra(EXTRA_PARAM_EVENT_HOST_ID)
+        val eventTargetCommunityId = intent.getStringExtra(EXTRA_PARAM_EVENT_TARGET_COMMUNITY_ID)
         val autoFocusCommentInput = intent.getBooleanExtra(EXTRA_PARAM_AUTO_FOCUS_COMMENT_INPUT, false)
 
         setContent {
@@ -48,6 +49,7 @@ class AmityPostDetailPageActivity : AppCompatActivity() {
                 rootId = rootId,
                 replyToCommentId = replyToCommentId,
                 eventHostId = eventHostId,
+                eventTargetCommunityId = eventTargetCommunityId,
                 autoFocusCommentInput = autoFocusCommentInput,
             )
         }
@@ -93,6 +95,7 @@ class AmityPostDetailPageActivity : AppCompatActivity() {
         private const val EXTRA_PARAM_ROOT_ID = "root_id"
         private const val EXTRA_PARAM_REPLY_TO = "reply_to_comment_id"
         private const val EXTRA_PARAM_EVENT_HOST_ID = "event_host_id"
+        private const val EXTRA_PARAM_EVENT_TARGET_COMMUNITY_ID = "event_target_community_id"
         private const val EXTRA_PARAM_AUTO_FOCUS_COMMENT_INPUT = "auto_focus_comment_input"
 
         fun newIntent(
@@ -106,6 +109,7 @@ class AmityPostDetailPageActivity : AppCompatActivity() {
             rootId: String? = null,
             replyTo: String? = null,
             eventHostId: String? = null,
+            eventTargetCommunityId: String? = null,
             autoFocusCommentInput: Boolean = false,
         ): Intent {
             return Intent(
@@ -121,6 +125,7 @@ class AmityPostDetailPageActivity : AppCompatActivity() {
                 putExtra(EXTRA_PARAM_ROOT_ID, rootId)
                 putExtra(EXTRA_PARAM_REPLY_TO, replyTo)
                 putExtra(EXTRA_PARAM_EVENT_HOST_ID, eventHostId)
+                putExtra(EXTRA_PARAM_EVENT_TARGET_COMMUNITY_ID, eventTargetCommunityId)
                 putExtra(EXTRA_PARAM_AUTO_FOCUS_COMMENT_INPUT, autoFocusCommentInput)
             }
         }

@@ -239,7 +239,7 @@ fun AmityCommentAdView(
                                     },
                                     shape = RoundedCornerShape(4.dp),
                                     colors = ButtonDefaults.textButtonColors(
-                                        containerColor = AmityTheme.colors.highlight,
+                                        containerColor = AmityTheme.colors.primary,
                                     ),
                                     modifier = Modifier.wrapContentWidth()
                                 ) {

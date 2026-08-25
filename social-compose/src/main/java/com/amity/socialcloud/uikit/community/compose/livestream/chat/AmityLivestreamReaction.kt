@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -91,12 +92,11 @@ fun ReactionPicker(
                         spotColor = amityColorBlack.copy(alpha = 0.1f),
                         ambientColor = amityColorBlack.copy(alpha = 0.1f)
                     )
-                    .background(
-                        color = amityColorWhite.copy(alpha = 0.4f),
-                        shape = RoundedCornerShape(size = 9999.dp)
-                    )
                     .clickable(enabled = false) { }, // Prevent dismiss when clicking card
                 shape = RoundedCornerShape(size = 9999.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = amityColorWhite.copy(alpha = 0.4f)
+                ),
             ) {
                 LazyRow(
                     modifier = Modifier.padding(8.dp),

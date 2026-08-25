@@ -102,6 +102,13 @@ class AmityCommunityMembershipPageViewModel(val communityId: String) : AmityBase
         return hasPermissionAtCommunity(AmityPermission.REMOVE_COMMUNITY_USER, communityId)
     }
 
+    // PDT-4621: promote/demote assign community + channel moderator roles, which the backend
+    // governs with ASSIGN_USER_ROLE. EDIT_COMMUNITY_USER does not grant it, so a custom role
+    // holding only the latter was offered a promote action that could never succeed.
+    fun hasAssignRolePermission(): Flowable<Boolean> {
+        return hasPermissionAtCommunity(AmityPermission.ASSIGN_USER_ROLE, communityId)
+    }
+
     fun updateSheetUIState(uiState: AmityCommunityMembershipSheetUIState) {
         viewModelScope.launch {
             _sheetUIState.value = uiState

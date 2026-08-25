@@ -95,6 +95,11 @@ fun AmityCreateStoryPage(
 
     var isBackCameraSelected by remember { mutableStateOf(true) }
     var isFlashLightOn by remember { mutableStateOf(false) }
+    var isFlashUnitAvailable by remember { mutableStateOf(true) }
+
+    // The selected camera may have no flash unit (most front cameras). Keep the button
+    // visible per design, but render it off and let taps do nothing.
+    val isFlashEffectivelyOn = isFlashLightOn && isFlashUnitAvailable
     var isCurrentlyRecording by remember { mutableStateOf(false) }
     var videoRecordDuration by remember { mutableIntStateOf(0) }
 
@@ -163,11 +168,22 @@ fun AmityCreateStoryPage(
         }
     }
 
+    LaunchedEffect(isCameraPermissionGranted, isBackCameraSelected) {
+        if (!isCameraPermissionGranted) return@LaunchedEffect
+
+        AmityStoryCameraHelper.queryFlashAvailability(
+            context = context,
+            isBackCameraSelected = isBackCameraSelected,
+        ) { hasFlashUnit ->
+            isFlashUnitAvailable = hasFlashUnit
+        }
+    }
+
     LaunchedEffect(
         isCameraPermissionGranted,
         isBackCameraSelected,
         isPhotoSelected,
-        isFlashLightOn,
+        isFlashEffectivelyOn,
     ) {
         if (!isCameraPermissionGranted) return@LaunchedEffect
 
@@ -176,7 +192,7 @@ fun AmityCreateStoryPage(
             lifecycleOwner = lifecycleOwner,
             isBackCameraSelected = isBackCameraSelected,
             isImageCaptureMode = isPhotoSelected,
-            isFlashLightOn = isFlashLightOn,
+            isFlashLightOn = isFlashEffectivelyOn,
         )
     }
 
@@ -246,24 +262,24 @@ fun AmityCreateStoryPage(
                         )
                     }
 
-                    if (isBackCameraSelected) {
-                        AmityMenuButton(
-                            icon = if (isFlashLightOn) R.drawable.amity_ic_story_flash else R.drawable.amity_ic_story_flash_off,
-                            size = if (isFlashLightOn) 19.dp else 24.dp,
-                            modifier = Modifier
-                                .statusBarsPadding()
-                                .size(32.dp)
-                                .constrainAs(flashBtn) {
-                                    top.linkTo(parent.top)
-                                    end.linkTo(parent.end, 16.dp)
-                                }
-                                .testTag("flash_light_button"),
-                            onClick = {
+                    AmityMenuButton(
+                        icon = if (isFlashEffectivelyOn) R.drawable.amity_ic_story_flash else R.drawable.amity_ic_story_flash_off,
+                        size = if (isFlashEffectivelyOn) 19.dp else 24.dp,
+                        modifier = Modifier
+                            .statusBarsPadding()
+                            .size(32.dp)
+                            .constrainAs(flashBtn) {
+                                top.linkTo(parent.top)
+                                end.linkTo(parent.end, 16.dp)
+                            }
+                            .testTag("flash_light_button"),
+                        onClick = {
+                            if (isFlashUnitAvailable) {
                                 haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 isFlashLightOn = !isFlashLightOn
                             }
-                        )
-                    }
+                        }
+                    )
                     AmityMenuButton(
                         icon = R.drawable.amity_ic_story_media,
                         size = 24.dp,

@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -83,14 +84,13 @@ fun AmityUpcomingEventsPage(
     AmityBasePage(pageId = "upcoming_events_page") {
         Scaffold(
             topBar = {
-                TopAppBar(
+                CenterAlignedTopAppBar(
                     title = {
                         Text(
                         text = amitySocialString("amity_social_status_upcoming_events"),
                         style = AmityTheme.typography.title.copy(fontWeight = FontWeight.Bold),
                         color = AmityTheme.colors.base,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        textAlign = TextAlign.Center
                     )
                 },
                 navigationIcon = {

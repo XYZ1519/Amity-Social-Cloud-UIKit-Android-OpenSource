@@ -133,6 +133,7 @@ fun AmityCommentActionsBottomSheet(
                     onError = {
                         AmityUIKitSnackbar.publishSnackbarErrorMessage(
                             message = commentDeleteFailedStr,
+                            offsetFromBottom = 70,
                         )
                     }
                 )
@@ -370,6 +371,7 @@ private fun submitReport(
         reason = reason,
         onSuccess = {
             AmityUIKitSnackbar.publishSnackbarMessage(
+                offsetFromBottom = 70,
                 message = if (!isReplyComment) {
                     reportedStr
                 } else {
@@ -385,6 +387,7 @@ private fun submitReport(
                     viewModel.updateSheetUIState(CommentBottomSheetState.OpenErrorSheet(commentId))
                 } else {
                     AmityUIKitSnackbar.publishSnackbarErrorMessage(
+                        offsetFromBottom = 70,
                         message = if (!isReplyComment) {
                             reportFailedStr
                         } else {
@@ -394,6 +397,7 @@ private fun submitReport(
                 }
             } else {
                 AmityUIKitSnackbar.publishSnackbarErrorMessage(
+                    offsetFromBottom = 70,
                     message = if (!isReplyComment) {
                         reportFailedStr
                     } else {
@@ -418,6 +422,7 @@ private fun submitUnReport(
         commentId = commentId,
         onSuccess = {
             AmityUIKitSnackbar.publishSnackbarMessage(
+                offsetFromBottom = 70,
                 message = if (!isReplyComment) {
                     unreportedStr
                 } else {
@@ -427,6 +432,7 @@ private fun submitUnReport(
         },
         onError = {
             AmityUIKitSnackbar.publishSnackbarErrorMessage(
+                offsetFromBottom = 70,
                 message = if (!isReplyComment) {
                     unreportFailedStr
                 } else {

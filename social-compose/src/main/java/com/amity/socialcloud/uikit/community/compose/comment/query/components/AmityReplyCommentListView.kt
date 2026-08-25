@@ -50,6 +50,7 @@ fun AmityReplyCommentListView(
     replies: List<AmityComment>,
     previewLines: Int = EXPANDABLE_TEXT_MAX_LINES,
     isL2Thread: Boolean = false,
+    eventHostId: String? = null,
     threadLineState: ThreadLineState? = null,
     onEdit: (String?) -> Unit,
     onReply: (String) -> Unit,
@@ -105,7 +106,8 @@ fun AmityReplyCommentListView(
     LaunchedEffect(replyUnavailable) {
         if (replyUnavailable) {
             AmityUIKitSnackbar.publishSnackbarErrorMessage(
-                DefaultAmitySocialStringProvider.getInstance().getString("amity_social_error_reply_no_longer_available_error_message")
+                message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_error_reply_no_longer_available_error_message"),
+                offsetFromBottom = 70,
             )
             commentViewModel.clearReplyUnavailable(commentId)
         }
@@ -142,6 +144,7 @@ fun AmityReplyCommentListView(
                             showEngagementRow = showEngagementRow,
                             comment = comment,
                             isL2Comment = true,
+                            eventHostId = eventHostId,
                             previewLines = previewLines,
                             onEdit = onEdit,
                             fromNonMemberCommunity = fromNonMemberCommunity,
@@ -189,6 +192,7 @@ fun AmityReplyCommentListView(
                                 showEngagementRow = showEngagementRow,
                                 comment = comment,
                                 isL2Comment = isL2Thread,
+                                eventHostId = eventHostId,
                                 previewLines = previewLines,
                                 onEdit = onEdit,
                                 replyTargetId = if (isL2Parent) l2TargetId else null,

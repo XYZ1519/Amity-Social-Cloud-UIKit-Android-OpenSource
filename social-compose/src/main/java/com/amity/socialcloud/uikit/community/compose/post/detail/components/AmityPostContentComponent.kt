@@ -76,8 +76,10 @@ fun AmityPostContentComponent(
     hideMenuButton: Boolean,
     hideTarget: Boolean = false,
     isEventHost: Boolean = false,
+    eventHostId: String? = null,
     onClipClick: (childPost: AmityPost) -> Unit = {},
     onTapAction: () -> Unit = {},
+    isNonMemberOfCommunity: Boolean? = null,
 ) {
     val context = LocalContext.current
     val behavior = remember {
@@ -87,6 +89,12 @@ fun AmityPostContentComponent(
     val isPostDetailPage = remember(style) {
         style == AmityPostContentComponentStyle.DETAIL
     }
+
+    // PDT-4606: isEventHost describes the POST's author, so it must not be handed to a comment.
+    // Comments need the host id and compare it against their own creator. Callers that still only
+    // supply isEventHost keep their previous behaviour through the fallback.
+    val resolvedEventHostId = eventHostId
+        ?: if (isEventHost) post.getCreator()?.getUserId() else null
 
     val viewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
         "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
@@ -363,6 +371,7 @@ fun AmityPostContentComponent(
                 componentScope = getComponentScope(),
                 post = post,
                 isPostDetailPage = isPostDetailPage,
+                isNonMemberOfCommunity = isNonMemberOfCommunity,
                 shareButtonClick = { postId ->
                     viewModel.updateSheetUIState(AmityPostMenuSheetUIState.OpenShareSheet(postId))
                 },
@@ -391,7 +400,7 @@ fun AmityPostContentComponent(
                                     postId = post.getPostId(),
                                     category = category,
                                     commentId = latestComment.getCommentId(),
-                                    eventHostId = if (isEventHost) post.getCreator()?.getUserId() else null,
+                                    eventHostId = resolvedEventHostId,
                                 )
                             },
                             componentScope = getComponentScope(),
@@ -401,7 +410,7 @@ fun AmityPostContentComponent(
                             editingCommentId = null,
                             comment = latestComment,
                             allowInteraction = true,
-                            isEventHost = isEventHost,
+                            eventHostId = resolvedEventHostId,
                             onReply = {
                                 commentBehavior.goToPostDetailPage(
                                     context = context,
@@ -409,7 +418,7 @@ fun AmityPostContentComponent(
                                     category = category,
                                     commentId = latestComment.getCommentId(),
                                     replyTo = latestComment.getCommentId(),
-                                    eventHostId = if (isEventHost) post.getCreator()?.getUserId() else null,
+                                    eventHostId = resolvedEventHostId,
                                 )
                             },
                             onEdit = {},

@@ -340,6 +340,23 @@ class AmityPostComposerPageViewModel : AmityMediaAttachmentViewModel() {
     private var previousUrl: String? = null
     private var metadataDisposable: io.reactivex.rxjava3.disposables.Disposable? = null
 
+    /**
+     * PDT-4615: seed Edit mode with the links already stored on the post so its existing preview is
+     * rendered. Those links carry their own domain/title/imageUrl, so no refetch is needed; the
+     * stored renderPreview flag is authoritative, meaning a preview the author dismissed before
+     * saving stays dismissed. previousUrl is deliberately left unset so that the first real text
+     * edit still refreshes the metadata through the normal updateDetectedUrls path.
+     */
+    fun restoreEditModeLinks(links: List<AmityLink>) {
+        if (links.isEmpty()) {
+            updateDetectedUrls(emptyList())
+            return
+        }
+        _detectedUrls.value = links
+        _linkPreviewMetadata.value = null
+        _isLinkPreviewDismissed.value = links.none { it.getRenderPreview() }
+    }
+
     fun updateDetectedUrls(urls: List<AmityLink>) {
         val firstUrl = urls.firstOrNull()?.getUrl()
 

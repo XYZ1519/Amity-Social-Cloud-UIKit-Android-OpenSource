@@ -98,9 +98,8 @@ fun AmityNotificationInvitationView(
     Column(modifier = modifier
         .fillMaxWidth()
         .background(
-            if (isSeen) AmityTheme.colors.background else AmityTheme.colors.primaryShade3.copy(
-                alpha = 0.3f
-            )
+            if (isSeen) AmityTheme.colors.background
+            else AmityTheme.colors.primary.copy(alpha = 0.2f)
         )
         .padding(16.dp)
     ) {
@@ -197,7 +196,7 @@ fun AmityNotificationInvitationView(
                 Text(
                     text = amitySocialString("amity_social_button_decline"),
                     style = AmityTheme.typography.bodyBold,
-                    color = AmityTheme.colors.baseShade1,
+                    color = AmityTheme.colors.base,
                 )
             }
         }

@@ -12,17 +12,21 @@ import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -124,7 +128,13 @@ fun ClipItem(
         mutableStateOf(Pair("",0))
     }
     val reacting by remember { reactingState }
-    var localReactionCount by remember(post.getReactionCount()) {
+    var localReactionCount by remember(
+        post.getReactionCount(),
+        parentPost?.getReactionCount()
+    ) {
+        // Keyed on both for the same reason the comment count below is: the value read here comes
+        // from the parent, so keying only on the child leaves the count frozen when the parent's
+        // is the one that moves.
         mutableIntStateOf(parentPost?.getReactionCount() ?: post.getReactionCount())
     }
 
@@ -247,6 +257,9 @@ fun ClipItem(
         AmityMentionMetadataGetter(parentPost?.getMetadata() ?: post.getMetadata() ?: JsonObject())
     val postDescription = (parentPost?.getData() as? AmityPost.Data.TEXT)?.getText()
         ?: (post.getData() as? AmityPost.Data.TEXT)?.getText() ?: ""
+
+    // Keyed on the post so the caption collapses again when the pager moves to another clip.
+    var isCaptionExpanded by remember(post.getPostId()) { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -431,28 +444,54 @@ fun ClipItem(
                         }
 
                         if (postDescription.isNotBlank()) {
-                            AmityClipExpandableText(
-                                modifier = Modifier,
-                                text = postDescription,
-                                mentionGetter = mentionGetter,
-                                mentionees = parentPost?.getMentionees() ?: post.getMentionees(),
-                                onClick = {
+                            val caption: @Composable () -> Unit = {
+                                AmityClipExpandableText(
+                                    modifier = Modifier,
+                                    text = postDescription,
+                                    mentionGetter = mentionGetter,
+                                    mentionees = parentPost?.getMentionees() ?: post.getMentionees(),
+                                    onClick = {
 
-                                },
-                                onMentionedUserClick = {
-                                    behavior.goToUserProfilePage(
-                                        context = context,
-                                        userId = it,
-                                    )
-                                },
-                                seeMoreClick = {
-                                    behavior.goToPostDetailPage(
-                                        context = context,
-                                        postId = post.getPostId(),
-                                    )
-                                },
-                                previewLines = 3
-                            )
+                                    },
+                                    onMentionedUserClick = {
+                                        behavior.goToUserProfilePage(
+                                            context = context,
+                                            userId = it,
+                                        )
+                                    },
+                                    seeMoreClick = {
+                                        isCaptionExpanded = true
+                                    },
+                                    intialExpand = isCaptionExpanded,
+                                    previewLines = 3
+                                )
+                            }
+
+                            if (isCaptionExpanded) {
+                                BoxWithConstraints {
+                                    Column(
+                                        modifier = Modifier
+                                            .heightIn(max = maxHeight * CaptionExpandedHeightFraction)
+                                            .verticalScroll(rememberScrollState())
+                                    ) {
+                                        caption()
+                                    }
+                                }
+
+                                Text(
+                                    text = DefaultAmitySocialStringProvider.getInstance()
+                                        .getString("amity_social_button_see_less"),
+                                    style = AmityTheme.typography.bodyBold,
+                                    color = AmityTheme.colors.baseInverse,
+                                    modifier = Modifier
+                                        .padding(top = 12.dp)
+                                        .clickableWithoutRipple {
+                                            isCaptionExpanded = false
+                                        }
+                                )
+                            } else {
+                                caption()
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -590,6 +629,10 @@ fun ClipItem(
                                         if (!longPressDetected) {
                                             if (AmityCoreClient.isVisitor()) {
                                                 behavior.handleVisitorUserAction()
+                                            } else if (community != null && !isCommunityJoined) {
+                                                // Same guard the long-press branch applies; without
+                                                // it a non-member could like by tapping.
+                                                AmityUIKitSnackbar.publishSnackbarErrorMessage(message = joinCommunityForClipStr)
                                             } else if (reacting.first.isEmpty()) {
                                                 // This was a tap, handle the like/unlike action
                                                 val previousReaction = myReaction
@@ -604,7 +647,10 @@ fun ClipItem(
                                                     localReactionCount += 1
                                                 }
                                                 viewModel.changeReaction(
-                                                    postId = post.getPostId(),
+                                                    // The count shown comes from the parent, and every
+                                                    // other reaction path already targets it; reacting on
+                                                    // the child here left the displayed number untouched.
+                                                    postId = parentPost?.getPostId() ?: post.getPostId(),
                                                     reactionName = if (myReactionState.value.isNotEmpty()) POST_REACTION else previousReaction,
                                                     isReacted = myReactionState.value.isNotEmpty()
                                                 )
@@ -777,3 +823,4 @@ fun ClipItem(
     }
 }
 
+private const val CaptionExpandedHeightFraction = 0.4f

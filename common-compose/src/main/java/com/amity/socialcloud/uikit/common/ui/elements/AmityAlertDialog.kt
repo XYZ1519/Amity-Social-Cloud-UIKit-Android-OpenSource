@@ -20,7 +20,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.ui.theme.AmityGlobalPalette
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
+
 
 
 @Composable
@@ -29,7 +31,7 @@ fun AmityAlertDialog(
     dialogText: String,
     confirmText: String,
     dismissText: String,
-    confirmTextColor: Color = AmityTheme.colors.highlight,
+    confirmTextColor: Color = AmityTheme.colors.primary,
     dismissTextColor: Color = AmityTheme.colors.baseShade1,
     onConfirmation: () -> Unit,
     onDismissRequest: () -> Unit = {},
@@ -52,41 +54,43 @@ fun AmityAlertDialog(
     dialogText: AnnotatedString,
     confirmText: String,
     dismissText: String,
-    confirmTextColor: Color = AmityTheme.colors.highlight,
+    confirmTextColor: Color = AmityTheme.colors.primary,
     dismissTextColor: Color = AmityTheme.colors.secondaryShade2,
     onConfirmation: () -> Unit,
     onDismissRequest: () -> Unit = {},
 ) {
     Dialog(onDismissRequest = { onDismissRequest() }) {
-        Surface(
-            color = AmityTheme.colors.sheetBackground,
-            modifier = Modifier.width(300.dp)
-        ) {
-            Column {
-                AmityAlertDialogContentView(
-                    title = dialogTitle,
-                    message = dialogText,
-                )
-
-                Spacer(modifier = Modifier.height(22.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .padding(8.dp)
-                ) {
-                    AmityAlertDialogActionButton(
-                        text = dismissText,
-                        color = dismissTextColor,
-                        onClick = onDismissRequest
+        AmityGlobalPalette {
+            Surface(
+                color = AmityTheme.colors.sheetBackground,
+                modifier = Modifier.width(300.dp)
+            ) {
+                Column {
+                    AmityAlertDialogContentView(
+                        title = dialogTitle,
+                        message = dialogText,
                     )
 
-                    AmityAlertDialogActionButton(
-                        text = confirmText,
-                        color = confirmTextColor,
-                        onClick = onConfirmation,
-                    )
+                    Spacer(modifier = Modifier.height(22.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(8.dp)
+                    ) {
+                        AmityAlertDialogActionButton(
+                            text = dismissText,
+                            color = dismissTextColor,
+                            onClick = onDismissRequest
+                        )
+
+                        AmityAlertDialogActionButton(
+                            text = confirmText,
+                            color = confirmTextColor,
+                            onClick = onConfirmation,
+                        )
+                    }
                 }
             }
         }
@@ -116,28 +120,30 @@ fun AmityAlertDialog(
     onDismissRequest: () -> Unit = {},
 ) {
     Dialog(onDismissRequest = { onDismissRequest() }) {
-        Surface(
-            color = AmityTheme.colors.sheetBackground,
-            modifier = Modifier.width(300.dp)
-        ) {
-            Column {
-                AmityAlertDialogContentView(
-                    title = dialogTitle,
-                    message = dialogText,
-                )
-
-                Spacer(modifier = Modifier.height(22.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .padding(8.dp)
-                ) {
-                    AmityAlertDialogActionButton(
-                        text = dismissText,
-                        onClick = onDismissRequest
+        AmityGlobalPalette {
+            Surface(
+                color = AmityTheme.colors.sheetBackground,
+                modifier = Modifier.width(300.dp)
+            ) {
+                Column {
+                    AmityAlertDialogContentView(
+                        title = dialogTitle,
+                        message = dialogText,
                     )
+
+                    Spacer(modifier = Modifier.height(22.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(8.dp)
+                    ) {
+                        AmityAlertDialogActionButton(
+                            text = dismissText,
+                            onClick = onDismissRequest
+                        )
+                    }
                 }
             }
         }
@@ -156,36 +162,38 @@ fun AmityAlertDialog(
     onDismissRequest: () -> Unit = {},
 ) {
     Dialog(onDismissRequest = { onDismissRequest() }) {
-        Surface(
-            color = AmityTheme.colors.sheetBackground,
-            modifier = Modifier.width(300.dp)
-        ) {
-            Column {
-                AmityAlertDialogContentView(
-                    title = dialogTitle,
-                    message = AnnotatedString(dialogText)
-                )
+        AmityGlobalPalette {
+            Surface(
+                color = AmityTheme.colors.sheetBackground,
+                modifier = Modifier.width(300.dp)
+            ) {
+                Column {
+                    AmityAlertDialogContentView(
+                        title = dialogTitle,
+                        message = AnnotatedString(dialogText)
+                    )
 
-                Spacer(modifier = Modifier.height(22.dp))
+                    Spacer(modifier = Modifier.height(22.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier
-                        .align(Alignment.End)
-                        .padding(8.dp)
-                ) {
-                    AmityAlertDialogActionButton(
-                        text = dismissText,
-                        onClick = onDismissRequest,
-                    )
-                    AmityAlertDialogActionButton(
-                        text = action1Text,
-                        onClick = onAction1,
-                    )
-                    AmityAlertDialogActionButton(
-                        text = action2Text,
-                        onClick = onAction2,
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(8.dp)
+                    ) {
+                        AmityAlertDialogActionButton(
+                            text = dismissText,
+                            onClick = onDismissRequest,
+                        )
+                        AmityAlertDialogActionButton(
+                            text = action1Text,
+                            onClick = onAction1,
+                        )
+                        AmityAlertDialogActionButton(
+                            text = action2Text,
+                            onClick = onAction2,
+                        )
+                    }
                 }
             }
         }
@@ -230,7 +238,7 @@ fun AmityAlertDialogContentView(
 @Composable
 fun AmityAlertDialogActionButton(
     text: String,
-    color: Color = AmityTheme.colors.highlight,
+    color: Color = AmityTheme.colors.primary,
     onClick: () -> Unit
 ) {
     Text(

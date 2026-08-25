@@ -27,7 +27,7 @@ fun AmityAnnotatedText(
     mentionGetter: AmityMentionMetadataGetter,
     mentionees: List<AmityMentionee>,
     style: TextStyle = AmityTheme.typography.bodyLegacy,
-    highlightColor: Color = AmityTheme.colors.highlight,
+    highlightColor: Color = AmityTheme.colors.primary,
     onLongPress: () -> Unit = {},
 ) {
     val uriHandler = LocalUriHandler.current
