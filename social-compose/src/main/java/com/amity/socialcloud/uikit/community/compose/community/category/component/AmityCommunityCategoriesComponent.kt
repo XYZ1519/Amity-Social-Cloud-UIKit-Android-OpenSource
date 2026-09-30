@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -34,7 +35,7 @@ import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
-import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.community.compose.community.bycategory.AmityCommunitiesByCategoryPageActivity
 import com.amity.socialcloud.uikit.community.compose.community.category.AmityAllCategoriesPageActivity
 import com.amity.socialcloud.uikit.community.compose.community.category.element.AmityCommunityCategoryElement
@@ -45,7 +46,8 @@ import com.amity.socialcloud.uikit.community.compose.localization.amitySocialStr
 fun AmityCommunityCategoriesComponent(
     modifier: Modifier = Modifier,
     pageScope: AmityComposePageScope? = null,
-    onStateChanged: (AmityCommunityCategoriesViewModel.CategoryListState) -> Unit = {}
+    onStateChanged: (AmityCommunityCategoriesViewModel.CategoryListState) -> Unit = {},
+    refreshKey: Int = 0,
 ) {
     val context = LocalContext.current
 
@@ -60,6 +62,12 @@ fun AmityCommunityCategoriesComponent(
     }.collectAsLazyPagingItems()
 
     val categoryListState by viewModel.categoryListState.collectAsState()
+
+    LaunchedEffect(refreshKey) {
+        if (refreshKey > 0) {
+            categories.refresh()
+        }
+    }
 
     AmityBaseComponent(
         pageScope = pageScope,
@@ -139,7 +147,7 @@ fun AmityCommunityCategoriesComponent(
                                         )
                                         Spacer(modifier.width(4.dp))
                                         Icon(
-                                            painter = painterResource(R.drawable.amity_ic_chevron_right),
+                                            painter = painterResource(CommonComposeR.drawable.amity_ic_chevron_right),
                                             contentDescription = "more",
                                             tint = AmityTheme.colors.baseShade1,
                                             modifier = modifier

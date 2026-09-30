@@ -58,6 +58,7 @@ fun AdvancedScreen(
     viewModel: LoginViewModel,
     onBack: () -> Unit,
     onLoginSuccess: () -> Unit,
+    onModuleFlagsClick: () -> Unit = {},
 ) {
     val config by viewModel.config.collectAsState()
     val loginState by viewModel.loginState.collectAsState()
@@ -215,6 +216,13 @@ fun AdvancedScreen(
                     checked = config.socialCommunityCreationButtonVisible,
                     onCheckedChange = { viewModel.updateSocialCommunityCreation(it) },
                 )
+                RowDivider()
+                ToggleRow(
+                    label = "In-app PiP Testing",
+                    subtitle = "Click product tag on livestream to force to open home screen",
+                    checked = config.inAppPipTesting,
+                    onCheckedChange = { viewModel.updateInAppPipTesting(it) },
+                )
             }
 
             // APPEARANCE section
@@ -264,6 +272,34 @@ fun AdvancedScreen(
                     checked = config.syncNetworkConfig,
                     onCheckedChange = { viewModel.updateSyncNetworkConfig(it) },
                 )
+
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 14.dp)
+                        .height(1.dp)
+                        .background(PageBg),
+                )
+
+                val moduleSummary = rememberModuleSummary("sample-module-card-advanced")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onModuleFlagsClick() }
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                        Text("Phase 1 Modules", fontSize = 15.sp, color = Ink)
+                        Text(
+                            moduleSummary,
+                            fontSize = 11.sp, color = Muted,
+                            modifier = Modifier.padding(top = 3.dp),
+                        )
+                    }
+                    Text("›", fontSize = 20.sp, color = Muted)
+                }
             }
         }
 

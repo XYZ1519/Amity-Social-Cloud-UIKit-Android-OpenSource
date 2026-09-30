@@ -13,6 +13,7 @@ fun AmityPost.isSupportedDataTypes(): Boolean {
                 || data is AmityPost.Data.LIVE_STREAM
                 || data is AmityPost.Data.POLL
                 || data is AmityPost.Data.ROOM
+                || data is AmityPost.Data.EVENT
     }
 }
 

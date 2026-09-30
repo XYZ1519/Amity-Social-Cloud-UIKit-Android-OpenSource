@@ -1,6 +1,9 @@
 package com.amity.socialcloud.uikit.common.ui.base
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -12,6 +15,7 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -40,6 +44,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import com.amity.socialcloud.uikit.common.ui.theme.AmityComposeTheme
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import org.joda.time.DateTime
@@ -55,6 +60,12 @@ fun AmityBasePage(
     // How far the toast clears the bottom of the screen. A page with a compose bar has to lift it by
     // the bar's own height, so the value belongs to the page rather than to the toast.
     toastBottomPadding: Dp = if (useAmityToast) 72.dp else 16.dp,
+    // Toasts are published on a process-wide bus that every composed page listens to, so a page
+    // that is still composed but not the one the viewer is looking at will render them too. A
+    // page floating in Picture-in-Picture is exactly that case: its window shows video only, and
+    // a toast there covers the stream while the screen the viewer actually tapped shows nothing.
+    // Set false while floating; the foreground page still receives the same emission and shows it.
+    showSnackbar: Boolean = true,
     content: @Composable AmityComposePageScope.() -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -91,6 +102,29 @@ fun AmityBasePage(
         }
     }
 
+    // The exclusion check used to sit inside the Scaffold, around the content
+    // only, so a page whose module was switched off still painted a full-screen
+    // background — the white screen a customer reads as a crash. Nothing renders
+    // now, and a UIKit-owned Activity showing nothing closes itself, so a stale
+    // deep link or a door somebody forgot to gate lands back where it came from
+    // instead of on an empty screen.
+    if (comp.isExcluded()) {
+        val context = LocalContext.current
+        LaunchedEffect(pageId) {
+            var candidate: Context? = context
+            while (candidate is ContextWrapper) {
+                if (candidate is Activity &&
+                    candidate::class.java.name.startsWith("com.amity.socialcloud.uikit")
+                ) {
+                    candidate.finish()
+                    return@LaunchedEffect
+                }
+                candidate = candidate.baseContext
+            }
+        }
+        return
+    }
+
     AmityComposeTheme(pageScope = comp, lastThemeUpdate = lastThemeUpdate) {
         CompositionLocalProvider(
             LocalAmityCommonStringProvider provides DefaultAmityCommonStringProvider.getInstance()
@@ -98,6 +132,7 @@ fun AmityBasePage(
             Scaffold(
                 containerColor = AmityTheme.colors.background,
                 snackbarHost = {
+                    if (!showSnackbar) return@Scaffold
                     SnackbarHost(
                         hostState = snackbarHostState,
                         modifier = Modifier
@@ -171,9 +206,7 @@ fun AmityBasePage(
                     testTagsAsResourceId = true
                 }
             ) {
-                if (!comp.isExcluded()) {
-                    content(comp)
-                }
+                content(comp)
             }
         }
     }

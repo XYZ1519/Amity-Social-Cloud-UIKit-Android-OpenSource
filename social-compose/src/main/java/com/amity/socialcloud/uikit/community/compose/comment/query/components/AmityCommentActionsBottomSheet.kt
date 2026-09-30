@@ -37,6 +37,7 @@ import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
+import com.amity.socialcloud.uikit.common.R as CommonR
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentViewModel
@@ -56,6 +57,7 @@ fun AmityCommentActionsBottomSheet(
     commentId: String,
     isReplyComment: Boolean,
     isCommentCreatedByMe: Boolean,
+    canDeleteComment: Boolean = false,
     isFlaggedByMe: Boolean,
     isFailed: Boolean,
     fromNonMemberCommunity: Boolean,
@@ -162,6 +164,7 @@ fun AmityCommentActionsBottomSheet(
                         commentId = commentId,
                         isReplyComment = isReplyComment,
                         isCommentCreatedByMe = isCommentCreatedByMe,
+                        canDeleteComment = canDeleteComment,
                         isFlaggedByMe = isFlaggedByMe,
                         isFailed = isFailed,
                         onEdit = onEdit,
@@ -291,6 +294,7 @@ fun AmityCommentActionsContainer(
     commentId: String,
     isReplyComment: Boolean,
     isCommentCreatedByMe: Boolean,
+    canDeleteComment: Boolean = false,
     isFlaggedByMe: Boolean,
     isFailed: Boolean,
     onEdit: () -> Unit,
@@ -307,7 +311,7 @@ fun AmityCommentActionsContainer(
         if (isCommentCreatedByMe) {
             if (!isFailed) {
                 AmityBottomSheetActionItem(
-                    icon = R.drawable.amity_ic_edit_profile,
+                    icon = CommonR.drawable.amity_ic_edit_profile,
                     text = DefaultAmitySocialStringProvider.getInstance().getString(
                         if (isReplyComment) "amity_social_button_edit_reply"
                         else "amity_social_button_edit_comment"
@@ -320,7 +324,7 @@ fun AmityCommentActionsContainer(
             }
 
             AmityBottomSheetActionItem(
-                icon = R.drawable.amity_ic_delete_story,
+                icon = CommonR.drawable.amity_ic_delete_story,
                 text = DefaultAmitySocialStringProvider.getInstance().getString(
                     if (isReplyComment) "amity_social_button_delete_reply"
                     else "amity_social_button_delete_comment"
@@ -349,6 +353,22 @@ fun AmityCommentActionsContainer(
                 modifier = modifier.testTag("comment_tray_component/bottom_sheet_report_comment_button"),
             ) {
                 onReportClick()
+            }
+
+            // Moderator delete: a non-author who holds the target's delete permission can remove
+            // this comment. Uses the same delete flow (confirm dialog -> viewModel.deleteComment).
+            if (canDeleteComment && !isFailed) {
+                AmityBottomSheetActionItem(
+                    icon = CommonR.drawable.amity_ic_delete_story,
+                    text = DefaultAmitySocialStringProvider.getInstance().getString(
+                        if (isReplyComment) "amity_social_button_delete_reply"
+                        else "amity_social_button_delete_comment"
+                    ),
+                    color = AmityTheme.colors.alert,
+                    modifier = modifier.testTag("comment_tray_component/bottom_sheet_delete_comment_button"),
+                ) {
+                    onDeleteClick()
+                }
             }
         }
     }

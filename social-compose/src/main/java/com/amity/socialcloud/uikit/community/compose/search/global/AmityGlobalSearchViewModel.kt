@@ -9,6 +9,7 @@ import com.amity.socialcloud.sdk.api.core.user.search.AmityUserSearchMatchType
 import com.amity.socialcloud.sdk.api.core.user.search.AmityUserSortOption
 import com.amity.socialcloud.sdk.api.social.AmitySocialClient
 import com.amity.socialcloud.sdk.helper.core.coroutines.asFlow
+import com.amity.socialcloud.sdk.model.core.search.AmitySearchUserBy
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunityFilter
@@ -22,6 +23,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.debounce
 import java.util.concurrent.TimeUnit
+import com.amity.socialcloud.uikit.common.config.AmityUIKitDataGate
+import com.amity.socialcloud.uikit.common.config.AmityUIKitFeature
+import com.amity.socialcloud.uikit.community.compose.dropGatedPostTypes
 
 class AmityGlobalSearchViewModel : AmityBaseViewModel() {
 
@@ -74,8 +78,9 @@ class AmityGlobalSearchViewModel : AmityBaseViewModel() {
         _postListState.value = state
     }
 
-    fun searchCommunities(): Flow<PagingData<AmityCommunity>> {
-        return AmitySocialClient.newCommunityRepository()
+    fun searchCommunities(): Flow<PagingData<AmityCommunity>> =
+        AmityUIKitDataGate.paging(AmityUIKitFeature.COMMUNITY) {
+        AmitySocialClient.newCommunityRepository()
             .searchCommunities(_keyword.value, includeDiscoverablePrivateCommunity = true)
             .run {
                 if (_searchType.value == AmityGlobalSearchType.MY_COMMUNITY) {
@@ -99,6 +104,7 @@ class AmityGlobalSearchViewModel : AmityBaseViewModel() {
             .searchUsers(_keyword.value)
             .sortBy(AmityUserSortOption.DISPLAYNAME)
             .matchType(AmityUserSearchMatchType.PARTIAL)
+            .searchBy(listOf(AmitySearchUserBy.DISPLAY_NAME))
             .build()
             .query()
             .subscribeOn(Schedulers.io())
@@ -122,6 +128,7 @@ class AmityGlobalSearchViewModel : AmityBaseViewModel() {
                     targetType = null
                 )
         }
+                .dropGatedPostTypes()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .throttleLatest(300, TimeUnit.MILLISECONDS)

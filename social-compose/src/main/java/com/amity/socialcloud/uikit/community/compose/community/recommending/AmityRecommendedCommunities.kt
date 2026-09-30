@@ -21,6 +21,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -46,7 +49,7 @@ import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
 import com.amity.socialcloud.sdk.model.social.community.AmityJoinRequest
 import com.amity.socialcloud.sdk.model.social.community.AmityJoinRequestStatus
 import com.amity.socialcloud.uikit.common.common.readableNumber
-import com.amity.socialcloud.uikit.common.compose.R
+import com.amity.socialcloud.uikit.common.R as CommonR
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
@@ -67,6 +70,7 @@ fun AmityRecommendedCommunitiesComponent(
     modifier: Modifier = Modifier,
     pageScope: AmityComposePageScope? = null,
     onStateChanged: (AmityRecommendedCommunitiesViewModel.CommunityListState) -> Unit = {},
+    refreshKey: Int = 0,
 ) {
     val context = LocalContext.current
     val behavior by lazy {
@@ -80,12 +84,23 @@ fun AmityRecommendedCommunitiesComponent(
         viewModel<AmityRecommendedCommunitiesViewModel>(viewModelStoreOwner = viewModelStoreOwner)
 
     // Remember the Flow of communities
-    val communitiesFlow = remember {
+    var lastCommunities by remember { mutableStateOf(emptyList<AmityCommunity>()) }
+    val communitiesFlow = remember(refreshKey) {
         viewModel.getRecommendedCommunities()
     }
 
-    val communities by communitiesFlow.collectAsState(initial = emptyList())
+    val communities by communitiesFlow.collectAsState(initial = lastCommunities)
+    LaunchedEffect(communities) {
+        if (communities.isNotEmpty()) {
+            lastCommunities = communities
+        }
+    }
     val communityListState by viewModel.communityListState.collectAsState()
+    val resolvedListState = if (communities.isNotEmpty()) {
+        AmityRecommendedCommunitiesViewModel.CommunityListState.SUCCESS
+    } else {
+        communityListState
+    }
 
     val joinRequests by viewModel.joinRequestList.collectAsState()
 
@@ -94,7 +109,7 @@ fun AmityRecommendedCommunitiesComponent(
         componentId = "recommended_communities"
     ) {
         onStateChanged(communityListState)
-        when (communityListState) {
+        when (resolvedListState) {
             AmityRecommendedCommunitiesViewModel.CommunityListState.SUCCESS -> {
                 Column(
                     modifier = modifier
@@ -166,7 +181,7 @@ fun AmityRecommendedCommunitiesComponent(
 fun AmityRecommendedCommunityAvatarView(
     modifier: Modifier = Modifier,
     image: AmityImage?,
-    placeholder: Int = R.drawable.amity_ic_community_placeholder,
+    placeholder: Int = CommonR.drawable.amity_ic_community_placeholder,
 ) {
     val url = image?.getUrl(AmityImage.Size.MEDIUM)?.ifEmpty { null }
 
@@ -233,7 +248,7 @@ fun AmityRecommendedCommunityAvatarView(
                             bottomEnd = 0.dp
                         )
                     )
-                    .background(AmityTheme.colors.primaryShade1)
+                    .background(AmityTheme.colors.secondaryShade3)
             ) {
                 Icon(
                     painter = painterResource(id = placeholder),

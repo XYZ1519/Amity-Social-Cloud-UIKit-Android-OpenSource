@@ -49,7 +49,7 @@ import com.amity.socialcloud.uikit.chat.compose.home.AmityChatHomePageActivity
 import com.amity.socialcloud.uikit.chat.compose.home.element.AmityUserAvatarView
 import com.amity.socialcloud.uikit.chat.compose.notification.AmityGroupNotificationPreferencePageActivity
 import com.amity.socialcloud.uikit.chat.compose.notification.AmityEditGroupNotificationPageActivity
-import com.amity.socialcloud.uikit.common.compose.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityAvatar
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityAvatarSize
@@ -78,8 +78,11 @@ fun AmityGroupSettingPage(
     val viewModel = remember { AmityGroupSettingPageViewModel(channelId) }
     val channel by viewModel.getChannelFlow().collectAsState(initial = null)
     val members by viewModel.getMembers().collectAsState(initial = emptyList())
-    val memberRoles by viewModel.memberRoles.collectAsState(initial = emptyMap())
-    val isModerator = memberRoles[AmityCoreClient.getUserId()]?.any { it.contains(AmityConstants.CHANNEL_MODERATOR_ROLE) } == true
+    // Per-tile channel permissions, replacing the old channel-moderator role check.
+    val canEditChannel by remember { viewModel.canEditChannel() }.collectAsState(initial = false)
+    val canMuteChannel by remember { viewModel.canMuteChannel() }.collectAsState(initial = false)
+    val canBanUser by remember { viewModel.canBanUser() }.collectAsState(initial = false)
+    val showModeratorSection = canEditChannel || canMuteChannel || canBanUser
     val notificationsEnabled by viewModel.notificationsEnabled.collectAsState()
     val context = LocalContext.current
 
@@ -119,7 +122,7 @@ fun AmityGroupSettingPage(
                     style = AmityButtonStyle.GHOST,
                     hierarchy = AmityButtonHierarchy.SECONDARY,
                     iconSize = AmityIconButtonSize.SIZE32,
-                    icon = CommonR.drawable.amity_ic_chevron_left,
+                    icon = CommonComposeR.drawable.amity_ic_chevron_left,
                     onClick = { (context as? Activity)?.finish() },
                     modifier = Modifier.align(Alignment.CenterStart),
                 )
@@ -161,97 +164,98 @@ fun AmityGroupSettingPage(
                         AmityAvatar(
                             variant = AmityAvatarVariant.Image,
                             imageUrl = channel?.getAvatar()?.getUrl(AmityImage.Size.MEDIUM),
-                            icon = CommonR.drawable.amity_ic_comments_alt_s,
+                            icon = CommonComposeR.drawable.amity_ic_comments_alt_s,
                             style = AmityAvatarStyle.Squared,
                             size = AmityAvatarSize.Size120,
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                // Moderator section — each tile gates on its own channel permission. The section
+                // header only appears when at least one tile is visible.
+                if (showModeratorSection) {
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                AmityBanner(
-                    hierarchy = AmityBannerHierarchy.DEFAULT,
-                    header = amityChatString("chat.group.settings.section"),
-                )
+                    AmityBanner(
+                        hierarchy = AmityBannerHierarchy.DEFAULT,
+                        header = amityChatString("chat.group.settings.section"),
+                    )
 
-                // Moderator section (moderator only)
-                if (isModerator) {
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    SettingItem(
-                        text = amityChatString("chat.edit.group.profile.navbar.title"),
-                        iconResId = CommonR.drawable.amity_ic_pen_s,
-                        onClick = {
-                            context.startActivity(
-                                AmityEditGroupProfilePageActivity.newIntent(context, channelId)
-                            )
-                        },
-                    )
+                    // Edit group profile — EDIT_CHANNEL
+                    if (canEditChannel) {
+                        SettingItem(
+                            text = amityChatString("chat.edit.group.profile.navbar.title"),
+                            iconResId = CommonComposeR.drawable.amity_ic_pen_s,
+                            onClick = {
+                                context.startActivity(
+                                    AmityEditGroupProfilePageActivity.newIntent(context, channelId)
+                                )
+                            },
+                        )
+                    }
 
-                    SettingItem(
-                        text = amityChatString("chat.group.notifications"),
-                        iconResId = CommonR.drawable.amity_ic_bell_s,
-                        trailingText = when (channel?.getNotificationMode()) {
-                            "silent" -> amityChatString("chat.group.notification.silent.label")
-                            "subscribe" -> amityChatString("chat.group.notification.subscribe.label")
-                            else -> amityChatString("chat.group.notification.default.label")
-                        },
-                        onClick = {
-                            context.startActivity(
-                                AmityEditGroupNotificationPageActivity.newIntent(context, channelId)
-                            )
-                        },
-                    )
+                    // Group notifications — EDIT_CHANNEL
+                    if (canEditChannel) {
+                        SettingItem(
+                            text = amityChatString("chat.group.notifications"),
+                            iconResId = CommonComposeR.drawable.amity_ic_bell_s,
+                            trailingText = when (channel?.getNotificationMode()) {
+                                "silent" -> amityChatString("chat.group.notification.silent.label")
+                                "subscribe" -> amityChatString("chat.group.notification.subscribe.label")
+                                else -> amityChatString("chat.group.notification.default.label")
+                            },
+                            onClick = {
+                                context.startActivity(
+                                    AmityEditGroupNotificationPageActivity.newIntent(context, channelId)
+                                )
+                            },
+                        )
+                    }
 
-                    SettingItem(
-                        text = amityChatString("chat.group.member.permissions"),
-                        iconResId = CommonR.drawable.amity_ic_user_lock_s,
-                        onClick = {
-                            context.startActivity(
-                                AmityEditGroupMemberPermissionsPageActivity.newIntent(context, channelId)
-                            )
-                        },
-                    )
+                    // Member permissions (rate limit / channel mute) — MUTE_CHANNEL
+                    if (canMuteChannel) {
+                        SettingItem(
+                            text = amityChatString("chat.group.member.permissions"),
+                            iconResId = CommonComposeR.drawable.amity_ic_user_lock_s,
+                            onClick = {
+                                context.startActivity(
+                                    AmityEditGroupMemberPermissionsPageActivity.newIntent(context, channelId)
+                                )
+                            },
+                        )
+                    }
 
-                    SettingItem(
-                        text = amityChatString("chat.group.members.label"),
-                        iconResId = CommonR.drawable.amity_ic_user_group_s,
-                        onClick = {
-                            context.startActivity(
-                                AmityGroupMemberListPageActivity.newIntent(context, channelId)
-                            )
-                        },
-                    )
+                    // Member list — EDIT_CHANNEL (previously visible to all members)
+                    if (canEditChannel) {
+                        SettingItem(
+                            text = amityChatString("chat.group.members.label"),
+                            iconResId = CommonComposeR.drawable.amity_ic_user_group_s,
+                            onClick = {
+                                context.startActivity(
+                                    AmityGroupMemberListPageActivity.newIntent(context, channelId)
+                                )
+                            },
+                        )
+                    }
 
-                    SettingItem(
-                        text = amityChatString("chat.group.banned.members"),
-                        iconResId = CommonR.drawable.amity_ic_ban_s,
-                        onClick = {
-                            context.startActivity(
-                                AmityBannedGroupMemberListPageActivity.newIntent(context, channelId)
-                            )
-                        },
-                    )
+                    // Banned members — BAN_USER_FROM_CHANNEL
+                    if (canBanUser) {
+                        SettingItem(
+                            text = amityChatString("chat.group.banned.members"),
+                            iconResId = CommonComposeR.drawable.amity_ic_ban_s,
+                            onClick = {
+                                context.startActivity(
+                                    AmityBannedGroupMemberListPageActivity.newIntent(context, channelId)
+                                )
+                            },
+                        )
+                    }
 
                     AmityDivider(
                         variant = AmityDividerVariant.Post,
                         inset = true,
-                    )
-                }
-
-                // All users section
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (!isModerator) {
-                    SettingItem(
-                        text = amityChatString("chat.group.members.label"),
-                        iconResId = CommonR.drawable.amity_ic_user_group_s,
-                        onClick = {
-                            context.startActivity(
-                                AmityGroupMemberListPageActivity.newIntent(context, channelId)
-                            )
-                        },
                     )
                 }
 
@@ -261,7 +265,7 @@ fun AmityGroupSettingPage(
 
                 SettingItem(
                     text = amityChatString("chat.notifications.title"),
-                    iconResId = CommonR.drawable.amity_ic_bell_s,
+                    iconResId = CommonComposeR.drawable.amity_ic_bell_s,
                     trailingText = if (notificationsEnabled) amityChatString("chat.notifications.on")
                                    else amityChatString("chat.notifications.off"),
                     onClick = {
@@ -279,7 +283,7 @@ fun AmityGroupSettingPage(
                     textColor = AmityTheme.token(AmityColorToken.TextListHeaderDestructiveDefault),
                     showArrow = false,
                     onClick = {
-                        if (isModerator && (channel?.getModeratorMemberCount() ?: 0) <= 1) {
+                        if (canEditChannel && (channel?.getModeratorMemberCount() ?: 0) <= 1) {
                             showLastModeratorDialog = true
                         } else {
                             showLeaveDialog = true
@@ -410,7 +414,7 @@ private fun SettingItem(
         if (showArrow && iconResId != null) {
             Icon(
                 imageVector = ImageVector.vectorResource(
-                    id = CommonR.drawable.amity_ic_chevron_right,
+                    id = CommonComposeR.drawable.amity_ic_chevron_right,
                 ),
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),

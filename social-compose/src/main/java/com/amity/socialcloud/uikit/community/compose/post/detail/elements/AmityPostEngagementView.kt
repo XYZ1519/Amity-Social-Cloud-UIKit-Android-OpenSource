@@ -56,7 +56,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.model.core.reaction.AmityReactionReferenceType
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
+import com.amity.socialcloud.uikit.common.common.isNotEmptyOrBlank
 import com.amity.socialcloud.uikit.common.common.readableNumber
+import com.amity.socialcloud.uikit.common.config.AmityUIKitConfigController
 import com.amity.socialcloud.uikit.common.localization.amitySocialReactionDisplayName
 import com.amity.socialcloud.uikit.common.model.AmitySocialReactions
 import com.amity.socialcloud.uikit.common.reaction.AmityReactionList
@@ -64,6 +66,7 @@ import com.amity.socialcloud.uikit.common.reaction.picker.AmityReactionPicker
 import com.amity.socialcloud.uikit.common.reaction.picker.getReactionIndexByX
 import com.amity.socialcloud.uikit.common.reaction.preview.AmityReactionPreview
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
+import com.amity.socialcloud.uikit.common.ui.scope.isElementExcluded
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
@@ -74,6 +77,7 @@ import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.getIcon
 import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
+import com.amity.socialcloud.uikit.common.R as CommonR
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostDetailPageViewModel
 import com.amity.socialcloud.uikit.community.compose.localization.amitySocialConfigString
@@ -96,6 +100,14 @@ fun AmityPostEngagementView(
     val behavior = remember {
         AmitySocialBehaviorHelper.postContentComponentBehavior
     }
+
+    val hasShareablePostLink = AmityUIKitConfigController.getPostLink(post).isNotEmptyOrBlank()
+    val isShareablePostTarget = if (post.getTarget() is AmityPost.Target.COMMUNITY) {
+        (post.getTarget() as AmityPost.Target.COMMUNITY).getCommunity()?.isPublic() == true
+    } else {
+        true
+    }
+    val shouldShowShareButton = hasShareablePostLink && isShareablePostTarget
 
     val myReactionState = remember {
         val firstReaction = post.getMyReactions().firstOrNull()
@@ -158,6 +170,20 @@ fun AmityPostEngagementView(
         localReactionsState.value = post.getReactionMap()
     }
 
+    // Hiding only the buttons left the bar behind: a divider with nothing above
+    // it and a 12dp band with nothing in it. The container asks what its
+    // children will render and goes when the last one does.
+    val showReaction = !componentScope.isElementExcluded("reaction_button")
+    val showComment = !componentScope.isElementExcluded("comment_button")
+    val showShare = post.getTarget() !is AmityPost.Target.COMMUNITY ||
+            (post.getTarget() as AmityPost.Target.COMMUNITY).getCommunity()?.isPublic() == true
+    val showSummary = (showReaction && localReactionCount > 0) || (showComment && commentCount > 0)
+    val showActions = showReaction || showComment || showShare
+
+    if (!showSummary && !showActions) {
+        return
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -168,6 +194,7 @@ fun AmityPostEngagementView(
                 top = if (isPostDetailPage) 8.dp else 0.dp
             )
     ) {
+        if (showSummary) {
         Row(
             modifier = modifier
                 .fillMaxWidth()
@@ -175,7 +202,7 @@ fun AmityPostEngagementView(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (localReactionCount > 0) {
+            if (showReaction && localReactionCount > 0) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -201,7 +228,7 @@ fun AmityPostEngagementView(
 
 
 
-            if (commentCount > 0) {
+            if (showComment && commentCount > 0) {
                 Text(
                     text = if (commentCount == 1)
                         amitySocialString("amity_social_button_feed_comment_count_singular").format(commentCount)
@@ -214,11 +241,15 @@ fun AmityPostEngagementView(
                 )
             }
         }
+        }
 
-        HorizontalDivider(
-            color = AmityTheme.colors.divider,
-        )
+        if (showSummary && showActions) {
+            HorizontalDivider(
+                color = AmityTheme.colors.divider,
+            )
+        }
 
+        if (showActions) {
         Row(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
@@ -458,7 +489,9 @@ fun AmityPostEngagementView(
                     }
                 }
 
-                Spacer(modifier = modifier.width(8.dp))
+                if (showReaction && showComment) {
+                    Spacer(modifier = modifier.width(8.dp))
+                }
                 AmityBaseElement(
                     componentScope = componentScope,
                     elementId = "comment_button"
@@ -508,23 +541,9 @@ fun AmityPostEngagementView(
 
                 Spacer(Modifier.weight(1f))
 
-                if (post.getTarget() is AmityPost.Target.COMMUNITY) {
-                    val community = (post.getTarget() as AmityPost.Target.COMMUNITY).getCommunity()
-                    if (community?.isPublic() == true) {
-                        Icon(
-                            imageVector = ImageVector.vectorResource(id = R.drawable.amity_v4_share_icon),
-                            contentDescription = "Post Comment Count",
-                            tint = Color.Unspecified,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .clickableWithoutRipple {
-                                    shareButtonClick(post.getPostId())
-                                }
-                        )
-                    }
-                } else {
+                if (shouldShowShareButton) {
                     Icon(
-                        imageVector = ImageVector.vectorResource(id = R.drawable.amity_v4_share_icon),
+                        imageVector = ImageVector.vectorResource(id = CommonR.drawable.amity_v4_share_icon),
                         contentDescription = "Post Comment Count",
                         tint = Color.Unspecified,
                         modifier = Modifier
@@ -535,6 +554,7 @@ fun AmityPostEngagementView(
                     )
                 }
             }
+        }
 
             /*
                 AmityBaseElement(

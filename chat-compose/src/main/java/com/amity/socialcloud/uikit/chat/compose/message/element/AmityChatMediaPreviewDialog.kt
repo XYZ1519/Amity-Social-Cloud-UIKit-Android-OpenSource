@@ -65,19 +65,20 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.amity.socialcloud.sdk.model.core.file.AmityImage
 import com.amity.socialcloud.sdk.model.core.file.AmityVideo
-import com.amity.socialcloud.uikit.common.compose.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.chat.compose.live.elements.CenterConfirmDeletePopup
 import com.amity.socialcloud.uikit.common.ui.image.rememberZoomState
 import com.amity.socialcloud.uikit.common.ui.image.zoomable
 import com.amity.socialcloud.uikit.common.ui.theme.AmityColorToken
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
-import com.amity.socialcloud.uikit.common.R
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityButton
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityButtonVariant
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityButtonStyle
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityButtonHierarchy
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityIconButtonSize
+import com.amity.socialcloud.uikit.common.ui.atoms.AmityToast
+import com.amity.socialcloud.uikit.common.ui.atoms.AmityToastVariant
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.getVideoUrlWithFallbackQuality
@@ -95,6 +96,7 @@ fun AmityChatMediaPreviewDialog(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val isVideoMedia = media.any { it is AmityVideo }
+    var saveResult by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
 
     val exoPlayer = remember {
         ExoPlayer.Builder(context)
@@ -199,7 +201,7 @@ fun AmityChatMediaPreviewDialog(
                     style = AmityButtonStyle.TRANSPARENT,
                     hierarchy = AmityButtonHierarchy.PRIMARY,
                     iconSize = AmityIconButtonSize.SIZE32,
-                    icon = CommonR.drawable.amity_ic_cross_r,
+                    icon = CommonComposeR.drawable.amity_ic_cross_r,
                     contentDescription = "Close",
                     onClick = onDismiss,
                     modifier = Modifier
@@ -216,8 +218,8 @@ fun AmityChatMediaPreviewDialog(
                         style = AmityButtonStyle.TRANSPARENT,
                         hierarchy = AmityButtonHierarchy.PRIMARY,
                         iconSize = AmityIconButtonSize.SIZE32,
-                        icon = if (isAudioMuted) CommonR.drawable.amity_ic_volume_slash_s
-                        else CommonR.drawable.amity_ic_volume_high_s,
+                        icon = if (isAudioMuted) CommonComposeR.drawable.amity_ic_volume_slash_s
+                        else CommonComposeR.drawable.amity_ic_volume_high_s,
                         contentDescription = "Video Audio",
                         onClick = {
                             isAudioMuted = !isAudioMuted
@@ -261,23 +263,20 @@ fun AmityChatMediaPreviewDialog(
             ) {
                 val (saveBtn, deleteBtn) = createRefs()
 
-                // Save button — bottom right. Hidden for videos for now — remove this gate
-                // to restore.
-                val currentPageItem = media.getOrNull(pagerState.currentPage)
-                if (currentPageItem !is AmityVideo) AmityButton(
+                AmityButton(
                     variant = AmityButtonVariant.ICON,
                     style = AmityButtonStyle.TRANSPARENT,
                     hierarchy = AmityButtonHierarchy.PRIMARY,
                     iconSize = AmityIconButtonSize.SIZE40,
-                    icon = CommonR.drawable.amity_ic_arrow_down_to_bracket_r,
+                    icon = CommonComposeR.drawable.amity_ic_arrow_down_to_bracket_r,
                     contentDescription = "Save",
                     onClick = {
-                        val currentItem = media.getOrNull(pagerState.currentPage)
-                        scope.launch {
-                            when (currentItem) {
-                                is AmityImage -> saveImageToGallery(context, currentItem)
-                                is AmityVideo -> saveVideoToGallery(context, currentItem)
-                            }
+                        val onResult: (String, Boolean) -> Unit = { message, isError ->
+                            saveResult = message to isError
+                        }
+                        when (val currentItem = media.getOrNull(pagerState.currentPage)) {
+                            is AmityImage -> saveImageToGalleryDetached(context, currentItem, onResult)
+                            is AmityVideo -> saveVideoToGalleryDetached(context, currentItem, onResult)
                         }
                     },
                     modifier = Modifier.constrainAs(saveBtn) {
@@ -292,7 +291,7 @@ fun AmityChatMediaPreviewDialog(
                         style = AmityButtonStyle.TRANSPARENT,
                         hierarchy = AmityButtonHierarchy.PRIMARY,
                         iconSize = AmityIconButtonSize.SIZE40,
-                        icon = CommonR.drawable.amity_ic_trash_r,
+                        icon = CommonComposeR.drawable.amity_ic_trash_r,
                         contentDescription = "Delete",
                         onClick = { showDeleteConfirm = true },
                         modifier = Modifier.constrainAs(deleteBtn) {
@@ -301,6 +300,26 @@ fun AmityChatMediaPreviewDialog(
                         },
                     )
                 }
+            }
+
+            saveResult?.let { (message, isError) ->
+                AmityToast(
+                    message = message,
+                    variant = if (isError) {
+                        AmityToastVariant.ERROR
+                    } else {
+                        AmityToastVariant.SUCCESS
+                    },
+                    icon = if (isError) {
+                        CommonComposeR.drawable.amity_ic_exclamation_circle_r
+                    } else {
+                        CommonComposeR.drawable.amity_ic_check_circle_r
+                    },
+                    onDismiss = { saveResult = null },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 88.dp),
+                )
             }
 
             DisposableEffect(Unit) {
@@ -478,8 +497,8 @@ private fun VideoPreviewPage(
                     } else {
                         Icon(
                             painter = painterResource(
-                                if (isPlaying) CommonR.drawable.amity_ic_video_pause_s
-                                else CommonR.drawable.amity_ic_video_play_s
+                                if (isPlaying) CommonComposeR.drawable.amity_ic_video_pause_s
+                                else CommonComposeR.drawable.amity_ic_video_play_s
                             ),
                             contentDescription = if (isPlaying) "Pause" else "Play",
                             tint = AmityTheme.token(AmityColorToken.IconIconButtonTransparentPrimaryDefault),

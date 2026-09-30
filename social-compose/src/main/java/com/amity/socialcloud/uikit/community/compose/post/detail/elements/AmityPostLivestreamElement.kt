@@ -59,6 +59,8 @@ import com.amity.socialcloud.uikit.common.ui.elements.AmityExpandableText
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.ui.theme.amityLiveBadgeRed
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
+import com.amity.socialcloud.uikit.common.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.livestream.room.shared.AmityProductWebViewBottomSheet
 import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
@@ -71,12 +73,21 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
+import com.amity.socialcloud.uikit.common.config.AmityUIKitDataGate
+import com.amity.socialcloud.uikit.common.config.AmityUIKitFeature
 
 @Composable
 fun AmityPostLivestreamElement(
     modifier: Modifier = Modifier,
     post: AmityPost,
 ) {
+    // A livestream post carries a player, and a player fetches its manifest and
+    // segments through ExoPlayer rather than through the SDK's http client — so
+    // this is the one surface whose traffic no api trace can see. It also has no
+    // id in the module graph, which means no view gate reaches it either. Ask
+    // here, or Live switched off still renders a live post and still plays it.
+    if (!AmityUIKitDataGate.isOn(AmityUIKitFeature.LIVE)) return
+
     val postChildren = remember(post.getPostId(), post.getUpdatedAt()) {
         post.getChildren()
     }
@@ -229,7 +240,7 @@ fun AmityChildLivestreamPostElement(
                     }
                     if (stream.getStatus() != AmityStream.Status.IDLE) {
                         Image(
-                            painter = painterResource(id = R.drawable.amity_ic_play_v4),
+                            painter = painterResource(id = CommonComposeR.drawable.amity_ic_play_v4),
                             contentDescription = null,
                             modifier = Modifier.align(Alignment.Center)
                         )
@@ -324,7 +335,7 @@ fun AmityLivestreamEndedView(modifier: Modifier = Modifier) {
 fun AmityLivestreamUnavailableView(modifier: Modifier = Modifier) {
     AmityLivestreamNoticeView(
         modifier = modifier,
-        icon = R.drawable.amity_ic_warning,
+        icon = CommonR.drawable.amity_ic_warning,
         title = amitySocialString("amity_social_label_livestream_post_thumbnail_unavailable_title"),
     )
 }
@@ -333,7 +344,7 @@ fun AmityLivestreamUnavailableView(modifier: Modifier = Modifier) {
 fun AmityLivestreamReplayUnavailableView(modifier: Modifier = Modifier) {
     AmityLivestreamNoticeView(
         modifier = modifier,
-        icon = R.drawable.amity_ic_warning,
+        icon = CommonR.drawable.amity_ic_warning,
         title = amitySocialString("amity_social_label_livestream_post_thumbnail_ended_too_short_title"),
         description = amitySocialString("amity_social_status_livestream_post_thumbnail_ended_too_short_desc"),
     )
@@ -500,7 +511,6 @@ fun AmityChildRoomPostElement(
         post.getData() as? AmityPost.Data.TEXT
     }
 
-    var showVideoPlayerDialog by remember { mutableStateOf(false) }
     var showProductTagSheet by remember { mutableStateOf(false) }
     var selectedProduct by remember { mutableStateOf<AmityProduct?>(null) }
     val behavior = AmitySocialBehaviorHelper.globalBehavior
@@ -515,18 +525,6 @@ fun AmityChildRoomPostElement(
     var roomPostProducts by remember(post.getPostId(), post.getUpdatedAt()) {
         mutableStateOf(
             post.getChildren().find { it.getData() is AmityPost.Data.ROOM }?.getProducts() ?: emptyList()
-        )
-    }
-
-    // Show video player dialog for recorded livestream
-    if (showVideoPlayerDialog) {
-        AmityVideoPlayerPage(
-            childPosts = post.getChildren(),
-            selectedFileId = post.getChildren().firstOrNull()?.getPostId() ?: "",
-            recordedUrls = recordedUrls,
-            onDismiss = { showVideoPlayerDialog = false },
-            showMenuButton = true,
-            onProductsUpdated = { roomPostProducts = it }
         )
     }
 
@@ -561,7 +559,8 @@ fun AmityChildRoomPostElement(
 
     // Determine room state (priority order matters)
     val isDeleted = room?.isDeleted() == true
-    val isTerminated = room?.getModeration()?.terminateLabels?.isNotEmpty() == true
+    val isTerminated = room?.getModeration()?.terminateLabels?.isNotEmpty() == true ||
+            room?.getStatus() == AmityRoomStatus.TERMINATED
     val roomStatus = room?.getStatus()
 
     // Compute thumbnail fallback chain
@@ -702,7 +701,15 @@ fun AmityChildRoomPostElement(
                         .clickable {
                             if (room != null && roomStatus != AmityRoomStatus.IDLE) {
                                 if (roomStatus == AmityRoomStatus.RECORDED) {
-                                    showVideoPlayerDialog = true
+                                    // Recorded livestream now opens in its own Activity so it can
+                                    // enter Picture-in-Picture (video posts still use the Dialog).
+                                    context.startActivity(
+                                        AmityVideoPlayerPageActivity.newIntent(
+                                            context = context,
+                                            post = post,
+                                            recordedUrls = recordedUrls,
+                                        )
+                                    )
                                 } else {
                                     AmityRoomPlayerPageActivity
                                         .newIntent(context = context, post = post)
@@ -777,7 +784,7 @@ fun AmityChildRoomPostElement(
                     // Play button overlay (all states except IDLE)
                     if (room != null && roomStatus != AmityRoomStatus.IDLE) {
                         Image(
-                            painter = painterResource(id = R.drawable.amity_ic_play_v4),
+                            painter = painterResource(id = CommonComposeR.drawable.amity_ic_play_v4),
                             contentDescription = null,
                             modifier = Modifier.align(Alignment.Center)
                         )

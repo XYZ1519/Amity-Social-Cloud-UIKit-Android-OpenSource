@@ -61,6 +61,9 @@ import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
@@ -88,7 +91,7 @@ import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityColorToken
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
-import com.amity.socialcloud.uikit.common.compose.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityButton
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityButtonVariant
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityDivider
@@ -106,7 +109,7 @@ fun AmityGroupChatMessageList(
     modifier: Modifier = Modifier,
     pageScope: AmityComposePageScope? = null,
     viewModel: AmityGroupChatPageViewModel,
-    isModerator: Boolean = false,
+    canDeleteMessage: Boolean = false,
     memberRoles: Map<String, List<String>> = emptyMap(),
     isUserMuted: Boolean = false,
     jumpToMessageId: String? = null,
@@ -204,28 +207,31 @@ fun AmityGroupChatMessageList(
     }
 
     // Watch for new messages by tracking segment changes (distinctUntilChanged avoids re-fires)
-    LaunchedEffect(Unit) {
-        snapshotFlow { messages.itemSnapshotList.firstOrNull() }
-            .map { it?.getSegment() ?: 0 }
-            .distinctUntilChanged()
-            .collect { segment ->
-                if (segment > highestSegment) {
-                    highestSegment = segment
-                    val firstMsg = messages.itemSnapshotList.firstOrNull()
-                    val isOwnMessage = firstMsg?.getCreator()?.getUserId() == AmityCoreClient.getUserId()
-                    if (!isScrolledUp || isOwnMessage) {
-                        // Only scroll programmatically in overflow mode (reverseLayout=true).
-                        // In non-overflow, the newest message is already visible at the bottom.
-                        if (contentOverflowsViewport) {
-                            scope.launch { state.scrollToItem(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            snapshotFlow { messages.itemSnapshotList.firstOrNull() }
+                .map { it?.getSegment() ?: 0 }
+                .distinctUntilChanged()
+                .collect { segment ->
+                    if (segment > highestSegment) {
+                        highestSegment = segment
+                        val firstMsg = messages.itemSnapshotList.firstOrNull()
+                        val isOwnMessage = firstMsg?.getCreator()?.getUserId() == AmityCoreClient.getUserId()
+                        if (!isScrolledUp || isOwnMessage) {
+                            // Only scroll programmatically in overflow mode (reverseLayout=true).
+                            // In non-overflow, the newest message is already visible at the bottom.
+                            if (contentOverflowsViewport) {
+                                scope.launch { state.scrollToItem(0) }
+                            }
+                            if (firstMsg != null) viewModel.markMessageAsRead(firstMsg)
+                            newMessage = null
+                        } else {
+                            newMessage = firstMsg
                         }
-                        if (firstMsg != null) viewModel.markMessageAsRead(firstMsg)
-                        newMessage = null
-                    } else {
-                        newMessage = firstMsg
                     }
                 }
-            }
+        }
     }
 
     LaunchedEffect(isScrolledUp) {
@@ -369,7 +375,7 @@ fun AmityGroupChatMessageList(
                                         AmityUIKitSnackbar.publishSnackbarMessage(copiedMsg)
                                     }
                                 },
-                                onDelete = if (isOwnMessage || isModerator) {
+                                onDelete = if (isOwnMessage || canDeleteMessage) {
                                     {
                                         viewModel.showDeleteConfirmation(message)
                                     }
@@ -399,9 +405,9 @@ fun AmityGroupChatMessageList(
                                     is AmityMessage.Data.IMAGE -> {
                                         { scope.launch { saveImageToGallery(context, message) } }
                                     }
-                                    // Video save is intentionally omitted, not an oversight.
-                                    // Re-enable it together with the media-preview dialog's
-                                    // own video-save gate, or the two surfaces disagree.
+                                    is AmityMessage.Data.VIDEO -> {
+                                        { scope.launch { saveVideoToGallery(context, message) } }
+                                    }
                                     else -> null
                                 },
                             ),
@@ -590,7 +596,7 @@ private fun AmityGroupChatMessageReportReasonList(
             ) {
                 Icon(
                     modifier = Modifier.align(Alignment.CenterEnd),
-                    painter = painterResource(CommonR.drawable.amity_ic_cross_r),
+                    painter = painterResource(CommonComposeR.drawable.amity_ic_cross_r),
                     contentDescription = "cancel_report_button",
                     tint = AmityTheme.token(AmityColorToken.IconIconButtonGhostSecondaryDefault),
                 )
@@ -670,7 +676,7 @@ private fun AmityGroupChatMessageReportReasonList(
                     )
 
                     Icon(
-                        painterResource(CommonR.drawable.amity_ic_chevron_right),
+                        painterResource(CommonComposeR.drawable.amity_ic_chevron_right),
                         tint = AmityTheme.token(AmityColorToken.IconListLeadingDefaultDefault),
                         contentDescription = null,
                         modifier = Modifier

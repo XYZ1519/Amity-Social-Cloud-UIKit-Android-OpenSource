@@ -8,9 +8,13 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -21,6 +25,10 @@ import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.paging.feed.global.amityGlobalFeedLLS
 import com.amity.socialcloud.uikit.community.compose.post.composer.AmityPostComposerHelper
+import com.amity.socialcloud.uikit.community.compose.paging.feed.global.pinnedPostIds
+import com.amity.socialcloud.uikit.community.compose.paging.feed.global.postIds
+import com.amity.socialcloud.uikit.community.compose.paging.feed.global.renderableFeedItemCount
+import com.amity.socialcloud.uikit.community.compose.paging.feed.global.renderablePinnedPosts
 import com.amity.socialcloud.uikit.community.compose.socialhome.AmitySocialHomePageViewModel
 
 @Composable
@@ -37,18 +45,40 @@ fun AmityGlobalFeedComponent(
 
     val viewModel = viewModel<AmitySocialHomePageViewModel>()
     val posts = remember { viewModel.getGlobalFeed() }.collectAsLazyPagingItems()
-    val pinnedPosts = remember { viewModel.getGlobalPinnedPosts() }.collectAsState(emptyList())
+    val pinnedPosts = viewModel.globalPinnedPosts.collectAsState()
 
     val lazyListState = rememberLazyListState()
-    val postListState by viewModel.postListState.collectAsState()
+    // NOTE: this component renders locally created posts and the paginated feed, but NOT a
+    // pinned section — it passes pinnedPosts to the renderer only so they can be de-duplicated
+    // and badged. Pinned posts must therefore NOT suppress its empty state: counting content
+    // this component never draws would leave a blank screen with no empty state.
+    val visibleCreatedPosts = AmityPostComposerHelper.getCreatedPosts()
+    val renderableItemCount = posts.itemSnapshotList.items.renderableFeedItemCount(
+        pinnedPostIds = pinnedPosts.value.pinnedPostIds(),
+        createdPostIds = visibleCreatedPosts.postIds(),
+    ) + visibleCreatedPosts.size
+
+    val postListState = derivePostListState(
+        refreshLoadState = posts.loadState.refresh,
+        appendLoadState = posts.loadState.append,
+        renderableItemCount = renderableItemCount,
+    )
+    RequestNextRenderableFeedPage(posts, renderableItemCount)
 
     val pullRefreshState = rememberPullToRefreshState()
     val isRefreshing by viewModel.isGlobalFeedRefreshing.collectAsState()
 
+    var refreshKey by remember { mutableIntStateOf(0) }
+
     val onRefresh = {
+        refreshKey++
         viewModel.setGlobalFeedRefreshing()
         posts.refresh()
-        AmityPostComposerHelper.clear()
+        viewModel.clearCreatedPostsForRefresh()
+    }
+
+    LaunchedEffect(postListState) {
+        viewModel.setPostListState(postListState)
     }
 
     AmityBaseComponent(
@@ -75,11 +105,6 @@ fun AmityGlobalFeedComponent(
                 state = lazyListState,
                 modifier = modifier.fillMaxSize()
             ) {
-                AmitySocialHomePageViewModel.PostListState.from(
-                    loadState = posts.loadState.refresh,
-                    itemCount = posts.itemCount,
-                ).let(viewModel::setPostListState)
-
                 amityGlobalFeedLLS(
                     modifier = modifier,
                     pageScope = pageScope,
@@ -101,7 +126,8 @@ fun AmityGlobalFeedComponent(
                     },
                     onExploreCommunityClicked = {
                         onExploreRequested()
-                    }
+                    },
+                    refreshKey = refreshKey,
                 )
             }
         }

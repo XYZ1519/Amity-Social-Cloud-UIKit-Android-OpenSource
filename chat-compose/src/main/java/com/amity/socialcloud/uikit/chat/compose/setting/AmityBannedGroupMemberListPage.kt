@@ -17,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,7 +35,7 @@ import com.amity.socialcloud.uikit.common.localization.amityCommonString
 import com.amity.socialcloud.sdk.model.chat.member.AmityChannelMember
 import com.amity.socialcloud.sdk.model.core.file.AmityImage
 import com.amity.socialcloud.uikit.chat.compose.common.AmityChatConfirmDialog
-import com.amity.socialcloud.uikit.common.compose.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityAvatarSize
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityButton
@@ -73,6 +74,10 @@ fun AmityBannedGroupMemberListPage(
     val viewModel = remember { AmityGroupMemberListPageViewModel(channelId) }
     val context = LocalContext.current
 
+    // Self-check: this page has its own entry points (deep link / behavior override), so it must
+    // gate unban on its own permission rather than trusting the group-settings row that opened it.
+    val canUnban by viewModel.canBan().collectAsState(initial = false)
+
     var searchKeyword by remember { mutableStateOf("") }
     val bannedMembers = remember(searchKeyword) {
         viewModel.searchBannedMembers(searchKeyword)
@@ -105,7 +110,7 @@ fun AmityBannedGroupMemberListPage(
                     style = AmityButtonStyle.GHOST,
                     hierarchy = AmityButtonHierarchy.SECONDARY,
                     iconSize = AmityIconButtonSize.SIZE32,
-                    icon = CommonR.drawable.amity_ic_chevron_left,
+                    icon = CommonComposeR.drawable.amity_ic_chevron_left,
                     onClick = { (context as? Activity)?.finish() },
                     modifier = Modifier.align(Alignment.CenterStart),
                 )
@@ -150,7 +155,7 @@ fun AmityBannedGroupMemberListPage(
                         AmityEmptyState(
                             modifier = Modifier.fillMaxSize(),
                             variant = AmityEmptyStateVariant.ICON,
-                            icon = CommonR.drawable.amity_ic_list_radio_l,
+                            icon = CommonComposeR.drawable.amity_ic_list_radio_l,
                             title = amityChatString("chat.banned.members.empty"),
                         )
                     } else {
@@ -181,6 +186,7 @@ fun AmityBannedGroupMemberListPage(
                             val member = bannedMembers[index] ?: return@items
                             BannedMemberItem(
                                 member = member,
+                                showMoreAction = canUnban,
                                 onMoreClick = {
                                     selectedMember = member
                                     scope.launch { sheetState.show() }
@@ -205,7 +211,7 @@ fun AmityBannedGroupMemberListPage(
                 ) {
                     MemberActionItem(
                         text = amityChatString("chat.member.action.unban"),
-                        iconResId = CommonR.drawable.amity_ic_ban_r,
+                        iconResId = CommonComposeR.drawable.amity_ic_ban_r,
                         onClick = {
                             pendingUnbanUserId = selectedMember?.getUserId()
                             selectedMember = null
@@ -249,6 +255,7 @@ fun AmityBannedGroupMemberListPage(
 @Composable
 private fun BannedMemberItem(
     member: AmityChannelMember,
+    showMoreAction: Boolean,
     onMoreClick: () -> Unit,
 ) {
     val user = member.getUser()
@@ -261,16 +268,20 @@ private fun BannedMemberItem(
             type = AmityListLeadingType.AVATAR,
             avatarUrl = user?.resolvedAvatarUrl(AmityImage.Size.SMALL),
             avatarInitials = user?.getDisplayName().toChatAvatarInitial(),
-            icon = CommonR.drawable.amity_ic_user_r,
+            icon = CommonComposeR.drawable.amity_ic_user_r,
             avatarSize = AmityAvatarSize.Size40,
             avatarBorderWidth = 2,
         ),
-        trailing = listOf(
-            AmityListTrailingContent(
-                type = AmityListTrailingType.ICON,
-                icon = CommonR.drawable.amity_ic_ellipsis_r,
+        trailing = if (showMoreAction) {
+            listOf(
+                AmityListTrailingContent(
+                    type = AmityListTrailingType.ICON,
+                    icon = CommonComposeR.drawable.amity_ic_ellipsis_r,
+                )
             )
-        ),
-        onTrailingPress = { onMoreClick() },
+        } else {
+            emptyList()
+        },
+        onTrailingPress = { if (showMoreAction) onMoreClick() },
     )
 }

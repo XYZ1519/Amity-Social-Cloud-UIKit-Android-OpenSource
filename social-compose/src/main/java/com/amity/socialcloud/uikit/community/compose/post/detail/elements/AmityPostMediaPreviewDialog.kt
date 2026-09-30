@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
@@ -29,7 +30,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rxjava3.subscribeAsState
 import androidx.compose.runtime.setValue
@@ -70,7 +70,7 @@ import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorBase
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorBaseShade4
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
-import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.common.R as CommonR
 import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.community.compose.post.composer.AmityPostComposerPageViewModel
 import com.amity.socialcloud.uikit.community.compose.post.composer.RenderAltTextConfigSheet
@@ -94,6 +94,8 @@ fun AmityPostMediaPreviewDialog(
     selectedFileId: String,
     isPostCreator: Boolean = false,
     onDismiss: () -> Unit,
+    onPageChanged: (String) -> Unit = {},
+    onProductTagClick: ((AmityPost) -> Unit)? = null,
 ) {
     val imageMap = remember { mutableMapOf<String, AmityImage>() }
     val context = LocalContext.current
@@ -164,6 +166,11 @@ fun AmityPostMediaPreviewDialog(
         AmityPostVideoPlayerHelper.playMediaItem(pagerState.currentPage)
     }
 
+    // Reports the page the member is on as it changes, so the caller can return to it on dismiss.
+    LaunchedEffect(pagerState.currentPage) {
+        childPosts.getOrNull(pagerState.currentPage)?.getPostId()?.let(onPageChanged)
+    }
+
     Dialog(
         onDismissRequest = {},
         properties = DialogProperties(
@@ -216,16 +223,20 @@ fun AmityPostMediaPreviewDialog(
                                 modifier = modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (imageUrl != null) {
-                                    val imageBoxModifier = if (aspectRatio != null) {
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .aspectRatio(aspectRatio!!)
-                                    } else {
-                                        Modifier.fillMaxSize()
-                                    }
+                                val mediaBoxModifier = if (imageUrl != null && aspectRatio != null) {
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .aspectRatio(aspectRatio!!)
+                                } else if (imageUrl != null) {
+                                    Modifier.fillMaxSize()
+                                } else {
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .height(480.dp)
+                                }
 
-                                    Box(modifier = imageBoxModifier) {
+                                Box(modifier = mediaBoxModifier) {
+                                    if (imageUrl != null) {
                                         AsyncImage(
                                             model = ImageRequest
                                                 .Builder(LocalContext.current)
@@ -247,14 +258,15 @@ fun AmityPostMediaPreviewDialog(
                                                 .fillMaxSize()
                                                 .zoomable(rememberZoomState()),
                                         )
+                                    } else {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .background(AmityTheme.colors.baseShade4),
+                                        )
                                     }
-                                } else {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(480.dp)
-                                            .background(AmityTheme.colors.baseShade4),
-                                    )
+
+                                    MediaProductTagBadge(childPost, onProductTagClick)
                                 }
                             }
                             if (openMenu) {
@@ -275,7 +287,7 @@ fun AmityPostMediaPreviewDialog(
                                     ) {
                                         if (isPostCreator) {
                                             AmityBottomSheetActionItem(
-                                                icon = R.drawable.amity_ic_edit_profile,
+                                                icon = CommonR.drawable.amity_ic_edit_profile,
                                                 text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_image_edit_alt_text_title"),
                                                 modifier = modifier.testTag("bottom_sheet_edit_alt_text_button"),
                                             ) {
@@ -299,6 +311,8 @@ fun AmityPostMediaPreviewDialog(
                                     exoPlayer = exoPlayer,
                                     isVisible = pagerState.currentPage == index,
                                 )
+
+                                MediaProductTagBadge(childPost, onProductTagClick)
                             }
                         }
 
@@ -315,7 +329,7 @@ fun AmityPostMediaPreviewDialog(
                     val (closeBtn, muteBtn, counter, menuBtn) = createRefs()
 
                     Image(
-                        painter = painterResource(R.drawable.amity_v4_image_preview_close),
+                        painter = painterResource(CommonR.drawable.amity_v4_image_preview_close),
                         contentDescription = "Close",
                         modifier = Modifier
                             .zIndex(Float.MAX_VALUE)
@@ -330,8 +344,8 @@ fun AmityPostMediaPreviewDialog(
                     if (isVideoPost) {
                         Image(
                             painter = painterResource(
-                                id = if (isAudioMuted) R.drawable.amity_ic_media_audio_mute
-                                else R.drawable.amity_ic_media_audio_unmute
+                                id = if (isAudioMuted) CommonR.drawable.amity_ic_media_audio_mute
+                                else CommonR.drawable.amity_ic_media_audio_unmute
                             ),
                             contentDescription = "Video Audio",
                             modifier = Modifier
@@ -366,7 +380,7 @@ fun AmityPostMediaPreviewDialog(
 
                     if (isPostCreator && !isVideoPost) {
                         AmityMenuButton(
-                            icon = R.drawable.amity_ic_more_horiz,
+                            icon = CommonR.drawable.amity_ic_more_horiz,
                             size = 32.dp,
                             iconPadding = 2.dp,
                             modifier = Modifier.constrainAs(menuBtn) {
@@ -377,21 +391,6 @@ fun AmityPostMediaPreviewDialog(
                             onMenuClick(pagerState.currentPage)
                         }
                     }
-                }
-
-                // Product Tag Badge at bottom-right of screen
-                val currentProductTagCount by remember {
-                    derivedStateOf {
-                        childPosts.getOrNull(pagerState.currentPage)?.let { getProductTagCount(it) } ?: 0
-                    }
-                }
-                if (currentProductTagCount > 0) {
-                    AmityProductTagBadge(
-                        count = currentProductTagCount,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 12.dp, bottom = 120.dp)
-                    )
                 }
 
             } // End of Box wrapper
@@ -417,6 +416,25 @@ fun AmityPostMediaPreviewDialog(
                 onDismiss()
             }
         }
+    }
+}
+
+@Composable
+private fun BoxScope.MediaProductTagBadge(
+    childPost: AmityPost,
+    onProductTagClick: ((AmityPost) -> Unit)? = null,
+) {
+    val productTagCount = remember(childPost.getPostId(), childPost.getUpdatedAt()) {
+        getProductTagCount(childPost)
+    }
+    if (productTagCount > 0) {
+        AmityProductTagBadge(
+            count = productTagCount,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 12.dp, bottom = 12.dp),
+            onClick = onProductTagClick?.let { { it(childPost) } }
+        )
     }
 }
 

@@ -3,6 +3,7 @@ package com.amity.socialcloud.uikit.community.compose.event.detail
 import android.content.Intent
 import androidx.activity.result.ActivityResultLauncher
 import com.amity.socialcloud.sdk.model.social.community.AmityCommunity
+import com.amity.socialcloud.sdk.model.social.event.AmityEvent
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
 import com.amity.socialcloud.uikit.common.behavior.AmityBaseBehavior
 import com.amity.socialcloud.uikit.common.behavior.AmityBaseBehaviorContext
@@ -16,6 +17,7 @@ import com.amity.socialcloud.uikit.community.compose.post.composer.AmityPostTarg
 import com.amity.socialcloud.uikit.community.compose.post.composer.poll.AmityPollPostComposerPageActivity
 import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostCategory
 import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostDetailPageActivity
+import com.amity.socialcloud.uikit.community.compose.target.eventpost.AmityEventPostTargetSelectionPageActivity
 import com.amity.socialcloud.uikit.community.compose.user.profile.AmityUserProfilePageActivity
 
 open class AmityEventDetailPageBehavior : AmityBaseBehavior() {
@@ -25,6 +27,22 @@ open class AmityEventDetailPageBehavior : AmityBaseBehavior() {
         val activityLauncher: ActivityResultLauncher<Intent>? = null,
         val community: AmityCommunity? = null,
     ) : AmityBaseBehaviorContext(pageContext, activityLauncher)
+
+    /**
+     * Opens the target-selection page for publishing [event] as a post. The page itself decides
+     * which variant to render from the event's origin — a private-community event gets the
+     * restricted variant rather than a different destination.
+     */
+    open fun goToEventPostTargetSelectionPage(
+        context: Context,
+        event: AmityEvent,
+    ) {
+        val intent = AmityEventPostTargetSelectionPageActivity.newIntent(
+            context = context.pageContext,
+            event = event,
+        )
+        context.pageContext.startActivity(intent)
+    }
 
     open fun goToUserProfilePage(
         context: Context,

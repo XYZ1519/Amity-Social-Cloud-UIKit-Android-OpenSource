@@ -56,6 +56,15 @@ class AmityTargetSelectionPageViewModel : AmityBaseViewModel() {
             .observeOn(AndroidSchedulers.mainThread())
     }
 
+    // Share-event-as-post: a private-community event is restricted to its origin community, so the
+    // target page renders that single community instead of the full member list.
+    fun getCommunity(communityId: String): Flowable<AmityCommunity> {
+        return AmitySocialClient.newCommunityRepository()
+            .getCommunity(communityId)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+    }
+
     fun getCommunities(): Flow<PagingData<AmityCommunity>> {
         return AmitySocialClient.newCommunityRepository()
             .getCommunities()

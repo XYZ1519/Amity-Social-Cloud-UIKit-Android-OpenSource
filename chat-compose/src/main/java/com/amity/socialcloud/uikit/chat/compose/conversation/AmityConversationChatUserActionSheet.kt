@@ -1,5 +1,6 @@
 package com.amity.socialcloud.uikit.chat.compose.conversation
 
+import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,7 +27,7 @@ import com.amity.socialcloud.uikit.chat.compose.localization.amityChatString
 import com.amity.socialcloud.uikit.common.ui.atoms.AmitySheet
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.ui.theme.AmityColorToken
-import com.amity.socialcloud.uikit.common.compose.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AmityConversationChatUserActionSheet(
@@ -53,8 +54,8 @@ fun AmityConversationChatUserActionSheet(
             // Mute / Unmute
             if (AmityChatConfigHelper.isConversationUserActionEnabled("mute")) {
                 ActionSheetItem(
-                    iconResId = if (isMuted) CommonR.drawable.amity_ic_bell_r
-                    else CommonR.drawable.amity_ic_bell_slash_r,
+                    iconResId = if (isMuted) CommonComposeR.drawable.amity_ic_bell_r
+                    else CommonComposeR.drawable.amity_ic_bell_slash_r,
                     text = amityChatString(
                         if (isMuted) "chat.action.turn.on.notification"
                         else "chat.action.turn.off.notification"
@@ -69,8 +70,8 @@ fun AmityConversationChatUserActionSheet(
             // Report / Unreport User
             if (AmityChatConfigHelper.isConversationUserActionEnabled("report")) {
                 ActionSheetItem(
-                    iconResId = if (isUserReported) CommonR.drawable.amity_ic_flag_slash_r
-                    else CommonR.drawable.amity_ic_flag_r,
+                    iconResId = if (isUserReported) CommonComposeR.drawable.amity_ic_flag_slash_r
+                    else CommonComposeR.drawable.amity_ic_flag_r,
                     // DM-scoped labels, keyed to match iOS. The chat.action.* pair is shared with
                     // the group member list and reads "member" there, meaningless in a 1:1.
                     text = amityChatString(
@@ -85,20 +86,26 @@ fun AmityConversationChatUserActionSheet(
             }
 
             // Block / Unblock User
+            // Declared under the ids User Profile uses for the same job, so
+            // `userRelationship` owns the row here too (§10.2).
             if (AmityChatConfigHelper.isConversationUserActionEnabled("block")) {
-                ActionSheetItem(
-                    iconResId = CommonR.drawable.amity_ic_user_slash_r,
-                    text = amityChatString(
-                        key = if (isUserBlocked) "chat.action.unblock.user"
-                        else "chat.action.block.user"
-                    ),
-                    // Block is intentionally NON-destructive (neutral, not red)
-                    isDestructive = false,
-                    onClick = {
-                        onDismiss()
-                        onBlockToggle()
-                    },
-                )
+                AmityBaseElement(
+                    elementId = if (isUserBlocked) "unblock_user_button" else "block_user_button",
+                ) {
+                    ActionSheetItem(
+                        iconResId = CommonComposeR.drawable.amity_ic_user_slash_r,
+                        text = amityChatString(
+                            key = if (isUserBlocked) "chat.action.unblock.user"
+                            else "chat.action.block.user"
+                        ),
+                        // Block is intentionally NON-destructive (neutral, not red)
+                        isDestructive = false,
+                        onClick = {
+                            onDismiss()
+                            onBlockToggle()
+                        },
+                    )
+                }
             }
         }
     }

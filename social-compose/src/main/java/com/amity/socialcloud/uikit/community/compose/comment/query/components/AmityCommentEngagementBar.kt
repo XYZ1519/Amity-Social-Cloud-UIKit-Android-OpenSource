@@ -46,17 +46,22 @@ import androidx.compose.ui.window.PopupProperties
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
+import com.amity.socialcloud.sdk.helper.core.coroutines.asFlow
+import com.amity.socialcloud.sdk.model.core.permission.AmityPermission
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.flow.catch
 import com.amity.socialcloud.sdk.model.social.comment.AmityComment
 import com.amity.socialcloud.uikit.common.utils.readableSocialTimeDiff
 import com.amity.socialcloud.uikit.common.model.AmitySocialReactions
 import com.amity.socialcloud.uikit.common.reaction.picker.AmityReactionPicker
 import com.amity.socialcloud.uikit.common.reaction.picker.getReactionIndexByX
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
+import com.amity.socialcloud.uikit.common.ui.scope.isElementExcluded
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.AmityConstants.POST_REACTION
 import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
-import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.common.R as CommonR
 import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 import com.amity.socialcloud.uikit.common.localization.amitySocialReactionDisplayName
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
@@ -145,7 +150,11 @@ fun AmityCommentEngagementBar(
                 ),
                 modifier = modifier.testTag("comment_list/comment_bubble_timestamp")
             )
-            if (allowInteraction) {
+            // Reaction can be switched off while Comment stays on - it needs only
+            // one of post/comment/chat/story. The Like control here carries no
+            // wrapper of its own, so it survived until the row was asked.
+            val showReaction = !componentScope.isElementExcluded("reaction_button")
+            if (allowInteraction && showReaction) {
                 val resolvedReactionKey = reacting
                     .first
                     .ifEmpty { myReaction }
@@ -154,8 +163,7 @@ fun AmityCommentEngagementBar(
                     text = amitySocialReactionDisplayName(resolvedReactionKey),
                     style = AmityTheme.typography.captionLegacy.copy(
                         color = if (isReacted) {
-                            if (isUIKitInDarkTheme()) amityColorWhite
-                            else AmityTheme.colors.primary
+                            AmityTheme.colors.base
                         }
                         else AmityTheme.colors.baseShade2,
                     ),
@@ -300,7 +308,11 @@ fun AmityCommentEngagementBar(
                         }
                         .testTag("comment_list/comment_bubble_reaction_button")
                 )
-
+            }
+            // Reply and the more-actions menu are NOT reaction surfaces - they
+            // must survive reaction-off (spec negative control "Reply must
+            // remain"). They stay gated only by interaction being allowed.
+            if (allowInteraction) {
                 Text(
                     text = amitySocialString("amity_social_button_reply"),
                     style = AmityTheme.typography.captionLegacy.copy(
@@ -330,7 +342,7 @@ fun AmityCommentEngagementBar(
 
                 if (allowAction) {
                     Icon(
-                        painter = painterResource(id = R.drawable.amity_ic_more_horiz),
+                        painter = painterResource(id = CommonR.drawable.amity_ic_more_horiz),
                         contentDescription = null,
                         tint = AmityTheme.colors.secondaryShade2,
                         modifier = modifier
@@ -436,6 +448,20 @@ fun AmityCommentEngagementBar(
             }
         }
 
+        // Non-authors can delete a comment when they hold the target's delete permission:
+        // DELETE_COMMUNITY_COMMENT for community comments, DELETE_USER_FEED_COMMENT for user feed.
+        val canDeleteComment by produceState(initialValue = false, comment.getCommentId()) {
+            val checker = when (val target = comment.getTarget()) {
+                is AmityComment.Target.COMMUNITY ->
+                    AmityCoreClient.hasPermission(AmityPermission.DELETE_COMMUNITY_COMMENT)
+                        .atCommunity(target.getCommunityId()).check()
+                else ->
+                    AmityCoreClient.hasPermission(AmityPermission.DELETE_USER_FEED_COMMENT)
+                        .atGlobal().check()
+            }
+            checker.asFlow().catch { emit(false) }.collect { value = it }
+        }
+
         AmityCommentActionsBottomSheet(
             modifier = modifier,
             componentScope = componentScope,
@@ -443,6 +469,7 @@ fun AmityCommentEngagementBar(
             commentId = comment.getCommentId(),
             isReplyComment = isReplyComment,
             isCommentCreatedByMe = isCreatedByMe,
+            canDeleteComment = canDeleteComment,
             isFlaggedByMe = comment.isFlaggedByMe(),
             isFailed = false,
             fromNonMemberCommunity = fromNonMemberCommunity,

@@ -46,7 +46,7 @@ import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.closePageWithResult
 import com.amity.socialcloud.uikit.common.utils.shade
-import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.common.R as CommonR
 import com.amity.socialcloud.uikit.community.compose.community.membership.element.AmityCommunityInviteMemberItem
 import com.amity.socialcloud.uikit.community.compose.community.membership.element.AmityCommunityInviteMemberRowList
 import com.amity.socialcloud.uikit.community.compose.search.components.AmityEmptySearchResultComponent
@@ -98,7 +98,7 @@ fun AmityCommunityInviteMemberPage(
                         .padding(start = 12.dp, end = 16.dp)
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.amity_ic_close),
+                        painter = painterResource(CommonR.drawable.amity_ic_close),
                         contentDescription = "Close",
                         tint = AmityTheme.colors.base,
                         modifier = modifier
@@ -157,7 +157,9 @@ fun AmityCommunityInviteMemberPage(
                     when (loadState) {
                         AmityCommunityInviteMemberPageViewModel.UserListState.EMPTY -> {
                             item {
-                                if (keyword.isNotBlank() && keyword.length < viewModel.minKeywordLength) {
+                                if (keyword.isEmpty()) {
+                                    AmityEmptyUserListComponent(modifier)
+                                } else if (keyword.length < viewModel.minKeywordLength) {
                                     AmitySearchPlaceholderComponent(modifier)
                                 } else {
                                     AmityEmptySearchResultComponent(modifier)
@@ -167,7 +169,7 @@ fun AmityCommunityInviteMemberPage(
 
                         AmityCommunityInviteMemberPageViewModel.UserListState.LOADING -> {
                             item {
-                                if (keyword.isNotBlank() && keyword.length < viewModel.minKeywordLength) {
+                                if (keyword.isNotEmpty() && keyword.length < viewModel.minKeywordLength) {
                                     AmitySearchPlaceholderComponent(modifier)
                                 } else {
                                     AmityUserListShimmer(

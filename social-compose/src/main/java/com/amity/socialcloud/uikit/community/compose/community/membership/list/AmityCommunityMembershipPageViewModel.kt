@@ -90,6 +90,12 @@ class AmityCommunityMembershipPageViewModel(val communityId: String) : AmityBase
             .asFlow()
     }
 
+    /**
+     * Gates the promote/demote sheet, matching iOS, which asks editCommunityUser for the same
+     * actions. PDT-4621 briefly gated this on ASSIGN_USER_ROLE instead; that hid the action from
+     * roles that hold EDIT_COMMUNITY_USER, diverging from iOS on the same role (BNI
+     * chapter-region-custom-role), so the iOS-parity gate wins.
+     */
     fun hasEditPermission(): Flowable<Boolean> {
         return hasPermissionAtCommunity(AmityPermission.EDIT_COMMUNITY_USER, communityId)
     }
@@ -100,13 +106,6 @@ class AmityCommunityMembershipPageViewModel(val communityId: String) : AmityBase
 
     fun hasRemovePermission(): Flowable<Boolean> {
         return hasPermissionAtCommunity(AmityPermission.REMOVE_COMMUNITY_USER, communityId)
-    }
-
-    // PDT-4621: promote/demote assign community + channel moderator roles, which the backend
-    // governs with ASSIGN_USER_ROLE. EDIT_COMMUNITY_USER does not grant it, so a custom role
-    // holding only the latter was offered a promote action that could never succeed.
-    fun hasAssignRolePermission(): Flowable<Boolean> {
-        return hasPermissionAtCommunity(AmityPermission.ASSIGN_USER_ROLE, communityId)
     }
 
     fun updateSheetUIState(uiState: AmityCommunityMembershipSheetUIState) {

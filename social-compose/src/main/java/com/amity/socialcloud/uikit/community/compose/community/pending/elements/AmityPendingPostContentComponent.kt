@@ -25,6 +25,7 @@ import com.amity.socialcloud.uikit.community.compose.post.detail.components.Amit
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostContentElement
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostLivestreamElement
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostMediaElement
+import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostEventElement
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostPollElement
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityProductCarousel
 import com.amity.socialcloud.uikit.community.compose.post.detail.menu.AmityPostMenuDialogUIState
@@ -133,6 +134,20 @@ fun AmityPendingPostContentComponent(
                 AmityPostLivestreamElement(
                     modifier = modifier,
                     post = post
+                )
+            } else if (post.getChildren().any { it.getData() is AmityPost.Data.EVENT }) {
+                AmityPostEventElement(
+                    modifier = modifier,
+                    componentScope = getComponentScope(),
+                    post = post,
+                    style = AmityPostContentComponentStyle.FEED,
+                    onClick = {},
+                    onEventClick = { eventId ->
+                        behavior.goToEventDetailPage(context = context, eventId = eventId)
+                    },
+                    onMentionedUserClick = {
+                        behavior.goToUserProfilePage(context = context, userId = it)
+                    },
                 )
             } else if (post.getChildren().any { it.getData() is AmityPost.Data.POLL }) {
 

@@ -25,8 +25,13 @@ class AmityGroupMemberListPageViewModel(
     private val _searchKeyword = MutableStateFlow("")
     val searchKeyword: StateFlow<String> = _searchKeyword
 
-    fun isModerator(): Flow<Boolean> {
-        return AmityCoreClient.hasPermission(AmityPermission.MUTE_CHANNEL)
+    /**
+     * Each member action is governed by its own channel permission, matching iOS. A single
+     * moderator-ish flag was standing in for all of them, which meant anyone allowed to ADD members
+     * also got promote, mute, ban and remove -- and anyone allowed to ban but not add got none.
+     */
+    private fun hasChannelPermission(permission: AmityPermission): Flow<Boolean> {
+        return AmityCoreClient.hasPermission(permission)
             .atChannel(channelId)
             .check()
             .distinctUntilChanged()
@@ -34,6 +39,25 @@ class AmityGroupMemberListPageViewModel(
             .asFlow()
             .catch { }
     }
+
+    /** Gates the add-member button in the header. */
+    fun canAddMember(): Flow<Boolean> = hasChannelPermission(AmityPermission.ADD_CHANNEL_USER)
+
+    /** Gates promote and demote: both edit a member's channel role. */
+    fun canPromote(): Flow<Boolean> = hasChannelPermission(AmityPermission.EDIT_CHANNEL_USER)
+
+    /**
+     * Gates mute and unmute, and whether the muted indicator is worth showing.
+     *
+     * MUTE_USER_INSIDE_CHANNEL, not MUTE_CHANNEL_USER: the latter is the older name and is not
+     * what a channel role actually carries, so the check never matched and mute never appeared.
+     */
+    fun canMute(): Flow<Boolean> = hasChannelPermission(AmityPermission.MUTE_USER_INSIDE_CHANNEL)
+
+    /** BAN_USER_FROM_CHANNEL, not BAN_CHANNEL_USER -- same reason as [canMute]. */
+    fun canBan(): Flow<Boolean> = hasChannelPermission(AmityPermission.BAN_USER_FROM_CHANNEL)
+
+    fun canRemove(): Flow<Boolean> = hasChannelPermission(AmityPermission.REMOVE_CHANNEL_USER)
 
     fun searchMembers(keyword: String = ""): Flow<PagingData<AmityChannelMember>> {
         return AmityChatClient.newChannelRepository()

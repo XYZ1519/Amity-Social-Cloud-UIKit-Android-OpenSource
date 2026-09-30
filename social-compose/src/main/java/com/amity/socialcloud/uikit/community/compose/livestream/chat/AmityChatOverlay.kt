@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
@@ -44,6 +45,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -55,6 +57,7 @@ import com.amity.socialcloud.sdk.model.core.flag.AmityContentFlagReason
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
+import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.elements.AmityAlertDialog
 import com.amity.socialcloud.uikit.common.ui.elements.AmityAnnotatedText
 import com.amity.socialcloud.uikit.common.ui.elements.AmityBottomSheetActionItem
@@ -66,16 +69,50 @@ import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.ui.theme.amityLiveBadgeRed
 import com.amity.socialcloud.uikit.common.ui.theme.amityLivestreamChatBubbleBackground
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
+import com.amity.socialcloud.uikit.common.utils.isKeyboardVisible
 import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
+import com.amity.socialcloud.uikit.common.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.livestream.chat.AmityLivestreamChatViewModel.AmityLiveStreamSheetUIState
 import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
+import com.amity.socialcloud.uikit.community.compose.localization.amitySocialConfigString
 import com.amity.socialcloud.uikit.community.compose.post.detail.menu.AmityReportOtherReasonScreen
 import com.amity.socialcloud.uikit.community.compose.post.detail.menu.AmityReportReasonListScreen
 import com.google.gson.JsonObject
 
 enum class UserActionConfirmation { PROMOTE, DEMOTE, MUTE, UNMUTE }
+
+/**
+ * Height of the live chat area. Zero while the keyboard is open, see
+ * [amityLiveChatHiddenByKeyboard].
+ *
+ * Matches iOS, which computes `(UIScreen.main.bounds.height - 50) / 5` once per page and applies
+ * it as a fixed frame (`LiveStreamViewerView`, `LiveStreamConferenceView`). Android used to take
+ * a fraction of the parent instead, which is a different quantity: it had drifted to roughly
+ * 2.5x the iOS height.
+ *
+ * `screenHeightDp` excludes the system bars on some versions, where `UIScreen.main.bounds.height`
+ * does not, so the two can differ by the status and navigation bar heights.
+ */
+@Composable
+internal fun amityLiveChatFeedHeight(): Dp {
+    if (amityLiveChatHiddenByKeyboard()) return 0.dp
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    return (screenHeight - 50.dp) / 5f
+}
+
+/**
+ * True while the keyboard is open over a livestream page.
+ *
+ * The chat area and the floating reactions both leave the screen while the user types. Only the
+ * compose bar and the pinned product stay above the keyboard. iOS collapses the same two views
+ * when the text editor takes focus (`LiveStreamViewerView.swift`, `liveChatFeedView` and
+ * `liveReactionView`).
+ */
+@Composable
+internal fun amityLiveChatHiddenByKeyboard(): Boolean = isKeyboardVisible().value
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,6 +123,9 @@ fun ChatOverlay(
     channelId: String,
     streamHostUserId: String? = null,
     fromNonMemberCommunity: Boolean = false,
+    // The pin banner and both pin controls exist only while the room is live; the server keeps
+    // channel.pinnedMessage after the stream ends, so this gate is ours.
+    isLive: Boolean = true,
     onReactionClick: () -> Unit,
     coHostUserId: String? = null,
     canInviteCohost: Boolean = false,
@@ -121,6 +161,14 @@ fun ChatOverlay(
             (coHostUserId != null && currentUserId == coHostUserId)
     val canModerate = isCurrentUserModerator || isCurrentUserStreamer
 
+    val pinnedMessage by remember(viewModel) { viewModel.getPinnedMessageFlow() }
+        .collectAsState(initial = null)
+    val hasPinPermission by remember(viewModel) { viewModel.hasPinPermission() }
+        .collectAsState(initial = false)
+    val mutedMemberIds by remember(viewModel) { viewModel.getMutedMemberIdsFlow() }
+        .collectAsState(initial = emptyList())
+    val canPin = (isCurrentUserStreamer || hasPinPermission) && isLive
+
     // Keep the channel "moderators" metadata in sync with the co-host,
     // refreshHostAndCoHostId: only the host promotes the accepted co-host to channel moderator
     // (and demotes them when the co-host slot clears). Driven off co-host changes, which the
@@ -146,18 +194,47 @@ fun ChatOverlay(
             sheetUIState != AmityLiveStreamSheetUIState.CloseSheet
         }
     }
-    Column(
-        modifier = modifier
-    ) {
+    // The banner is the first child of a top-aligned Column, so it sits at the top of whatever
+    // height the calling page gives the overlay.
+    // clipToBounds because the calling page sets this height to 0 while the keyboard is open.
+    // A child that fixes its own size, such as an Icon with `size(24.dp)`, ignores a 0 height
+    // constraint and would still draw over the compose bar.
+    Column(modifier = modifier.clipToBounds()) {
+        // The component id the pin config keys hang off. Android had none for the live chat
+        // before this feature; iOS and Web already use `livestream_chat_feed`.
+        AmityBaseComponent(
+            pageScope = pageScope,
+            componentId = "livestream_chat_feed"
+        ) {
+            AmityPinnedMessageBanner(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                pinnedMessage = pinnedMessage,
+                canPin = canPin,
+                isLive = isLive,
+                mutedMemberIds = mutedMemberIds,
+                hostUserId = streamHostUserId,
+                coHostUserId = coHostUserId,
+                // pageScope is deliberately not passed: the element's config id is
+                // `*/livestream_chat_feed/pinned_message_banner`, one key for both host pages.
+                componentScope = this,
+                onUnpinClick = { messageId -> viewModel.unpinMessage(messageId) },
+            )
+        }
         LazyColumn(
             modifier = Modifier
+                // The list claims the whole chat area below the banner, and reverseLayout holds
+                // the messages against its bottom edge. That keeps the banner at the very top of
+                // the area on every page: a short chat leaves an empty gap between the two rather
+                // than pulling the banner down onto the newest message.
                 .weight(1f)
                 .topFadingEdge()
                 .padding(horizontal = 16.dp),
             reverseLayout = true
         ) {
             item {
-                Spacer(modifier = Modifier.height(4.dp)) // Add some space at the top
+                // reverseLayout: the first item is the BOTTOM of the list, so this is the
+                // breathing room between the newest message and the composer.
+                Spacer(modifier = Modifier.height(4.dp))
             }
             items(
                 count = messages.itemCount,
@@ -212,9 +289,11 @@ fun ChatOverlay(
 
                 }
             }
-            item {
-                Spacer(modifier = Modifier.height(40.dp)) // Add some space at the top
-            }
+            // No top spacer. As the last item it would be the TOP of the content stack, and on
+            // the streamer page the whole chat area is a fifth of the screen — 40dp of it was
+            // enough to push the content past the viewport, which scrolled the spacer out of
+            // view and left the newest message flush against the banner. The banner already
+            // provides the separation, and topFadingEdge fades whatever slides under it.
         }
 
 
@@ -231,8 +310,19 @@ fun ChatOverlay(
                     is AmityLiveStreamSheetUIState.OpenSheet -> {
                         val message = (sheetUIState as AmityLiveStreamSheetUIState.OpenSheet).message
                         AmityLivestreamMessageActionsContainer(
+                            pageScope = pageScope,
                             message = message,
                             isChannelModerator = canModerate,
+                            canPin = canPin,
+                            isPinned = pinnedMessage?.getMessageId() == message.getMessageId(),
+                            onPin = { messageId ->
+                                viewModel.pinMessage(messageId)
+                                viewModel.updateSheetUIState(AmityLiveStreamSheetUIState.CloseSheet)
+                            },
+                            onUnpin = { messageId ->
+                                viewModel.unpinMessage(messageId)
+                                viewModel.updateSheetUIState(AmityLiveStreamSheetUIState.CloseSheet)
+                            },
                             onReport = { messageId ->
                                 if (AmityCoreClient.isVisitor()) {
                                     behavior.handleVisitorUserAction()
@@ -277,7 +367,12 @@ fun ChatOverlay(
                         )
                     }
                     is AmityLiveStreamSheetUIState.OpenReportSheet -> {
+                        // PDT-4730: pass the page scope, or the component resolves its theme
+                        // against "*//*", finds nothing, falls back to the GLOBAL theme, and its
+                        // Scaffold paints white on a light device. With it the theme resolves to
+                        // "livestream_player_page/*/*", whose light and dark palettes are identical.
                         AmityBaseComponent(
+                            pageScope = pageScope,
                             componentId = "",
                             needScaffold = true
                         ) {
@@ -306,7 +401,12 @@ fun ChatOverlay(
                     }
 
                     is AmityLiveStreamSheetUIState.OpenReportOtherReasonSheet -> {
+                        // PDT-4730: pass the page scope, or the component resolves its theme
+                        // against "*//*", finds nothing, falls back to the GLOBAL theme, and its
+                        // Scaffold paints white on a light device. With it the theme resolves to
+                        // "livestream_player_page/*/*", whose light and dark palettes are identical.
                         AmityBaseComponent(
+                            pageScope = pageScope,
                             componentId = "",
                             needScaffold = true
                         ) {
@@ -574,7 +674,7 @@ fun ChatMessageItem(
                         val isBrandCreator = message.getCreator()?.isBrand() == true
                         if (isBrandCreator && !message.isDeleted()) {
                             Image(
-                                painter = painterResource(id = R.drawable.amity_ic_brand_badge),
+                                painter = painterResource(id = CommonComposeR.drawable.amity_ic_brand_badge),
                                 contentDescription = "Brand badge",
                                 modifier = Modifier.size(16.dp)
                             )
@@ -621,7 +721,7 @@ fun ChatMessageItem(
                     if (message.isDeleted()) {
                         Icon(
                             painter = painterResource(
-                                id = R.drawable.amity_ic_delete_story
+                                id = CommonR.drawable.amity_ic_delete_story
                             ),
                             contentDescription = "message options",
                             tint = AmityTheme.colors.baseShade2,
@@ -648,7 +748,7 @@ fun ChatMessageItem(
             if (message.getState() == AmityMessage.State.FAILED) {
                 Icon(
                     painter = painterResource(
-                        id = R.drawable.amity_ic_livestream_chat_sending_fail
+                        id = CommonR.drawable.amity_ic_livestream_chat_sending_fail
                     ),
                     contentDescription = "message sending failed icon",
                     tint = AmityTheme.colors.baseInverse,
@@ -679,9 +779,9 @@ fun HostBadge(
     ) {
         Icon(
             painter = painterResource(id = if (isCoHost) {
-                R.drawable.amity_ic_cohost_chat_badge
+                CommonR.drawable.amity_ic_cohost_chat_badge
             } else {
-                R.drawable.amity_ic_livestream_host
+                CommonR.drawable.amity_ic_livestream_host
             }),
             contentDescription = if (isCoHost) { "Co-host badge" } else {  "Host badge" },
             tint = AmityTheme.colors.baseInverse,
@@ -718,7 +818,7 @@ fun ModeratorBadge() {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            painter = painterResource(id = R.drawable.amity_ic_moderator_social),
+            painter = painterResource(id = CommonR.drawable.amity_ic_moderator_social),
             contentDescription = "Moderator badge",
             tint = AmityTheme.colors.base,
             modifier = Modifier
@@ -737,7 +837,7 @@ fun ModeratorBadge() {
 @Composable
 fun MutedBadge() {
     Icon(
-        painter = painterResource(id = R.drawable.amity_ic_mute_user),
+        painter = painterResource(id = CommonR.drawable.amity_ic_mute_user),
         contentDescription = "Muted badge",
         tint = AmityTheme.colors.baseShade2,
         modifier = Modifier
@@ -757,8 +857,13 @@ fun getContent(message: AmityMessage): String {
 @Composable
 fun AmityLivestreamMessageActionsContainer(
     modifier: Modifier = Modifier,
+    pageScope: AmityComposePageScope? = null,
     message: AmityMessage,
     isChannelModerator: Boolean,
+    canPin: Boolean = false,
+    isPinned: Boolean = false,
+    onPin: (String) -> Unit = {},
+    onUnpin: (String) -> Unit = {},
     onDelete: () -> Unit,
     onReport: (String) -> Unit = {},
     onUnreport: (String) -> Unit = {},
@@ -770,6 +875,51 @@ fun AmityLivestreamMessageActionsContainer(
             .navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, bottom = 32.dp)
     ) {
+        // A message the server never accepted has no id to pin, so the action is hidden
+        // rather than left to fail silently.
+        if (canPin && !message.isDeleted() && message.getState() != AmityMessage.State.FAILED) {
+            // The sheet is mounted outside the feed's own component scope, so the scope is
+            // rebuilt here to keep the key at `*/livestream_chat_feed/pin_message_button`.
+            AmityBaseComponent(
+                pageScope = pageScope,
+                componentId = "livestream_chat_feed"
+            ) {
+                // One slot, two states. The message that is currently pinned offers Unpin;
+                // every other message offers Pin. This matches the Console, whose menu also
+                // replaces Pin with Unpin on the pinned row.
+                if (isPinned) {
+                    // Shares `unpin_message_button` with the banner's "X": both are the same
+                    // action, so excluding the key removes every way to unpin from the UI.
+                    AmityBaseElement(
+                        componentScope = this,
+                        elementId = "unpin_message_button"
+                    ) {
+                        AmityBottomSheetActionItem(
+                            icon = R.drawable.amity_ic_unpin_outlined,
+                            text = amitySocialConfigString("amity_social_button_unpin_message"),
+                            color = AmityTheme.colors.baseInverse,
+                            modifier = modifier.testTag(getAccessibilityId()),
+                        ) {
+                            onUnpin(message.getMessageId())
+                        }
+                    }
+                } else {
+                    AmityBaseElement(
+                        componentScope = this,
+                        elementId = "pin_message_button"
+                    ) {
+                        AmityBottomSheetActionItem(
+                            icon = R.drawable.amity_ic_product_tagging_pin_outlined,
+                            text = amitySocialConfigString("amity_social_button_pin_message"),
+                            color = AmityTheme.colors.baseInverse,
+                            modifier = modifier.testTag(getAccessibilityId()),
+                        ) {
+                            onPin(message.getMessageId())
+                        }
+                    }
+                }
+            }
+        }
         if (message.getCreatorId() != AmityCoreClient.getUserId()) {
             if(!message.isFlaggedByMe()) {
                 AmityBottomSheetActionItem(
@@ -793,7 +943,7 @@ fun AmityLivestreamMessageActionsContainer(
         }
         if (message.getCreatorId() == AmityCoreClient.getUserId() || (isChannelModerator && !isHostMessage)) {
             AmityBottomSheetActionItem(
-                icon = R.drawable.amity_ic_delete_story,
+                icon = CommonR.drawable.amity_ic_delete_story,
                 text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_delete_message"),
                 color = AmityTheme.colors.alert,
                 modifier = modifier.testTag("comment_tray_component/bottom_sheet_delete_comment_button"),
@@ -850,7 +1000,7 @@ fun AmityUserActionsSheet(
                 val isBrandUser = user?.isBrand() == true
                 if (isBrandUser) {
                     Image(
-                        painter = painterResource(id = R.drawable.amity_ic_brand_badge),
+                        painter = painterResource(id = CommonComposeR.drawable.amity_ic_brand_badge),
                         contentDescription = "Brand badge",
                         modifier = Modifier.size(16.dp)
                     )
@@ -859,7 +1009,7 @@ fun AmityUserActionsSheet(
                 // Muted icon if user is muted
                 if (isMuted) {
                     Icon(
-                        painter = painterResource(id = R.drawable.amity_ic_mute_user),
+                        painter = painterResource(id = CommonR.drawable.amity_ic_mute_user),
                         contentDescription = "Muted badge",
                         tint = AmityTheme.colors.baseShade2,
                         modifier = Modifier
@@ -880,7 +1030,7 @@ fun AmityUserActionsSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        painter = painterResource(id = R.drawable.amity_ic_moderator_social),
+                        painter = painterResource(id = CommonR.drawable.amity_ic_moderator_social),
                         contentDescription = "Moderator badge",
                         tint = AmityTheme.colors.baseInverse,
                         modifier = Modifier
@@ -913,7 +1063,7 @@ fun AmityUserActionsSheet(
         // Invite as co-host button - only show if canInviteCohost is true
         if (canInviteCohost) {
             AmityBottomSheetActionItem(
-                icon = R.drawable.amity_ic_invite_cohost_in_chat,
+                icon = CommonR.drawable.amity_ic_invite_cohost_in_chat,
                 text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_invite_as_co_host"),
                 color = AmityTheme.colors.base,
             ) {
@@ -940,7 +1090,7 @@ fun AmityUserActionsSheet(
         // Mute/Unmute user - only show if user is not a moderator
         if (!isModerator) {
             AmityBottomSheetActionItem(
-                icon = if (isMuted) R.drawable.amity_ic_unmute_user else R.drawable.amity_ic_mute_user,
+                icon = if (isMuted) CommonR.drawable.amity_ic_unmute_user else CommonR.drawable.amity_ic_mute_user,
                 text = if (isMuted) DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_unmute_user") else DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_mute_user"),
                 color = AmityTheme.colors.base,
             ) {
@@ -973,7 +1123,7 @@ private fun submitReport(
         },
         onError = { error ->
             onError()
-            pageScope?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_message_report_failed"), drawableRes = R.drawable.amity_ic_warning)
+            pageScope?.showSnackbar(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_message_report_failed"), drawableRes = CommonR.drawable.amity_ic_warning)
         }
     )
 }

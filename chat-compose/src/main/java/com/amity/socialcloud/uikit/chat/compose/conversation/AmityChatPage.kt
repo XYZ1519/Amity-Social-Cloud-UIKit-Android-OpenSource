@@ -1,5 +1,7 @@
 package com.amity.socialcloud.uikit.chat.compose.conversation
 
+import com.amity.socialcloud.uikit.common.config.AmityUIKitFeature
+import com.amity.socialcloud.uikit.common.config.AmityUIKitDataGate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -49,7 +51,7 @@ import com.amity.socialcloud.uikit.common.ui.atoms.AmityButtonHierarchy
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityDivider
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityDividerVariant
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityIconButtonSize
-import com.amity.socialcloud.uikit.common.compose.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -60,7 +62,6 @@ import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.ui.theme.AmityColorToken
 import com.amity.socialcloud.uikit.chat.compose.message.element.LocalSentVideoUris
 import androidx.compose.runtime.CompositionLocalProvider
-import com.amity.socialcloud.uikit.chat.compose.live.elements.AmityAvatarFullScreenDialog
 import com.amity.socialcloud.uikit.common.utils.resolvedAvatarUrl
 
 @Composable
@@ -83,14 +84,15 @@ fun AmityChatPage(
     val hasAnyUserAction = remember { AmityChatConfigHelper.hasAnyEnabledChatUserAction() }
     var showBlockConfirm by remember { mutableStateOf(false) }
     var showUnblockConfirm by remember { mutableStateOf(false) }
-    var showAvatarFullScreen by remember { mutableStateOf(false) }
     val headerAvatarUrl = otherMembers.firstOrNull()?.getUser()?.resolvedAvatarUrl(AmityImage.Size.LARGE)
         ?: channel?.getAvatar()?.getUrl(AmityImage.Size.LARGE)
 
-    // Fetch follow/block info when other member is known
+    // Fetch follow/block info when other member is known. getFollowInfo is a
+    // userRelationship call: with the module withheld there is no Block row to
+    // label, and under enforce the backend would refuse it on every open (R6).
     val otherUserId = otherMembers.firstOrNull()?.getUserId()
     LaunchedEffect(otherUserId) {
-        if (otherUserId != null) {
+        if (otherUserId != null && AmityUIKitDataGate.isOn(AmityUIKitFeature.USER_RELATIONSHIP)) {
             viewModel.fetchFollowInfo(otherUserId)
         }
     }
@@ -146,7 +148,7 @@ fun AmityChatPage(
                         style = AmityButtonStyle.GHOST,
                         hierarchy = AmityButtonHierarchy.SECONDARY,
                         iconSize = AmityIconButtonSize.SIZE32,
-                        icon = CommonR.drawable.amity_ic_chevron_left,
+                        icon = CommonComposeR.drawable.amity_ic_chevron_left,
                         onClick = { (context as? android.app.Activity)?.finish() },
                     )
                     Spacer(modifier = Modifier.width(16.dp))
@@ -163,7 +165,11 @@ fun AmityChatPage(
                         (context as? android.app.Activity)?.finish()
                     },
                     onAvatarClick = {
-                        showAvatarFullScreen = true
+                        behavior.onAvatarTap(
+                            context = context,
+                            userId = otherMembers.firstOrNull()?.getUser()?.getUserId().orEmpty(),
+                            avatarUrl = headerAvatarUrl,
+                        )
                     },
                     onMoreClick = {
                         showActionSheet = true
@@ -316,12 +322,6 @@ fun AmityChatPage(
             )
         }
 
-        if (showAvatarFullScreen) {
-            AmityAvatarFullScreenDialog(
-                avatarUrl = headerAvatarUrl,
-                onDismiss = { showAvatarFullScreen = false },
-            )
-        }
         }
     }
 }
@@ -351,7 +351,7 @@ private fun ConversationChatHeader(
         // atom size maps to 24/24 (SIZE24 pads its glyph to 16dp), so this is the raw glyph
         // with the same Ghost/Secondary tint the atom would apply.
         Icon(
-            imageVector = ImageVector.vectorResource(id = CommonR.drawable.amity_ic_chevron_left),
+            imageVector = ImageVector.vectorResource(id = CommonComposeR.drawable.amity_ic_chevron_left),
             contentDescription = "Back",
             tint = AmityTheme.token(AmityColorToken.IconIconButtonGhostSecondaryDefault),
             modifier = Modifier
@@ -401,7 +401,7 @@ private fun ConversationChatHeader(
                 hierarchy = AmityButtonHierarchy.SECONDARY,
                 // 32dp icon-button with the 24dp ellipsis glyph per the design.
                 iconSize = AmityIconButtonSize.SIZE32,
-                icon = CommonR.drawable.amity_ic_ellipsis_v_r,
+                icon = CommonComposeR.drawable.amity_ic_ellipsis_v_r,
                 onClick = onMoreClick,
             )
         }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,12 +40,19 @@ import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import com.amity.socialcloud.uikit.common.ui.elements.AmityAlertDialog
 import com.amity.socialcloud.uikit.common.ui.elements.AmityMenuButton
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
+import com.amity.socialcloud.uikit.common.ui.scope.isComponentExcluded
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
+import com.amity.socialcloud.uikit.common.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.event.detail.components.AmityEventInfoComponent
 import com.amity.socialcloud.uikit.community.compose.event.detail.components.amityEventDiscussionFeedItems
 import com.amity.socialcloud.uikit.community.compose.event.detail.elements.AmityEventDiscussionActionsBottomSheet
 import com.amity.socialcloud.uikit.community.compose.event.detail.elements.AmityEventMenuBottomSheet
+import com.amity.socialcloud.uikit.community.compose.event.detail.elements.AmityEventPostCreationSuccessBottomSheet
+import com.amity.socialcloud.uikit.community.compose.post.composer.AmityPostComposerOptions
+import com.amity.socialcloud.uikit.community.compose.post.composer.AmityPostComposerPageActivity
+import com.amity.socialcloud.uikit.community.compose.post.composer.AmityPostTargetType
 import com.amity.socialcloud.uikit.community.compose.post.composer.poll.AmityPollPostTypeSelectionBottomSheet
 import com.amity.socialcloud.uikit.community.compose.ui.shimmer.AmityEventDetailShimmer
 import com.amity.socialcloud.uikit.community.compose.ui.shimmer.AmityEventAboutTabShimmer
@@ -90,6 +98,8 @@ import org.joda.time.DateTime
 import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
+import com.amity.socialcloud.uikit.community.compose.dropGatedPostTypes
+import com.amity.socialcloud.uikit.community.compose.dropGatedPinnedPostTypes
 
 private fun android.content.Context.closePage() {
     (this as? Activity)?.finish()
@@ -134,6 +144,10 @@ fun AmityEventDetailPage(
     var showJoinCommunityBottomSheet by remember { mutableStateOf(false) }
     var showPendingApprovalDialog by remember { mutableStateOf(false) }
     var showEditingNotPossibleDialog by remember { mutableStateOf(false) }
+    // Post-creation success sheet (entry point A): shown once to the host when they land here
+    // straight after creating the event, replacing the plain "event created" toast.
+    var showPostToFeedSuccessSheet by remember { mutableStateOf(false) }
+    var eventCreatedHandled by rememberSaveable { mutableStateOf(false) }
     var showPendingJoinDialog by remember { mutableStateOf(false) }
 
     // Get error state from ViewModel
@@ -193,10 +207,13 @@ fun AmityEventDetailPage(
         }
     }
 
-    // Show success toast when coming from event creation
-    LaunchedEffect(showSuccessToast) {
-        if (showSuccessToast) {
-            AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_event_created"))
+    // Coming from event creation: the host who just created the event gets the "post it to a feed"
+    // success sheet (entry point A) instead of a toast. Wait until the event has loaded so the sheet
+    // renders with its data. Anyone else arriving with this flag still gets the plain toast.
+    LaunchedEffect(showSuccessToast, event) {
+        if (showSuccessToast && event != null && !eventCreatedHandled) {
+            eventCreatedHandled = true
+            showPostToFeedSuccessSheet = true
         }
     }
 
@@ -239,6 +256,7 @@ fun AmityEventDetailPage(
 
     // Get permissions from ViewModel
     val hasDeleteEventPermission by viewModel.hasDeleteEventPermission.collectAsState()
+    val hasUpdateEventPermission by viewModel.hasUpdateEventPermission.collectAsState()
     val isEventCreator by viewModel.isEventCreator.collectAsState()
 
     // Share visibility (Phase 3): deep-link config present (eventShareUrl != null) AND origin
@@ -251,7 +269,21 @@ fun AmityEventDetailPage(
     val isOriginPublic = event?.getTargetCommunity()?.isPublic() == true
     val showShareActions = eventShareUrl != null && isOriginPublic && isShareableStatus
 
-    val showMenu = isEventCreator || hasDeleteEventPermission || isGoing == true || showShareActions
+    // Post-event-to-feed visibility follows the permission matrix and nothing else (spec REQ-011):
+    // host / moderator / member of the origin community can post the event (public or private);
+    // non-members and visitors cannot. Deliberately NOT gated on the share-link conditions or on
+    // event status — REQ-011.4 says visibility must not depend on where the event was created, and
+    // no status rule is specified, so the action stays available for every status. A private-
+    // community event's post is allowed too, it just gets locked to that community (REQ-012).
+    // PDT-4734: hasDeleteEventPermission was what leaked this to non-members. Moderators of the
+    // origin community are members, so isMember already covers the moderator half of REQ-011; the
+    // permission term only ever added someone who can delete events WITHOUT belonging to the
+    // community -- a network-level admin -- which is precisely the non-member case the action must
+    // stay hidden from. iOS gates on host-or-joined and nothing else; match it. isMember comes from
+    // the separately fetched target community, the same source the discussion FAB uses.
+    val canPostEventToFeed = isEventCreator || isMember
+
+    val showMenu = isEventCreator || hasDeleteEventPermission || hasUpdateEventPermission || isGoing == true || showShareActions || canPostEventToFeed
 
     // Setup paging data for discussion feed
     val announcementPosts = remember(communityId) {
@@ -261,6 +293,7 @@ fun AmityEventDetailPage(
                     communityId = communityId!!,
                     placement = AmityPinnedPost.PinPlacement.ANNOUNCEMENT.value
                 )
+                .dropGatedPinnedPostTypes()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .asFlow()
@@ -277,6 +310,7 @@ fun AmityEventDetailPage(
                     communityId = communityId!!,
                     placement = AmityPinnedPost.PinPlacement.DEFAULT.value
                 )
+                .dropGatedPinnedPostTypes()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .asFlow()
@@ -300,6 +334,7 @@ fun AmityEventDetailPage(
                 .matchingOnlyParentPosts(true)
                 .build()
                 .query()
+                .dropGatedPostTypes()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .onBackpressureBuffer()
@@ -325,6 +360,10 @@ fun AmityEventDetailPage(
     }
 
     AmityBasePage(pageId = "event_detail_page") {
+        // With Discussion withheld the row is About alone, and a selection left on
+        // Discussion (the module can be withdrawn while the page is open) falls
+        // back to About rather than to a feed nothing can reach.
+        val activeTabIndex = if (isEventDiscussionAvailable(getPageScope())) selectedTabIndex else 0
         Scaffold(
             modifier = modifier.fillMaxSize(),
             containerColor = AmityTheme.colors.background
@@ -388,7 +427,7 @@ fun AmityEventDetailPage(
                             modifier = Modifier.padding(horizontal = 32.dp)
                         ) {
                             Icon(
-                                painter = painterResource(R.drawable.amity_ic_unable_to_load),
+                                painter = painterResource(CommonR.drawable.amity_ic_unable_to_load),
                                 contentDescription = "Error",
                                 tint = AmityTheme.colors.baseShade4,
                                 modifier = Modifier.size(60.dp)
@@ -459,7 +498,8 @@ fun AmityEventDetailPage(
                                         } else null
                                     )
                                     EventTabRow(
-                                        selectedIndex = selectedTabIndex,
+                                        pageScope = getPageScope(),
+                                        selectedIndex = activeTabIndex,
                                         onTabSelected = { selectedTabIndex = it }
                                     )
                                 }
@@ -504,14 +544,15 @@ fun AmityEventDetailPage(
                         item {
                             if (event != null) {
                                 EventTabRow(
-                                    selectedIndex = selectedTabIndex,
+                                    pageScope = getPageScope(),
+                                    selectedIndex = activeTabIndex,
                                     onTabSelected = { selectedTabIndex = it }
                                 )
                             }
                         }
 
                         // Conditional content based on selected tab
-                        when (selectedTabIndex) {
+                        when (activeTabIndex) {
                             0 -> {
                                 // About tab
                                 item {
@@ -570,7 +611,7 @@ fun AmityEventDetailPage(
                 } // Close else block
 
                 // FAB for creating posts (only show in Discussion tab)
-                if (selectedTabIndex == 1 && event != null && !hasError) {
+                if (activeTabIndex == 1 && event != null && !hasError) {
                     AmityBaseElement(
                         pageScope = pageScope,
                         elementId = "event_discussion_create_post_button",
@@ -593,7 +634,7 @@ fun AmityEventDetailPage(
                                     .align(Alignment.BottomEnd)
                             ) {
                                 Icon(
-                                    painter = painterResource(id = R.drawable.amity_ic_plus),
+                                    painter = painterResource(id = CommonR.drawable.amity_ic_plus),
                                     contentDescription = "create post",
                                     tint = amityColorWhite,
                                     modifier = Modifier.size(32.dp)
@@ -608,6 +649,7 @@ fun AmityEventDetailPage(
                     AmityEventDiscussionActionsBottomSheet(
                         community = community!!,
                         shouldShow = showCreatePostBottomSheet,
+                        pageScope = getPageScope(),
                         showPollTypeSelectionSheet = {
                             showCreatePostBottomSheet = false
                             showPollSelectionBottomSheet = true
@@ -661,9 +703,21 @@ fun AmityEventDetailPage(
                 val currentUserId = AmityCoreClient.getUserId()
                 val isEventCreator = event!!.getCreator()?.getUserId() == currentUserId
 
+                // Share-event-as-post. The target-selection page is presented for every event-post
+                // flow and picks its own variant from the event's origin (spec REQ-001), so there is
+                // no routing decision here. Shared by the 3-dot menu item and the post-creation
+                // success sheet (entry point A).
+                val launchPostToFeed: () -> Unit = {
+                    behavior.goToEventPostTargetSelectionPage(
+                        context = AmityEventDetailPageBehavior.Context(pageContext = context),
+                        event = event!!,
+                    )
+                }
+
                 // showShareActions is hoisted above (gates both the menu icon and these items)
                 AmityEventMenuBottomSheet(
                     shouldShow = showEventMenuBottomSheet,
+                    pageScope = getPageScope(),
                     onDismiss = { showEventMenuBottomSheet = false },
                     onEditClick = {
                         behavior.goToEditEventPage(
@@ -735,12 +789,26 @@ fun AmityEventDetailPage(
                             }
                         }
                     },
+                    onPostToFeedClick = { launchPostToFeed() },
                     eventStartTime = event!!.getStartTime(),
                     eventEndTime = event!!.getEndTime(),
                     isEventCreator = isEventCreator,
                     hasDeletePermission = hasDeleteEventPermission,
+                    hasUpdatePermission = hasUpdateEventPermission,
                     hasRsvpd = isGoing == true,
-                    showShareActions = showShareActions
+                    showShareActions = showShareActions,
+                    showPostToFeed = canPostEventToFeed
+                )
+
+                // Post-creation success sheet (entry point A): one-time nudge for the host to share
+                // the event they just created. "Post to feed" reuses the same routing as the menu item.
+                AmityEventPostCreationSuccessBottomSheet(
+                    shouldShow = showPostToFeedSuccessSheet,
+                    onDismiss = { showPostToFeedSuccessSheet = false },
+                    onPostToFeed = {
+                        showPostToFeedSuccessSheet = false
+                        launchPostToFeed()
+                    },
                 )
             }
 
@@ -767,7 +835,7 @@ fun AmityEventDetailPage(
                             Spacer(modifier = Modifier.height(20.dp))
                             // Calendar icon
                             Image(
-                                painter = painterResource(R.drawable.amity_ic_event_add_to_calendar),
+                                painter = painterResource(CommonR.drawable.amity_ic_event_add_to_calendar),
                                 contentDescription = "Calendar",
                                 modifier = Modifier.size(120.dp)
                             )
@@ -858,7 +926,7 @@ fun AmityEventDetailPage(
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Icon(
-                                painter = painterResource(R.drawable.amity_ic_event_add_to_calendar_button),
+                                painter = painterResource(CommonR.drawable.amity_ic_event_add_to_calendar_button),
                                 contentDescription = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_add_to_calendar"),
                                 tint = amityColorWhite,
                                 modifier = Modifier.size(20.dp)
@@ -922,7 +990,7 @@ fun AmityEventDetailPage(
                                 image = targetCommunity!!.getAvatar(),
                                 size = 120.dp,
                                 roundedCornerShape = RoundedCornerShape(24.dp),
-                                placeholder = R.drawable.amity_ic_community_placeholder,
+                                placeholder = CommonR.drawable.amity_ic_community_placeholder,
                                 placeholderTint = amityColorWhite,
                                 placeholderBackground = AmityTheme.colors.primaryShade1,
                                 iconPadding = 24.dp,
@@ -1157,7 +1225,7 @@ private fun EventCollapsedHeader(
             )
         } else {
             Image(
-                painter = painterResource(R.drawable.amity_ic_event_list_placeholder),
+                painter = painterResource(CommonR.drawable.amity_ic_event_list_placeholder),
                 contentDescription = "Event background",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -1175,7 +1243,7 @@ private fun EventCollapsedHeader(
         ) {
             IconButton(onClick = onBackClick) {
                 Icon(
-                    painter = painterResource(R.drawable.amity_ic_back),
+                    painter = painterResource(CommonR.drawable.amity_ic_back),
                     contentDescription = "Back",
                     tint = AmityTheme.colors.base
                 )
@@ -1197,7 +1265,7 @@ private fun EventCollapsedHeader(
 
             onMenuClick?.let {
                 AmityMenuButton(
-                    icon = R.drawable.amity_ic_more_horiz,
+                    icon = CommonR.drawable.amity_ic_more_horiz,
                     size = 32.dp,
                     iconPadding = 4.dp,
                     onClick = it
@@ -1232,15 +1300,15 @@ private fun EventExpandedHeader(
                         .build(),
                     contentDescription = "Event cover",
                     contentScale = ContentScale.Crop,
-                    placeholder = painterResource(R.drawable.amity_ic_event_list_placeholder),
-                    error = painterResource(R.drawable.amity_ic_event_list_placeholder),
+                    placeholder = painterResource(CommonR.drawable.amity_ic_event_list_placeholder),
+                    error = painterResource(CommonR.drawable.amity_ic_event_list_placeholder),
                     modifier = Modifier.fillMaxSize()
                 )
             }
         } else {
             Box(modifier = Modifier.matchParentSize()) {
                 Image(
-                    painter = painterResource(R.drawable.amity_ic_event_list_placeholder),
+                    painter = painterResource(CommonR.drawable.amity_ic_event_list_placeholder),
                     contentDescription = "Event cover",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -1263,7 +1331,7 @@ private fun EventExpandedHeader(
             ) {
                 IconButton(onClick = onBackClick) {
                     Icon(
-                        painter = painterResource(R.drawable.amity_ic_back),
+                        painter = painterResource(CommonR.drawable.amity_ic_back),
                         contentDescription = "Back",
                         tint = amityColorWhite
                     )
@@ -1274,7 +1342,7 @@ private fun EventExpandedHeader(
 
             onMenuClick?.let {
                 AmityMenuButton(
-                    icon = R.drawable.amity_ic_more_horiz,
+                    icon = CommonR.drawable.amity_ic_more_horiz,
                     size = 32.dp,
                     iconPadding = 4.dp,
                     tint = amityColorWhite,
@@ -1286,10 +1354,12 @@ private fun EventExpandedHeader(
 }
 
 @Composable
-private fun EventTabRow(
+internal fun EventTabRow(
+    pageScope: AmityComposePageScope? = null,
     selectedIndex: Int,
     onTabSelected: (Int) -> Unit
 ) {
+    val showDiscussion = isEventDiscussionAvailable(pageScope)
     Column(
         modifier = Modifier
             .background(color = AmityTheme.colors.background)
@@ -1315,7 +1385,7 @@ private fun EventTabRow(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.amity_ic_event_detail_info_tab),
+                        painter = painterResource(CommonR.drawable.amity_ic_event_detail_info_tab),
                         contentDescription = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_edit_user_about_title"),
                         tint = if (selectedIndex == 0) AmityTheme.colors.base else AmityTheme.colors.secondaryShade3,
                         modifier = Modifier.size(24.dp)
@@ -1336,37 +1406,39 @@ private fun EventTabRow(
             }
 
             // Discussion tab
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier
-                    .weight(1f)
-                    .clickableWithoutRipple {
-                        onTabSelected(1)
-                    }
-            ) {
-                Box(
-                    modifier = Modifier.padding(bottom = 12.dp),
-                    contentAlignment = Alignment.Center
+            if (showDiscussion) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickableWithoutRipple {
+                            onTabSelected(1)
+                        }
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.amity_ic_event_detail_discussion_feed),
-                        contentDescription = "Discussion",
-                        tint = if (selectedIndex == 1) AmityTheme.colors.base else AmityTheme.colors.secondaryShade3,
-                        modifier = Modifier.size(24.dp)
+                    Box(
+                        modifier = Modifier.padding(bottom = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(CommonR.drawable.amity_ic_event_detail_discussion_feed),
+                            contentDescription = "Discussion",
+                            tint = if (selectedIndex == 1) AmityTheme.colors.base else AmityTheme.colors.secondaryShade3,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(2.dp)
+                            .background(
+                                color = if (selectedIndex == 1) AmityTheme.colors.primary else Color.Transparent,
+                                shape = RoundedCornerShape(
+                                    topStart = 1.dp,
+                                    topEnd = 1.dp
+                                )
+                            )
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(2.dp)
-                        .background(
-                            color = if (selectedIndex == 1) AmityTheme.colors.primary else Color.Transparent,
-                            shape = RoundedCornerShape(
-                                topStart = 1.dp,
-                                topEnd = 1.dp
-                            )
-                        )
-                )
             }
         }
 
@@ -1376,6 +1448,17 @@ private fun EventTabRow(
         )
     }
 }
+
+/**
+ * Whether the Discussion tab is shown.
+ *
+ * Discussion is the event's post feed, the `event_discussion` component, which
+ * Post owns. The page is Events', so the page gate never asks about Post: the
+ * tab has to. Only its composer was gated before, which left a tab that could
+ * never hold a post.
+ */
+internal fun isEventDiscussionAvailable(pageScope: AmityComposePageScope?): Boolean =
+    !isComponentExcluded(componentId = "event_discussion", pageScope = pageScope)
 
 @Composable
 private fun EventTitleSection(event: AmityEvent) {
@@ -1430,7 +1513,7 @@ private fun EventTitleSection(event: AmityEvent) {
                     // Lock icon - only show if community is private
                     if (!community.isPublic()) {
                         Icon(
-                            painter = painterResource(R.drawable.amity_ic_lock1),
+                            painter = painterResource(CommonR.drawable.amity_ic_lock1),
                             contentDescription = "Private",
                             tint = AmityTheme.colors.baseShade1,
                             modifier = Modifier
@@ -1453,7 +1536,7 @@ private fun EventTitleSection(event: AmityEvent) {
                     // Verified badge if official
                     if (community.isOfficial()) {
                         Image(
-                            painter = painterResource(R.drawable.amity_ic_verified),
+                            painter = painterResource(CommonR.drawable.amity_ic_verified),
                             contentDescription = "Verified",
                             modifier = Modifier
                                 .padding(start = 4.dp)
@@ -1590,9 +1673,9 @@ private fun EventDetailsSection(
         ) {
             // Event type icon with border (similar to calendar style)
             val eventTypeIcon = when (event.getType()) {
-                AmityEventType.IN_PERSON -> R.drawable.amity_ic_event_detail_location
-                AmityEventType.VIRTUAL -> R.drawable.amity_ic_event_detail_video
-                else -> R.drawable.amity_ic_event_detail_location
+                AmityEventType.IN_PERSON -> CommonR.drawable.amity_ic_event_detail_location
+                AmityEventType.VIRTUAL -> CommonR.drawable.amity_ic_event_detail_video
+                else -> CommonR.drawable.amity_ic_event_detail_location
             }
             Box(
                 modifier = Modifier
@@ -1668,7 +1751,7 @@ private fun EventDetailsSection(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.amity_ic_event_attendee),
+                        painter = painterResource(CommonR.drawable.amity_ic_event_attendee),
                         contentDescription = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_event_attendees_page_title"),
                         tint = AmityTheme.colors.base,
                         modifier = Modifier.size(20.dp)
@@ -1757,7 +1840,7 @@ private fun EventDetailsSection(
                     val isBrandCreator = event.getCreator()?.isBrand() == true
                     if (isBrandCreator) {
                         Image(
-                            painter = painterResource(id = R.drawable.amity_ic_brand_badge),
+                            painter = painterResource(id = CommonComposeR.drawable.amity_ic_brand_badge),
                             contentDescription = "Brand badge",
                             modifier = Modifier.size(18.dp)
                         )
@@ -1805,7 +1888,7 @@ private fun EventDetailsSection(
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.amity_ic_event_external),
+                        painter = painterResource(CommonR.drawable.amity_ic_event_external),
                         contentDescription = "Set up live stream",
                         tint = amityColorWhite,
                         modifier = Modifier.size(20.dp)
@@ -1890,9 +1973,9 @@ private fun EventDetailsSection(
                     Icon(
                         painter = painterResource(
                             when (isGoing) {
-                                null -> R.drawable.amity_ic_event_rsvp
-                                true -> R.drawable.amity_ic_event_going
-                                false -> R.drawable.amity_ic_event_not_going
+                                null -> CommonR.drawable.amity_ic_event_rsvp
+                                true -> CommonR.drawable.amity_ic_event_going
+                                false -> CommonR.drawable.amity_ic_event_not_going
                             }
                         ),
                         contentDescription = when (isGoing) {

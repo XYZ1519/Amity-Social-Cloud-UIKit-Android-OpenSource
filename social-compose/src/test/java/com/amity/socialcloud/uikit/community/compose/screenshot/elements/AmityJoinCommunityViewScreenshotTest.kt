@@ -45,7 +45,6 @@ class AmityJoinCommunityViewScreenshotTest : BaseScreenshotTest() {
             AmityJoinCommunityView(
                 community = fakeCommunity(),
                 label = "01",
-                showLabelOnAvatar = false,
                 onClick = {},
             )
         }
@@ -63,7 +62,6 @@ class AmityJoinCommunityViewScreenshotTest : BaseScreenshotTest() {
             AmityJoinCommunityView(
                 community = fakeCommunity(),
                 label = "01",
-                showLabelOnAvatar = true,
                 onClick = {},
             )
         }

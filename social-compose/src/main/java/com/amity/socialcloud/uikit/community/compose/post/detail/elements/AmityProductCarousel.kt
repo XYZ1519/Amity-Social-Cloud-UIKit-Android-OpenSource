@@ -44,8 +44,10 @@ import com.amity.socialcloud.uikit.common.behavior.AmityGlobalBehavior
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
+import com.amity.socialcloud.uikit.common.ui.scope.isElementExcluded
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.livestream.room.shared.AmityProductWebViewBottomSheet
 import com.amity.socialcloud.uikit.common.utils.formatCurrencyForLocale
@@ -89,10 +91,13 @@ fun AmityProductCarousel(
     // Skip rendering if no products
     if (products.isEmpty()) return
 
-    var showAllProductsSheet by remember { mutableStateOf(false) }
+    // The gate was only on the cards inside, so Product off emptied the row and
+    // left this Column, its "Products tagged" header and its 12dp of top padding
+    // drawing above the engagement bar. Rule 3: the container goes with its last
+    // visible child, and takes its header with it.
+    if (pageScope.isElementExcluded("product_tag_element")) return
 
-    // Skip rendering if no products fetched
-    if (products.isEmpty()) return
+    var showAllProductsSheet by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val visibleProducts = products.take(MAX_VISIBLE_PRODUCTS)
@@ -333,7 +338,7 @@ private fun SeeMoreButton(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    painter = painterResource(R.drawable.amity_ic_chevron_right),
+                    painter = painterResource(CommonComposeR.drawable.amity_ic_chevron_right),
                     contentDescription = "See more products",
                     tint = AmityTheme.colors.base,
                     modifier = Modifier.size(20.dp)

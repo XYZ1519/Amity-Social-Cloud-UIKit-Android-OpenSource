@@ -58,6 +58,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.model.core.error.AmityError
 import com.amity.socialcloud.sdk.model.core.error.AmityException
+import com.amity.socialcloud.uikit.common.config.AmityUIKitDataGate
+import com.amity.socialcloud.uikit.common.ui.scope.isElementExcluded
+import com.amity.socialcloud.uikit.common.config.AmityUIKitFeature
 import com.amity.socialcloud.uikit.common.model.AmityMessageReactions
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
@@ -69,6 +72,7 @@ import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.isSignedIn
 import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
+import com.amity.socialcloud.uikit.common.R as CommonR
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.livestream.room.shared.AmityProductTaggingButton
 import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
@@ -265,11 +269,21 @@ fun AmityLivestreamMessageComposeBar(
                     }
                 }
                 val maxChar: Int = 200
+                // Both halves of the same question iOS asks as
+                // `viewConfig.isHidden(elementId: .livestreamReaction)`: the module can be
+                // off, or the host can have hidden the element in config.
+                val reactionExcluded = !AmityUIKitDataGate.isOn(AmityUIKitFeature.REACTION) ||
+                        pageScope.isElementExcluded("livestream_reaction")
                 val defaultReaction =
                     AmityMessageReactions.getList().getOrNull(0) ?: AmityMessageReactions.getList()
                         .firstOrNull()
                 if (isPendingApproval) {
                     Box {}
+                } else if (reactionExcluded && messageText.isEmpty()) {
+                    // Nothing belongs in this slot: with `reaction` switched off the like
+                    // button does nothing, and the send button only has work once there is
+                    // text. Emitting neither — rather than an inert button — lets the
+                    // weighted text field take the width back.
                 } else if (messageText.isNotEmpty() || defaultReaction == null) {
                     Button(
                         onClick = {
@@ -327,7 +341,7 @@ fun AmityLivestreamMessageComposeBar(
                         contentPadding = PaddingValues(1.dp)
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.amity_arrow_upward),
+                            painter = painterResource(id = CommonR.drawable.amity_arrow_upward),
                             contentDescription = "Send",
                             modifier = Modifier.size(16.dp)
                         )
@@ -346,7 +360,7 @@ fun AmityLivestreamMessageComposeBar(
                                 .testTag("invite_sheet_button")
                         ) {
                             Image(
-                                painter = painterResource(R.drawable.amity_ic_room_invite_button),
+                                painter = painterResource(CommonR.drawable.amity_ic_room_invite_button),
                                 contentDescription = "",
                                 modifier = Modifier
                                     .size(36.dp)
@@ -366,8 +380,8 @@ fun AmityLivestreamMessageComposeBar(
                                 .testTag("toggle_microphone_button")
                         ) {
                             Image(
-                                painter = if (isMicrophoneMute) { painterResource(R.drawable.amity_ic_room_unmute_button) } else {
-                                    painterResource(R.drawable.amity_ic_room_mute_button)
+                                painter = if (isMicrophoneMute) { painterResource(CommonR.drawable.amity_ic_room_unmute_button) } else {
+                                    painterResource(CommonR.drawable.amity_ic_room_mute_button)
                                 },
                                 contentDescription = "",
                                 modifier = Modifier
@@ -388,7 +402,7 @@ fun AmityLivestreamMessageComposeBar(
                                 .testTag("switch_camera_button")
                         ) {
                             Image(
-                                painter = painterResource(R.drawable.amity_ic_room_switch_camera),
+                                painter = painterResource(CommonR.drawable.amity_ic_room_switch_camera),
                                 contentDescription = "",
                                 modifier = Modifier
                                     .size(36.dp)

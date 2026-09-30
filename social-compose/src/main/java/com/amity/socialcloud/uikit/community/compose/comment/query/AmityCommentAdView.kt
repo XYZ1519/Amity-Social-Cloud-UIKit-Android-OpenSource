@@ -47,11 +47,12 @@ import com.amity.socialcloud.uikit.common.ad.AmityAdInfoSheet
 import com.amity.socialcloud.uikit.common.asset.ImageFromAsset
 import com.amity.socialcloud.uikit.common.ui.elements.AmityAvatarView
 import com.amity.socialcloud.uikit.common.ui.elements.AmityExpandableText
+import com.amity.socialcloud.uikit.common.ui.scope.isComponentExcluded
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposeComponentScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.isVisible
-import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.common.R as CommonR
 import com.google.gson.JsonObject
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 
@@ -62,6 +63,9 @@ fun AmityCommentAdView(
     componentScope: AmityComposeComponentScope? = null,
     ad: AmityAd
 ) {
+    if (isComponentExcluded(componentId = "comment_ad")) {
+        return
+    }
     var showAdInfoSheet by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
     var isVisible by remember {
@@ -90,7 +94,7 @@ fun AmityCommentAdView(
     ) {
         AmityAvatarView(
             image = ad.getAdvertiser()?.getAvatar(),
-            placeholder = R.drawable.amity_ic_default_advertiser,
+            placeholder = CommonR.drawable.amity_ic_default_advertiser,
             iconPadding = 8.dp,
             modifier = modifier.testTag("comment_list/comment_bubble_avatar")
         )
@@ -139,7 +143,7 @@ fun AmityCommentAdView(
                         )
 
                         Icon(
-                            painter = painterResource(id = R.drawable.amity_ic_more_info),
+                            painter = painterResource(id = CommonR.drawable.amity_ic_more_info),
                             contentDescription = null,
                             tint = AmityTheme.colors.baseShade3,
                             modifier = Modifier

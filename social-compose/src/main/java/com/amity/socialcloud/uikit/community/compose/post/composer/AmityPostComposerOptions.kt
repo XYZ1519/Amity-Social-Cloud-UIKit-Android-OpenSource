@@ -27,6 +27,11 @@ sealed class AmityPostComposerOptions : Parcelable {
         val targetId: String? = null,
         val targetType: AmityPostTargetType,
         val community: AmityCommunity? = null,
+        // Share-event-as-post: id of the event to attach. When set, the composer fetches the
+        // AmityEvent to render the attached event card and prefills the title/body below.
+        val attachedEventId: String? = null,
+        val prefilledTitle: String? = null,
+        val prefilledBody: String? = null,
     ) : AmityPostComposerOptions()
 
     data class AmityPostComposerEditClipOptions(

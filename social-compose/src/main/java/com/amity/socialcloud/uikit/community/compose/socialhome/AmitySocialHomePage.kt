@@ -40,6 +40,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.uikit.common.config.AmityUIKitConfigController
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
+import com.amity.socialcloud.uikit.community.compose.socialhome.visibleSocialHomeTabs
 import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
 import com.amity.socialcloud.uikit.common.utils.getText
 import com.amity.socialcloud.uikit.common.utils.isSignedIn
@@ -58,7 +59,7 @@ import com.amity.socialcloud.uikit.community.compose.post.detail.components.Amit
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
 import com.amity.socialcloud.uikit.common.utils.shimmerBackground
-import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.common.R as CommonR
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -123,16 +124,36 @@ fun AmitySocialHomePage(
         }
     }
 
+    // A module can take the landing tab with it. With Post off, Feed and Clip
+    // go too, and the page opened on For You — a tab that no longer has a
+    // button and whose body never draws. Land on the first tab still there.
+
     AmityBasePage(
         pageId = "social_home_page"
     ) {
+        // Inside the page, not outside it: AmityBasePage is what re-reads the
+        // config when it changes, so a correction made above it never sees a
+        // module switched off after the first composition.
+        //
+        // Keyed on the tab, not on the list — the list is rebuilt every
+        // recomposition and an effect keyed on it restarts before scrollToPage
+        // can finish suspending.
+        val visibleHomeTabs = visibleSocialHomeTabs(pageScope = getPageScope(), isSignedInUser = isSignedInUser)
+        if (selectedTab !in visibleHomeTabs) {
+            visibleHomeTabs.firstOrNull()?.let { selectedTab = it }
+        }
+        LaunchedEffect(selectedTab) {
+            if (pagerState.currentPage != selectedTab.ordinal) {
+                pagerState.scrollToPage(selectedTab.ordinal)
+            }
+        }
         Column(
             modifier = modifier
                 .fillMaxSize()
         ) {
             if (onBackClick != null) {
                 Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.amity_ic_back),
+                    imageVector = ImageVector.vectorResource(id = CommonR.drawable.amity_ic_back),
                     contentDescription = "Back",
                     modifier = Modifier
                         .padding(start = 16.dp, top = 12.dp)
@@ -216,8 +237,10 @@ fun AmitySocialHomePage(
                         }
                     }
                 }
-                // Following (renamed from Newsfeed, REQ-003). Hidden for visitor/bot.
-                if (isSignedInUser) {
+                // Following (renamed from Newsfeed, REQ-003). Hidden for visitor/bot,
+                // and with Feed, whose global feed the tab is (PDT-5571) — the same
+                // list the landing rule reads, so the chip and the pager agree.
+                if (AmitySocialHomePageTab.FOLLOWING in visibleHomeTabs) {
                     item {
                         AmityBaseElement(
                             pageScope = getPageScope(),
@@ -342,7 +365,15 @@ fun AmitySocialHomePage(
                             AmityNewsFeedComponent(
                                 pageScope = getPageScope(),
                                 onExploreRequested = {
+                                    // PDT-4754: selecting the tab only moves the tab strip. The
+                                    // pager has userScrollEnabled = false, so it stays on Following
+                                    // unless it is scrolled explicitly -- Explore highlighted the
+                                    // Communities tab and went nowhere. Every other tab switch on
+                                    // this page pairs the two; do the same here.
                                     selectedTab = AmitySocialHomePageTab.COMMUNITIES
+                                    scrollScope.launch {
+                                        pagerState.scrollToPage(2)
+                                    }
                                 }
                             )
                         }

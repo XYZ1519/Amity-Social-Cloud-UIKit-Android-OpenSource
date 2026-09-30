@@ -126,7 +126,7 @@ fun AmityEmptyNewsFeedComponent(
 
                         Text(
                             text = amitySocialConfigString("amity_social_button_explore_community_button"),
-                            style = AmityTheme.typography.bodyLegacy.copy(
+                            style = AmityTheme.typography.bodyBold.copy(
                                 color = amityColorWhite
                             ),
                         )

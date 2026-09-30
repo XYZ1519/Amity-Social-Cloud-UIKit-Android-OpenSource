@@ -87,7 +87,8 @@ import com.amity.socialcloud.uikit.common.utils.closePageWithResult
 import com.amity.socialcloud.uikit.common.utils.getIcon
 import com.amity.socialcloud.uikit.common.utils.shade
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
-import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.common.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.community.compose.community.category.AmityCommunityAddCategoryPageActivity
 import com.amity.socialcloud.uikit.community.compose.community.category.element.AmityCommunityCategoryList
 import com.amity.socialcloud.uikit.community.compose.community.membership.add.AmityCommunityAddMemberPageActivity
@@ -100,7 +101,6 @@ import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySo
 import com.amity.socialcloud.uikit.community.compose.localization.amitySocialConfigString
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
-import com.amity.socialcloud.uikit.common.ui.theme.amityColorPrimaryShade3
 import com.amity.socialcloud.uikit.common.ui.theme.amityDisabledColor
 import com.amity.socialcloud.uikit.community.compose.ui.components.radio.AmityFilledRadioIndicator
 
@@ -438,7 +438,7 @@ fun AmityCommunitySetupPage(
                 Box(
                     modifier = modifier
                         .aspectRatio(2f)
-                        .background(amityColorPrimaryShade3)
+                        .background(AmityTheme.colors.primaryShade3)
                         .background(amityColorBlack.copy(alpha = 0.5f))
                         .clickableWithoutRipple {
                             showMediaCameraSelectionSheet = true
@@ -464,7 +464,7 @@ fun AmityCommunitySetupPage(
                         )
                     }
                     Icon(
-                        painter = painterResource(R.drawable.amity_ic_camera),
+                        painter = painterResource(CommonR.drawable.amity_ic_camera),
                         contentDescription = "Upload avatar",
                         tint = amityColorWhite,
                         modifier = modifier
@@ -623,7 +623,7 @@ fun AmityCommunitySetupPage(
                         )
                     }
                     Icon(
-                        painter = painterResource(R.drawable.amity_ic_chevron_right),
+                        painter = painterResource(CommonComposeR.drawable.amity_ic_chevron_right),
                         contentDescription = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_community_setup_categories_description"),
                         tint = AmityTheme.colors.baseShade2,
                         modifier = modifier

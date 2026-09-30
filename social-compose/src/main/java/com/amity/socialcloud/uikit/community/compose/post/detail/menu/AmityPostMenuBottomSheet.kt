@@ -53,6 +53,7 @@ import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
+import com.amity.socialcloud.uikit.common.R as CommonR
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostCategory
 import com.amity.socialcloud.uikit.community.compose.utils.sharePost
@@ -81,17 +82,24 @@ fun AmityPostMenuBottomSheet(
         if (post.getTarget() is AmityPost.Target.COMMUNITY) {
             val communityId = (post.getTarget() as AmityPost.Target.COMMUNITY).getCommunityId()
             viewModel.checkDeleteCommunityPostPermission(communityId)
+            viewModel.checkEditCommunityPostPermission(communityId)
         } else if (post.getTarget() is AmityPost.Target.USER) {
             viewModel.checkDeleteUserFeedPostPermission()
         }
     }
 
     val postLink = AmityUIKitConfigController.getPostLink(post)
+    val hasPostLink = postLink.isNotEmptyOrBlank()
     val hasDeleteCommunityPostPermission by viewModel.hasDeleteCommunityPostPermission.collectAsState()
 
     val hasDeleteUserFeedPostPermission by viewModel.hasDeleteUserFeedPostPermission.collectAsState()
+    val hasEditCommunityPostPermission by viewModel.hasEditCommunityPostPermission.collectAsState()
 
-    val shouldShowDeletePostOption by remember(post.getPostId()) {
+    val shouldShowDeletePostOption by remember(
+        post.getPostId(),
+        hasDeleteCommunityPostPermission,
+        hasDeleteUserFeedPostPermission,
+    ) {
         derivedStateOf {
             val isCommunityTarget = post.getTarget() is AmityPost.Target.COMMUNITY
 
@@ -101,7 +109,7 @@ fun AmityPostMenuBottomSheet(
                 if (isCommunityTarget) {
                     hasDeleteCommunityPostPermission
                 } else {
-                    false //hasDeleteUserFeedPostPermission
+                    hasDeleteUserFeedPostPermission
                 }
             }
         }
@@ -162,7 +170,7 @@ fun AmityPostMenuBottomSheet(
 
                         if (post.getCreatorId() == AmityCoreClient.getUserId() && !isPollPost && !isLiveStreamPost) {
                             AmityBottomSheetActionItem(
-                                icon = R.drawable.amity_ic_edit_profile,
+                                icon = CommonR.drawable.amity_ic_edit_profile,
                                 text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_post_composer_edit_title"),
                                 modifier = modifier.testTag("bottom_sheet_edit_button"),
                             ) {
@@ -172,9 +180,7 @@ fun AmityPostMenuBottomSheet(
                                     && target is AmityPost.Target.COMMUNITY
                                     && target.getCommunity()
                                         ?.getPostSettings() == AmityCommunityPostSettings.ADMIN_REVIEW_POST_REQUIRED
-                                    && !AmityCoreClient.hasPermission(AmityPermission.EDIT_COMMUNITY_POST)
-                                        .atCommunity(target.getCommunityId()).check()
-                                        .blockingFirst()
+                                    && !hasEditCommunityPostPermission
                                     && post.getReviewStatus() == AmityReviewStatus.PUBLISHED
                                 ) {
                                     viewModel.updateDialogUIState(
@@ -195,7 +201,7 @@ fun AmityPostMenuBottomSheet(
                         val isPollActive = poll?.getClosedAt()?.isAfterNow ?: false
                         if (post.getCreatorId() == AmityCoreClient.getUserId() && post.getReviewStatus() != AmityReviewStatus.UNDER_REVIEW && isPollActive) {
                             AmityBottomSheetActionItem(
-                                icon = R.drawable.ic_amity_ic_poll_create,
+                                icon = CommonR.drawable.ic_amity_ic_poll_create,
                                 text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_close_poll"),
                                 modifier = modifier.testTag("bottom_sheet_edit_button"),
                             ) {
@@ -239,9 +245,9 @@ fun AmityPostMenuBottomSheet(
                             }
                         }
 
-                        if (viewModel.isNotMember(post) && AmityUIKitConfigController.getPostLink(post).isNotEmptyOrBlank()) {
+                        if (viewModel.isNotMember(post) && hasPostLink) {
                             AmityBottomSheetActionItem(
-                                icon = R.drawable.amity_v4_link_icon,
+                                icon = CommonR.drawable.amity_v4_link_icon,
                                 text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_copy_post_link"),
                                 modifier = modifier.testTag("bottom_sheet_copy_link_button"),
                             ) {
@@ -253,7 +259,7 @@ fun AmityPostMenuBottomSheet(
                             }
 
                             AmityBottomSheetActionItem(
-                                icon = R.drawable.amity_v4_share_icon,
+                                icon = CommonR.drawable.amity_v4_share_icon,
                                 text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_share_to"),
                                 modifier = modifier.testTag("bottom_sheet_share_to_button"),
                             ) {
@@ -265,7 +271,7 @@ fun AmityPostMenuBottomSheet(
 
                         if (shouldShowDeletePostOption) {
                             AmityBottomSheetActionItem(
-                                icon = R.drawable.amity_ic_delete_story,
+                                icon = CommonR.drawable.amity_ic_delete_story,
                                 text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_delete_post"),
                                 color = AmityTheme.colors.alert,
                                 modifier = modifier.testTag("bottom_sheet_delete_button"),
@@ -280,31 +286,32 @@ fun AmityPostMenuBottomSheet(
                 }
 
                 is AmityPostMenuSheetUIState.OpenShareSheet -> {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = modifier
-                            .padding(start = 16.dp, end = 16.dp, bottom = 32.dp)
-                    ) {
-                        AmityBottomSheetActionItem(
-                            icon = R.drawable.amity_v4_link_icon,
-                            text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_copy_post_link"),
-                            modifier = modifier.testTag("bottom_sheet_copy_link_button"),
+                    if (hasPostLink) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = modifier
+                                .padding(start = 16.dp, end = 16.dp, bottom = 32.dp)
                         ) {
-                            viewModel.updateSheetUIState(AmityPostMenuSheetUIState.CloseSheet)
-                            // Generate the post link URL (adjust the URL format according to your app's deep linking structure)
-                            // Copy to clipboard
-                            clipboardManager.setText(AnnotatedString(postLink))
-                            AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_link_copied"))
-                        }
+                            AmityBottomSheetActionItem(
+                                icon = CommonR.drawable.amity_v4_link_icon,
+                                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_copy_post_link"),
+                                modifier = modifier.testTag("bottom_sheet_copy_link_button"),
+                            ) {
+                                viewModel.updateSheetUIState(AmityPostMenuSheetUIState.CloseSheet)
+                                // Copy to clipboard
+                                clipboardManager.setText(AnnotatedString(postLink))
+                                AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_snackbar_link_copied"))
+                            }
 
-                        AmityBottomSheetActionItem(
-                            icon = R.drawable.amity_v4_share_icon,
-                            text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_share_to"),
-                            modifier = modifier.testTag("bottom_sheet_share_to_button"),
-                        ) {
-                            viewModel.updateSheetUIState(AmityPostMenuSheetUIState.CloseSheet)
-                            // Open native Android share sheet
-                            sharePost(context, postLink)
+                            AmityBottomSheetActionItem(
+                                icon = CommonR.drawable.amity_v4_share_icon,
+                                text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_share_to"),
+                                modifier = modifier.testTag("bottom_sheet_share_to_button"),
+                            ) {
+                                viewModel.updateSheetUIState(AmityPostMenuSheetUIState.CloseSheet)
+                                // Open native Android share sheet
+                                sharePost(context, postLink)
+                            }
                         }
                     }
                 }

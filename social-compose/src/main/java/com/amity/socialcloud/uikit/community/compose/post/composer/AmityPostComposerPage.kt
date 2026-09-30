@@ -95,6 +95,8 @@ import com.amity.socialcloud.sdk.model.core.product.AmityProduct
 import com.amity.socialcloud.sdk.model.core.producttag.AmityProductTag
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
+import com.amity.socialcloud.uikit.common.config.AmityUIKitDataGate
+import com.amity.socialcloud.uikit.common.config.AmityUIKitFeature
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
 import com.amity.socialcloud.uikit.common.extionsions.extractUrls
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
@@ -109,7 +111,8 @@ import com.amity.socialcloud.uikit.common.utils.closePageWithResult
 import com.amity.socialcloud.uikit.common.utils.getIcon
 import com.amity.socialcloud.uikit.common.utils.getText
 import com.amity.socialcloud.uikit.common.utils.shimmerBackground
-import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.common.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.community.compose.post.composer.components.AltTextConfigMode
 import com.amity.socialcloud.uikit.community.compose.post.composer.components.AltTextMedia
 import com.amity.socialcloud.uikit.community.compose.post.composer.components.AmityAltTextConfigComponent
@@ -117,6 +120,10 @@ import com.amity.socialcloud.uikit.community.compose.post.composer.components.Am
 import com.amity.socialcloud.uikit.community.compose.post.composer.components.AmitySelectedMediaComponent
 import com.amity.socialcloud.uikit.community.compose.post.composer.elements.AmityClipAttachmentElement
 import com.amity.socialcloud.uikit.community.compose.post.composer.elements.AmityMediaAttachmentElement
+import com.amity.socialcloud.uikit.community.compose.community.profile.component.EventCardItem
+import com.amity.socialcloud.uikit.community.compose.community.profile.component.EventCardStyle
+import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityEventPostUnavailableCard
+import com.amity.socialcloud.uikit.community.compose.ui.shimmer.AmityEventCardShimmer
 import com.amity.socialcloud.uikit.community.compose.post.composer.elements.AmityMediaCameraSelectionSheet
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostMediaPlayButton
 import com.amity.socialcloud.uikit.community.compose.post.model.AmityPostMedia
@@ -132,6 +139,15 @@ import com.amity.socialcloud.uikit.community.compose.localization.amitySocialCon
 import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
+
+/**
+ * The EVENT child's data on an event post (dataType "event"), or null when this post isn't an
+ * event post. The event reference and the author's caption both live on this child, so the
+ * composer reads from it in edit mode.
+ */
+private fun AmityPost.eventChildData(): AmityPost.Data.EVENT? =
+    getChildren().firstOrNull { it.getData() is AmityPost.Data.EVENT }
+        ?.getData() as? AmityPost.Data.EVENT
 
 @OptIn(UnstableApi::class)
 @UnstableApi
@@ -205,8 +221,13 @@ fun AmityPostComposerPage(
         viewModel.setComposerOptions(options)
     }
 
-    // Fetch product catalogue settings once when page opens
+    // Fetch product catalogue settings once when page opens.
+    // The console setting is only half the answer: `product` is also a UIKit
+    // module the customer can switch off, and reading the setting alone left the
+    // product tab in the mention sheet — and the tagging affordances that share
+    // this flag — on a build with the module off. Off means no request either.
     LaunchedEffect(Unit) {
+        if (!AmityUIKitDataGate.isOn(AmityUIKitFeature.PRODUCT)) return@LaunchedEffect
         AmityCoreClient.getProductCatalogueSetting()
             .subscribe(
                 { settings -> isProductCatalogueEnabled = settings.enabled },
@@ -280,23 +301,33 @@ fun AmityPostComposerPage(
         }
     }
 
-    // Initialize title text for edit mode
+    // Initialize title text for edit mode, or prefill from a shared event in create mode.
     val postTitle = remember {
-        if (options is AmityPostComposerOptions.AmityPostComposerEditOptions) {
-            (options.post.getData() as? AmityPost.Data.TEXT)?.getTitle() ?: ""
-        } else {
-            ""
+        when (options) {
+            is AmityPostComposerOptions.AmityPostComposerEditOptions ->
+                // The author's caption lives on the parent's TEXT data; for an event post the
+                // caption sits on the event child instead, so fall back to it (never the event name).
+                (options.post.getData() as? AmityPost.Data.TEXT)?.getTitle()
+                    ?: options.post.eventChildData()?.getTitle()
+                    ?: ""
+            is AmityPostComposerOptions.AmityPostComposerCreateOptions ->
+                options.prefilledTitle ?: ""
+            else -> ""
         }
     }
 
-    // Initialize body text for edit mode (excluding title)
+    // Initialize body text for edit mode (excluding title), or prefill from a shared event.
     val postBodyText = remember {
-        if (options is AmityPostComposerOptions.AmityPostComposerEditOptions) {
-            (options.post.getData() as? AmityPost.Data.TEXT)?.getText() ?: ""
-        } else if (options is AmityPostComposerOptions.AmityPostComposerEditClipOptions) {
-            (options.post.getData() as? AmityPost.Data.TEXT)?.getText() ?: ""
-        } else {
-            ""
+        when (options) {
+            is AmityPostComposerOptions.AmityPostComposerEditOptions ->
+                (options.post.getData() as? AmityPost.Data.TEXT)?.getText()
+                    ?: options.post.eventChildData()?.getText()
+                    ?: ""
+            is AmityPostComposerOptions.AmityPostComposerEditClipOptions ->
+                (options.post.getData() as? AmityPost.Data.TEXT)?.getText() ?: ""
+            is AmityPostComposerOptions.AmityPostComposerCreateOptions ->
+                options.prefilledBody ?: ""
+            else -> ""
         }
     }
 
@@ -341,6 +372,22 @@ fun AmityPostComposerPage(
     val postAttachmentPickerEvent by viewModel.postAttachmentPickerEvent.collectAsState()
     val postCreationEvent by viewModel.postCreationEvent.collectAsState()
     val selectedMediaFiles by viewModel.selectedMediaFiles.collectAsState()
+
+    // Share-event-as-post: the attached event (fetched by id) rendered as a card in the composer.
+    // When this post carries an event, media attachment is disabled and the link preview is
+    // suppressed (a link can still be typed, it just won't render a preview card).
+    val selectedEvent by viewModel.selectedEvent.collectAsState()
+    val attachedEventState by viewModel.attachedEventState.collectAsState()
+    val attachedEventId =
+        (options as? AmityPostComposerOptions.AmityPostComposerCreateOptions)?.attachedEventId
+    // Event-post mode covers both create (an event was attached) and edit (the post being edited
+    // is itself an event post). In both cases media/product affordances are hidden and empty
+    // publish is allowed; the difference is only which SDK call the ViewModel makes on save.
+    val editingEventPost = remember(options) {
+        (options as? AmityPostComposerOptions.AmityPostComposerEditOptions)
+            ?.post?.eventChildData() != null
+    }
+    val isEventPost = !attachedEventId.isNullOrBlank() || editingEventPost
     val isAllMediaSuccessfullyUploaded by viewModel.isAllMediaSuccessfullyUploaded.collectAsState()
     val currentMediaProductTags by viewModel.mediaProductTags.collectAsState()
     val currentTextProductTags by viewModel.textProductTags.collectAsState()
@@ -364,13 +411,28 @@ fun AmityPostComposerPage(
         currentMediaProductTags,
         currentTextProductTags,
         originalMediaProductTagIds,
-        originalTextProductTagIds
+        originalTextProductTagIds,
+        selectedEvent,
+        attachedEventState
     ) {
         fun isContentReady(
             titleText: String,
             text: String,
             mediaFiles: List<AmityPostMedia>,
         ): Boolean {
+            // Event posts: the attached event is the content, so the post is ready as soon as the
+            // event has resolved — the body text is not required (and media can't be attached).
+            //
+            // Editing is the exception: an event post outlives its event, so once the event is
+            // known to be gone the text edits must still be saveable (spec: "Event got deleted"
+            // state on PostComposerPage v3). Creating a post against a deleted event stays blocked.
+            if (isEventPost) {
+                return when (attachedEventState) {
+                    is AmityPostComposerPageViewModel.AttachedEventState.Resolved -> true
+                    AmityPostComposerPageViewModel.AttachedEventState.Unavailable -> editingEventPost
+                    AmityPostComposerPageViewModel.AttachedEventState.Loading -> false
+                }
+            }
             return if (mediaFiles.isEmpty()) {
                 // If no attachments, body text must not be empty (body text is mandatory)
                 if (!isCreateClipMode) {
@@ -442,14 +504,36 @@ fun AmityPostComposerPage(
 
     var capturedMediaUri by remember { mutableStateOf(Uri.EMPTY) }
 
+    // Recomputed on every recomposition (selectedMediaFiles is live state) so the
+    // launchers below always register with the current remaining count rather than
+    // one baked in at first composition.
+    val remainingMediaSlots = (MAX_ATTACHMENTS - selectedMediaFiles.size).coerceAtLeast(0)
+
+    // PickMultipleVisualMedia throws if maxItems < 2, so the multi-picker is only ever
+    // launched with 2+ slots remaining; coerceAtLeast(2) here just keeps registration
+    // itself from crashing when fewer remain (the single picker is used instead below).
     val imagePickerLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.PickMultipleVisualMedia(maxItems = remainingMediaSlots.coerceAtLeast(2))
+        ) { uris ->
             viewModel.addMedia(uris, AmityPostMedia.Type.IMAGE)
         }
 
+    val singleImagePickerLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.let { viewModel.addMedia(listOf(it), AmityPostMedia.Type.IMAGE) }
+        }
+
     val videoPickerLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.PickMultipleVisualMedia(maxItems = remainingMediaSlots.coerceAtLeast(2))
+        ) { uris ->
             viewModel.addMedia(uris, AmityPostMedia.Type.VIDEO)
+        }
+
+    val singleVideoPickerLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            uri?.let { viewModel.addMedia(listOf(it), AmityPostMedia.Type.VIDEO) }
         }
 
     val imageCaptureLauncher =
@@ -586,11 +670,21 @@ fun AmityPostComposerPage(
             }
 
             AmityPostAttachmentPickerEvent.OpenImagePicker -> {
-                imagePickerLauncher.launch(PickVisualMediaRequest(mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly))
+                val request = PickVisualMediaRequest(mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly)
+                if (remainingMediaSlots >= 2) {
+                    imagePickerLauncher.launch(request)
+                } else {
+                    singleImagePickerLauncher.launch(request)
+                }
             }
 
             AmityPostAttachmentPickerEvent.OpenVideoPicker -> {
-                videoPickerLauncher.launch(PickVisualMediaRequest(mediaType = ActivityResultContracts.PickVisualMedia.VideoOnly))
+                val request = PickVisualMediaRequest(mediaType = ActivityResultContracts.PickVisualMedia.VideoOnly)
+                if (remainingMediaSlots >= 2) {
+                    videoPickerLauncher.launch(request)
+                } else {
+                    singleVideoPickerLauncher.launch(request)
+                }
             }
 
             AmityPostAttachmentPickerEvent.OpenFilePicker -> {
@@ -684,6 +778,12 @@ fun AmityPostComposerPage(
                 }
 
                 AmityPostCreationEvent.Success -> {
+                    if (isEventPost && !editingEventPost) {
+                        // PDT-4692: this is a success, but it was published on the error channel,
+                        // which renders amity_ic_snack_bar_warning. The design shows the success
+                        // check, which publishSnackbarMessage draws.
+                        AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_event_post_created"))
+                    }
                     context.closePageWithResult(Activity.RESULT_OK)
                 }
 
@@ -741,7 +841,7 @@ fun AmityPostComposerPage(
                     elementId = "close_button"
                 ) {
                     Icon(
-                        painter = if (isCreateClipMode) painterResource(R.drawable.amity_ic_back) else painterResource(
+                        painter = if (isCreateClipMode) painterResource(CommonR.drawable.amity_ic_back) else painterResource(
                             getConfig().getIcon()
                         ),
                         contentDescription = null,
@@ -1049,7 +1149,7 @@ fun AmityPostComposerPage(
                                 )
                         ) {
                             Image(
-                                painter = painterResource(id = R.drawable.amity_ic_play_v4),
+                                painter = painterResource(id = CommonComposeR.drawable.amity_ic_play_v4),
                                 contentDescription = null,
                                 modifier = Modifier
                                     .align(Alignment.Center)
@@ -1285,7 +1385,9 @@ fun AmityPostComposerPage(
                                 .heightIn(max = 220.dp),
                              community = viewModel.community,
                              keyword = queryToken,
-                             productEnabled = isProductCatalogueEnabled,
+                             // Product tags are rejected by the backend on an event post (400),
+                             // so the product-mention affordance must not be offered in event mode.
+                             productEnabled = isProductCatalogueEnabled && !isEventPost,
                              alreadyTaggedProductIds = productMentions.map { it.productId }.toSet() +
                                  currentMediaProductTags.values.flatten().map { it.getProductId() }.toSet(),
                              onDismiss = dismiss,
@@ -1321,9 +1423,11 @@ fun AmityPostComposerPage(
 
 
 
-        // PDT-4615: no !isInEditMode gate here - it is what suppressed the preview when editing
-        // a post. Seeding the links from the post is pointless while that gate stands.
-        if ((detectedUrls.isNotEmpty() || previewMetadata != null) && !isLinkPreviewDismissed && (hasValidMetadata || isLoadingMetadata)) {
+        // PDT-4615: the !isInEditMode gate here is what suppressed the preview when editing a post.
+        // It was removed once already; the pin-event-as-post work added !isEventPost to the old
+        // line in parallel and the merge kept that side, quietly restoring it. Seeding the links
+        // from the post is pointless while this gate stands, so the two must stay removed together.
+        if ((detectedUrls.isNotEmpty() || previewMetadata != null) && !isLinkPreviewDismissed && (hasValidMetadata || isLoadingMetadata) && !isEventPost) {
             item {
                 Column(
                     modifier = Modifier
@@ -1409,7 +1513,7 @@ fun AmityPostComposerPage(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.amity_ic_dismiss_preview),
+                                painter = painterResource(id = CommonR.drawable.amity_ic_dismiss_preview),
                                 contentDescription = "Remove link preview",
                                 tint = amityColorWhite,
                                 modifier = Modifier.size(24.dp)
@@ -1421,6 +1525,35 @@ fun AmityPostComposerPage(
         }
 
 
+
+        // Share-event-as-post: attached event card. Not dismissable — the event is the point of
+        // this post. Shimmer while the event is fetched by id, then the Large event card; if the
+        // event has been deleted or cancelled the card shows its unavailable state and the text
+        // stays editable (edit mode only — see shouldAllowToPost).
+        if (isEventPost) {
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    when (val state = attachedEventState) {
+                        is AmityPostComposerPageViewModel.AttachedEventState.Resolved ->
+                            EventCardItem(
+                                event = state.event,
+                                style = EventCardStyle.Large,
+                                onClick = {},
+                            )
+
+                        AmityPostComposerPageViewModel.AttachedEventState.Unavailable ->
+                            AmityEventPostUnavailableCard()
+
+                        AmityPostComposerPageViewModel.AttachedEventState.Loading ->
+                            AmityEventCardShimmer(style = EventCardStyle.Large)
+                    }
+                }
+            }
+        }
 
         if (options is AmityPostComposerOptions.AmityPostComposerCreateOptions ||
             options is AmityPostComposerOptions.AmityPostComposerEditOptions
@@ -1441,62 +1574,20 @@ fun AmityPostComposerPage(
     } // Close Body Box
     } // Close Column
 
-    // Product tags button - positioned above bottom bar at right (OUTSIDE Column, INSIDE root Box)
-    if (options is AmityPostComposerOptions.AmityPostComposerCreateOptions ||
-        options is AmityPostComposerOptions.AmityPostComposerEditOptions
-    ) {
-        val allDistinctTags by viewModel.allDistinctProductTags.collectAsState(initial = emptyList())
-        if (allDistinctTags.isNotEmpty()) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = attachmentHeightDp + 2.dp)
-                .clickableWithoutRipple { showAllProductTagsDialog = true },
-        ) {
-            // Circular background with icon - light gray color
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(
-                        color = AmityTheme.colors.backgroundShade1,
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.amity_ic_product_tag),
-                    contentDescription = "Product tags",
-                    tint = AmityTheme.colors.base,
-                    modifier = Modifier.size(32.dp)
-                )
-                Box(
-                    modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 4.dp, y = (-4).dp)
-                    .size(20.dp)
-                    .background(
-                        color = AmityTheme.colors.base,
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = allDistinctTags.size.toString(),
-                        style = AmityTheme.typography.captionBold.copy(
-                            color = AmityTheme.colors.background,
-                            fontSize = 10.sp
-                        ),
-                    )
-                }
-            }
-        }
-    }
-}
+    val allDistinctTags by viewModel.allDistinctProductTags.collectAsState(initial = emptyList())
+    // Gated like the other tagging affordances in this composer: isProductCatalogueEnabled is
+    // false while the product module is off, and the tags are dropped on submit in that case.
+    val productTagCount =
+        if (isProductCatalogueEnabled &&
+            (options is AmityPostComposerOptions.AmityPostComposerCreateOptions ||
+                options is AmityPostComposerOptions.AmityPostComposerEditOptions)
+        ) allDistinctTags.size else 0
 
     // Attachment bar - positioned at bottom center (OUTSIDE Column, INSIDE root Box).
-    // PDT-4546: hidden in clip mode, which has no attachment bar.
-    if (options is AmityPostComposerOptions.AmityPostComposerCreateOptions ||
-        options is AmityPostComposerOptions.AmityPostComposerEditOptions
+    // Hidden for event posts: media can't be attached alongside an event.
+    if (!isEventPost &&
+        (options is AmityPostComposerOptions.AmityPostComposerCreateOptions ||
+            options is AmityPostComposerOptions.AmityPostComposerEditOptions)
     ) {
         Box(
             modifier = Modifier
@@ -1508,6 +1599,8 @@ fun AmityPostComposerPage(
             AmityMediaAttachmentElement(
                 modifier = Modifier.fillMaxWidth(),
                 pageScope = getPageScope(),
+                productTagCount = productTagCount,
+                onProductTagClick = { showAllProductTagsDialog = true },
             )
         }
     }
@@ -1727,14 +1820,22 @@ fun AmityPostComposerPage(
         AmityAlertDialog(
             dialogTitle = if (isInEditMode || isEditClipMode) DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_post_will_be_sent_for_review") else DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_title_posts_sent_for_review"),
             dialogText = if (isInEditMode || isEditClipMode) DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_edited_post_pending_approval") else DefaultAmitySocialStringProvider.getInstance().getString("amity_social_modal_dialog_post_pending_approval"),
-            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
-        ) {
-            showPendingPostDialog = false
-            if (isInEditMode || isEditClipMode) {
-                AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_post_sent_for_review"))
-            }
-            context.closePageWithResult(Activity.RESULT_OK)
-        }
+            // PDT-4727: the design pairs this notice with [Cancel] and [OK]; only OK was offered.
+            // Cancel dismisses and leaves the author on the composer -- it cannot recall the
+            // submission, because Pending is emitted after the update has already been accepted.
+            confirmText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_ok"),
+            dismissText = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_cancel"),
+            onConfirmation = {
+                showPendingPostDialog = false
+                if (isInEditMode || isEditClipMode) {
+                    AmityUIKitSnackbar.publishSnackbarMessage(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_post_sent_for_review"))
+                }
+                context.closePageWithResult(Activity.RESULT_OK)
+            },
+            onDismissRequest = {
+                showPendingPostDialog = false
+            },
+        )
     }
 
     RenderAltTextConfigSheet(pageScope = getPageScope())

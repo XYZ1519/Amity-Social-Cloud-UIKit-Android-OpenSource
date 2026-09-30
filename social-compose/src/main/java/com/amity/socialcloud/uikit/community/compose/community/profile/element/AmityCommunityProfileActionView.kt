@@ -65,6 +65,11 @@ import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorWhite
 import com.amity.socialcloud.uikit.common.ui.theme.amityColorBlack
+import com.amity.socialcloud.uikit.common.config.AmityUIKitDataGate
+import com.amity.socialcloud.uikit.common.config.AmityUIKitFeature
+import androidx.paging.PagingData
+import kotlinx.coroutines.flow.flowOf
+import com.amity.socialcloud.uikit.community.compose.dropGatedPostTypes
 
 //@Composable
 //fun AmityCommunityProfileActionView(
@@ -102,7 +107,9 @@ fun AmityCommunityPendingPost(
             AmitySocialBehaviorHelper.communityProfilePageBehavior
         }
         val context = LocalContext.current
-        val isModerator by AmityCoreClient.hasPermission(AmityPermission.EDIT_COMMUNITY)
+        // The pending-posts banner is gated on REVIEW_COMMUNITY_POST (the permission the
+        // approve/decline actions need), not EDIT_COMMUNITY.
+        val hasReviewPermission by AmityCoreClient.hasPermission(AmityPermission.REVIEW_COMMUNITY_POST)
             .atCommunity(community.getCommunityId())
             .check()
             .asFlow()
@@ -117,7 +124,9 @@ fun AmityCommunityPendingPost(
             .collectAsState(initial = false)
 
         val pendingPosts = remember {
-            AmitySocialClient.newFeedRepository()
+            if (!AmityUIKitDataGate.isOn(AmityUIKitFeature.POST)) {
+                flowOf(PagingData.empty())
+            } else AmitySocialClient.newFeedRepository()
                 .getCommunityFeed(community.getCommunityId())
                 .reviewStatus(AmityReviewStatus.UNDER_REVIEW)
                 .dataTypes(AmitySocialBehaviorHelper.supportedPostTypes)
@@ -125,6 +134,7 @@ fun AmityCommunityPendingPost(
                 .matchingOnlyParentPosts(true)
                 .build()
                 .query()
+                .dropGatedPostTypes()
                 .asFlow()
         }.collectAsLazyPagingItems()
 
@@ -153,7 +163,7 @@ fun AmityCommunityPendingPost(
         val bannerContent by remember(
             pendingPostItemCount,
             joinRequestItemCount,
-            isModerator,
+            hasReviewPermission,
             hasAddUserPermission,
             community,
             pendingRequestsStr,
@@ -179,7 +189,7 @@ fun AmityCommunityPendingPost(
                     postReviewEnabled && hasPendingPosts && community.isJoined()
                 val showJoinRequestsInfo =
                     communityRequiresJoinApproval && hasPendingJoinRequests &&
-                            (isModerator || hasAddUserPermission)
+                            hasAddUserPermission
 
                 var title = pendingRequestsStr
                 var desc = ""
@@ -205,8 +215,8 @@ fun AmityCommunityPendingPost(
                     val andLabel = andLabelStr
                     desc = approvalLabel.format("$postText $andLabel $joinRequestText")
                 } else if (showPendingPostsInfo) { // Only Posts
-                    desc = if (isModerator) postsNeedApprovalText else yourPostsPendingText
-                } else if (showJoinRequestsInfo) { // Only Join Requests (implies isModerator)
+                    desc = if (hasReviewPermission) postsNeedApprovalText else yourPostsPendingText
+                } else if (showJoinRequestsInfo) { // Only Join Requests (implies ADD_COMMUNITY_USER)
                     desc = joinRequestsText
                 }
                 Pair(title, desc)

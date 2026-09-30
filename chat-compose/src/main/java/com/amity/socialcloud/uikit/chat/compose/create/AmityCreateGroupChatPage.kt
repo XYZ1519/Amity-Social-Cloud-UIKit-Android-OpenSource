@@ -31,6 +31,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -70,7 +72,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import com.amity.socialcloud.sdk.api.core.AmityCoreClient
 import com.amity.socialcloud.sdk.model.core.user.AmityUser
-import com.amity.socialcloud.uikit.common.compose.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityAvatar
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityAvatarSize
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityAvatarVariant
@@ -192,7 +194,7 @@ fun AmityCreateGroupChatPage(
                     style = AmityButtonStyle.GHOST,
                     hierarchy = AmityButtonHierarchy.SECONDARY,
                     iconSize = AmityIconButtonSize.SIZE32,
-                    icon = CommonR.drawable.amity_ic_cross_r,
+                    icon = CommonComposeR.drawable.amity_ic_cross_r,
                     onClick = { showLeaveConfirmation = true },
                     modifier = Modifier.align(Alignment.CenterStart),
                 )
@@ -281,7 +283,7 @@ fun AmityCreateGroupChatPage(
                             )
                         } else {
                             Icon(
-                                imageVector = ImageVector.vectorResource(id = CommonR.drawable.amity_ic_comments_alt_s),
+                                imageVector = ImageVector.vectorResource(id = CommonComposeR.drawable.amity_ic_comments_alt_s),
                                 contentDescription = null,
                                 tint = AmityTheme.token(AmityColorToken.IconAvatarDefault),
                                 modifier = Modifier.size(48.dp),
@@ -307,7 +309,7 @@ fun AmityCreateGroupChatPage(
                         } else {
                             Icon(
                                 imageVector = ImageVector.vectorResource(
-                                    id = CommonR.drawable.amity_ic_camera_r,
+                                    id = CommonComposeR.drawable.amity_ic_camera_r,
                                 ),
                                 contentDescription = "Change photo",
                                 tint = AmityTheme.token(AmityColorToken.IconAvatarDefault),
@@ -374,8 +376,10 @@ fun AmityCreateGroupChatPage(
                         BasicTextField(
                             value = groupName,
                             onValueChange = { newValue ->
-                                groupName = newValue.take(100)
+                                // Wraps on width, but a return key must not break the line.
+                                groupName = newValue.filterNot { it == '\n' || it == '\r' }.take(100)
                             },
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                             modifier = Modifier.fillMaxWidth(),
                             textStyle = AmityTheme.typography.bodyLegacy.copy(
                                 fontSize = 15.sp,
@@ -434,7 +438,7 @@ fun AmityCreateGroupChatPage(
                         ) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(
-                                    id = CommonR.drawable.amity_ic_earth_africa_s,
+                                    id = CommonComposeR.drawable.amity_ic_earth_africa_s,
                                 ),
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
@@ -482,7 +486,7 @@ fun AmityCreateGroupChatPage(
                         ) {
                             Icon(
                                 imageVector = ImageVector.vectorResource(
-                                    CommonR.drawable.amity_ic_lock_keyhole_r,
+                                    CommonComposeR.drawable.amity_ic_lock_keyhole_r,
                                 ),
                                 contentDescription = null,
                                 modifier = Modifier.size(24.dp),
@@ -599,7 +603,7 @@ fun AmityCreateGroupChatPage(
                                 style = AmityButtonStyle.FILLED,
                                 hierarchy = AmityButtonHierarchy.SECONDARY,
                                 iconSize = AmityIconButtonSize.SIZE32,
-                                icon = CommonR.drawable.amity_ic_camera_r,
+                                icon = CommonComposeR.drawable.amity_ic_camera_r,
                                 onClick = {
                                     showImagePickerSheet = false
                                     cameraPermissionLauncher.launch(arrayOf(Manifest.permission.CAMERA))
@@ -621,7 +625,7 @@ fun AmityCreateGroupChatPage(
                                 style = AmityButtonStyle.FILLED,
                                 hierarchy = AmityButtonHierarchy.SECONDARY,
                                 iconSize = AmityIconButtonSize.SIZE32,
-                                icon = CommonR.drawable.amity_ic_image_r,
+                                icon = CommonComposeR.drawable.amity_ic_image_r,
                                 onClick = {
                                     showImagePickerSheet = false
                                     imagePickerLauncher.launch(
@@ -709,7 +713,7 @@ private fun MemberChip(
                 ) {
                     AmityBadge(
                         variant = AmityBadgeVariant.ICON,
-                        icon = CommonR.drawable.amity_ic_shield_check_s,
+                        icon = CommonComposeR.drawable.amity_ic_shield_check_s,
                         shape = AmityBadgeShape.ROUND,
                         size = AmityBadgeSize.SIZE_16,
                         preset = AmityBadgePreset(
@@ -725,7 +729,7 @@ private fun MemberChip(
                     style = AmityButtonStyle.TRANSPARENT,
                     hierarchy = AmityButtonHierarchy.PRIMARY,
                     iconSize = AmityIconButtonSize.SIZE16,
-                    icon = CommonR.drawable.amity_ic_cross_r,
+                    icon = CommonComposeR.drawable.amity_ic_cross_r,
                     contentDescription = "Remove member",
                     onClick = onRemove,
                     modifier = Modifier
@@ -762,7 +766,7 @@ private fun AddMemberChip(onClick: () -> Unit) {
             style = AmityButtonStyle.FILLED,
             hierarchy = AmityButtonHierarchy.SECONDARY,
             iconSize = AmityIconButtonSize.SIZE40,
-            icon = CommonR.drawable.amity_ic_plus_r,
+            icon = CommonComposeR.drawable.amity_ic_plus_r,
             onClick = onClick,
         )
         Spacer(modifier = Modifier.height(4.dp))

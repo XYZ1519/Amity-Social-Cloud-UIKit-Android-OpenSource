@@ -234,6 +234,11 @@
     <string name="amity_social_button_delete_comment_warning_message">This comment will be permanently deleted.</string>
     <string name="amity_social_button_delete_event">Delete event</string>
     <string name="amity_social_button_delete_message">Delete message</string>
+    <string name="amity_social_button_pin_message">Pin message</string>
+    <string name="amity_social_button_unpin_message">Unpin message</string>
+    <string name="amity_social_label_pinned_message_badge">Pinned</string>
+    <string name="amity_social_label_pinned_message_more">more</string>
+    <string name="amity_social_label_pinned_message_less">less</string>
     <string name="amity_social_button_delete_message_failed">Unable to delete message. Please try again.</string>
     <string name="amity_social_button_delete_post">Delete post</string>
     <string name="amity_social_button_delete_post_title">Delete this post?</string>
@@ -275,6 +280,7 @@
     <string name="amity_social_button_social_home_explore_button">Explore Community</string>
     <string name="amity_social_button_featured">Featured</string>
     <string name="amity_social_button_feed_comment_count_plural">%d comments</string>
+    <string name="amity_social_label_reaction_count_plural">%s reactions</string>
     <string name="amity_social_button_feed_comment_count_singular">%d comment</string>
     <string name="amity_social_button_followers">Followers</string>
     <string name="amity_social_button_user_following_button">Following</string>
@@ -326,6 +332,7 @@
     <string name="amity_social_button_my_communities">My Communities</string>
     <string name="amity_social_button_my_timeline">My timeline</string>
     <string name="amity_social_button_next">Next</string>
+    <string name="amity_social_button_previous">Previous</string>
     <string name="amity_social_button_no">No</string>
     <string name="amity_social_button_image_poll_no_votes">No votes</string>
     <string name="amity_social_button_not_going">Not going</string>
@@ -542,6 +549,13 @@
     <string name="amity_social_label_copy_clip_link">Copy clip link</string>
     <string name="amity_social_label_copy_post_link">Copy post link</string>
     <string name="amity_social_button_copy_event_link">Copy event link</string>
+    <string name="amity_social_button_post_event_to_feed">Post event to feed</string>
+    <string name="amity_social_label_this_event_is_no_longer_available">This event is no longer available</string>
+    <string name="amity_social_label_event_post_creation_success_title">Your event was created successfully</string>
+    <string name="amity_social_label_event_post_creation_success_description">Post it to a feed so more people can find and join.</string>
+    <string name="amity_social_button_post_to_feed">Post to feed</string>
+    <string name="amity_social_button_maybe_later">Maybe later</string>
+    <string name="amity_social_label_private_event_target_banner">This is a private event, it can only be posted to the community it was created in.</string>
     <string name="amity_social_toast_failed_to_copy_link">Failed to copy link</string>
     <string name="amity_social_label_copy_profile_link">Copy profile link</string>
     <string name="amity_social_label_create_account_or_sign_in">Create an account or sign in to continue.</string>
@@ -893,6 +907,12 @@
     <string name="amity_social_status_host_badge">Host</string>
     <string name="amity_social_status_join_community_to_interact_with_live_stream">Join community to interact with live stream</string>
     <string name="amity_social_status_join_live">Join LIVE</string>
+    <!-- Picture-in-Picture window controls. The window is OS-rendered, so these are the
+         action labels the system shows and TalkBack announces. -->
+    <string name="amity_social_livestream_pip_play">Play</string>
+    <string name="amity_social_livestream_pip_pause">Pause</string>
+    <string name="amity_social_livestream_pip_skip_back">Rewind 10 seconds</string>
+    <string name="amity_social_livestream_pip_skip_forward">Forward 10 seconds</string>
     <string name="amity_social_status_live">LIVE</string>
     <string name="amity_social_status_banned_page_title">Live stream</string>
     <string name="amity_social_status_live_stream_duration_label">LIVE %s</string>
@@ -1131,6 +1151,7 @@
     <string name="amity_social_toast_success_updated_community_profile">Successfully updated community profile!</string>
     <string name="amity_social_toast_user_block_failed">Failed to block user. Please try again.</string>
     <string name="amity_social_toast_user_unreport_failed">Failed to unreport user. Please try again.</string>
+    <string name="amity_social_toast_event_post_created">Event posted to feed.</string>
 
     <!-- Restored entries for registry compatibility -->
     <string name="amity_social_button_delete_reply">Delete reply</string>
@@ -1194,7 +1215,7 @@
     <string name="amity_social_toast_waiting_network_toast">Waiting for network…</string>
     <string name="amity_social_toast_accept_invitation_failed">Failed to accept invitation. Please try again.</string>
     <string name="amity_social_toast_decline_invitation_failed">Failed to decline invitation. Please try again.</string>
-    <string name="amity_social_button_explore_community_button">Explore Community</string>
+    <string name="amity_social_button_explore_community_button">Explore community</string>
     <string name="amity_social_label_community_pending_invitations_title">Pending invitations</string>
     <string name="amity_social_modal_event_detail_alert_leave_without_finishing_title">Leave without finishing?</string>
     <string name="amity_social_modal_setup_alert_message">Your progress won\'t be saved and your community won\'t be created.</string>

@@ -1,6 +1,7 @@
 package com.amity.socialcloud.uikit.community.compose.community.profile.component
 
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,6 +21,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -30,7 +33,8 @@ import com.amity.socialcloud.sdk.model.social.event.AmityEventType
 import com.amity.socialcloud.uikit.common.ui.theme.AmityTheme
 import com.amity.socialcloud.uikit.common.ui.theme.amityEventHostBadgeBackground
 import com.amity.socialcloud.uikit.common.utils.clickableWithoutRipple
-import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.common.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.community.compose.event.formatEventTimestamp
 import org.joda.time.DateTime
 import com.amity.socialcloud.uikit.community.compose.localization.amitySocialString
@@ -54,7 +58,7 @@ private fun EventHostBadge(
         contentAlignment = Alignment.Center
     ) {
         Image(
-            painter = painterResource(id = R.drawable.amity_ic_event_host_badge),
+            painter = painterResource(id = CommonR.drawable.amity_ic_event_host_badge),
             contentDescription = "Host badge"
         )
     }
@@ -124,6 +128,10 @@ private fun EventCardLarge(
                 color = AmityTheme.colors.background,
                 shape = RoundedCornerShape(12.dp)
             )
+            .border(
+                BorderStroke(1.dp, AmityTheme.colors.divider),
+                RoundedCornerShape(12.dp)
+            )
             .clickableWithoutRipple { onClick() }
     ) {
         // Image Section with Badge
@@ -142,8 +150,8 @@ private fun EventCardLarge(
                     .build(),
                 contentDescription = "Event cover",
                 contentScale = ContentScale.Crop,
-                placeholder = painterResource(R.drawable.amity_ic_event_list_placeholder),
-                error = painterResource(R.drawable.amity_ic_event_list_placeholder),
+                placeholder = painterResource(CommonR.drawable.amity_ic_event_list_placeholder),
+                error = painterResource(CommonR.drawable.amity_ic_event_list_placeholder),
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -187,7 +195,7 @@ private fun EventCardLarge(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(color = AmityTheme.colors.background)
-                .padding(16.dp)
+                .padding(12.dp)
         ) {
             val context = LocalContext.current
             val startTime = event?.getStartTime()
@@ -196,21 +204,23 @@ private fun EventCardLarge(
             startTime?.let {
                 Text(
                     text = formatEventTimestamp(it, endTime, context),
-                    style = AmityTheme.typography.caption,
-                    color = AmityTheme.colors.baseShade1
+                    style = AmityTheme.typography.captionBold,
+                    color = AmityTheme.colors.base
                 )
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
             Text(
                 text = event?.getTitle() ?: "",
-                style = AmityTheme.typography.title.copy(fontWeight = FontWeight.Bold),
+                style = AmityTheme.typography.bodyBold,
                 color = AmityTheme.colors.base,
-                maxLines = 2
+                textAlign = TextAlign.Start,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(2.dp))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -218,19 +228,18 @@ private fun EventCardLarge(
             ) {
                 Text(
                     text = amitySocialString("amity_social_button_by"),
-                    style = AmityTheme.typography.body,
+                    style = AmityTheme.typography.caption,
                     color = AmityTheme.colors.baseShade1
                 )
                 Text(
                     text = event?.getCreator()?.getDisplayName() ?: amitySocialString("amity_social_label_community_setup_name_title"),
-                    style = AmityTheme.typography.body.copy(fontWeight = FontWeight.Medium),
+                    style = AmityTheme.typography.caption,
                     color = AmityTheme.colors.baseShade1
                 )
-                // TODO: Replace with actual logic - val isBrandCreator = event?.getCreator()?.isBrand() == true
-                val isBrandCreator = true // Force true for testing
+                val isBrandCreator = event?.getCreator()?.isBrand() == true
                 if (isBrandCreator) {
                     Image(
-                        painter = painterResource(id = R.drawable.amity_ic_brand_badge),
+                        painter = painterResource(id = CommonComposeR.drawable.amity_ic_brand_badge),
                         contentDescription = "Brand badge",
                         modifier = Modifier.size(18.dp)
                     )
@@ -278,8 +287,8 @@ private fun EventCardMedium(
                     .build(),
                 contentDescription = "Event cover",
                 contentScale = ContentScale.Crop,
-                placeholder = painterResource(R.drawable.amity_ic_event_list_placeholder),
-                error = painterResource(R.drawable.amity_ic_event_list_placeholder),
+                placeholder = painterResource(CommonR.drawable.amity_ic_event_list_placeholder),
+                error = painterResource(CommonR.drawable.amity_ic_event_list_placeholder),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(141.dp),
@@ -421,8 +430,8 @@ private fun EventCardList(
                     .build(),
                 contentDescription = "Event cover",
                 contentScale = ContentScale.Crop,
-                placeholder = painterResource(R.drawable.amity_ic_event_list_placeholder),
-                error = painterResource(R.drawable.amity_ic_event_list_placeholder),
+                placeholder = painterResource(CommonR.drawable.amity_ic_event_list_placeholder),
+                error = painterResource(CommonR.drawable.amity_ic_event_list_placeholder),
                 modifier = Modifier.fillMaxSize()
             )
 

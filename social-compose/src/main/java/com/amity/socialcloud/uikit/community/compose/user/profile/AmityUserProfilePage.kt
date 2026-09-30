@@ -77,7 +77,8 @@ import com.amity.socialcloud.uikit.common.utils.closePageWithResult
 import com.amity.socialcloud.uikit.common.utils.isSignedIn
 import com.amity.socialcloud.uikit.common.utils.resolvedAvatarUrl
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
-import com.amity.socialcloud.uikit.community.compose.R
+import com.amity.socialcloud.uikit.common.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.community.compose.clip.view.AmityClipFeedPageType
 import com.amity.socialcloud.uikit.community.compose.community.profile.element.AmityVideoAndClipChipSelector
 import com.amity.socialcloud.uikit.community.compose.localization.DefaultAmitySocialStringProvider
@@ -143,7 +144,11 @@ fun AmityUserProfilePage(
     var targetUser by remember(state) { mutableStateOf<AmityUser?>(null) }
 
     var isHeaderSticky by remember { mutableStateOf(false) }
-    val onRefresh = { viewModel.refresh() }
+    var refreshKey by remember { mutableIntStateOf(0) }
+    val onRefresh = {
+        refreshKey++
+        viewModel.refresh()
+    }
     var showAvatarPopupDialog by remember { mutableStateOf(false) }
 
     var showMenuSheet by remember { mutableStateOf(false) }
@@ -187,7 +192,7 @@ fun AmityUserProfilePage(
     val isPrivateFeed = postListState == AmityUserProfilePageViewModel.PostListState.ERROR &&
             isFeedUnauthorized
 
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+
     val feedFilter = listOf(
         DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_user_profile_all_post_title"),
         DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_user_profile_feed_option_community"),
@@ -214,6 +219,13 @@ fun AmityUserProfilePage(
     val mediaTabTitles = listOf(DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_image"), DefaultAmitySocialStringProvider.getInstance().getString("amity_social_tab_tab_videos"), DefaultAmitySocialStringProvider.getInstance().getString("amity_social_tab_tab_clips"))
 
     AmityBasePage("user_profile_page") {
+        val visibleTabs = visibleUserProfileTabs(pageScope = getPageScope())
+        var selectedTab by remember(visibleTabs) {
+            mutableStateOf(visibleTabs.firstOrNull() ?: AmityUserProfilePageTab.FEED)
+        }
+        if (selectedTab !in visibleTabs) {
+            selectedTab = visibleTabs.firstOrNull() ?: AmityUserProfilePageTab.FEED
+        }
         val isUserProfileContentVisible = remember {
             !AmityUIKitConfigController.isExcluded(
                 "${getPageScope().getId()}/*/user_profile_content"
@@ -255,7 +267,7 @@ fun AmityUserProfilePage(
                                 .padding(horizontal = 12.dp, vertical = 16.dp)
                         ) {
                             Icon(
-                                painter = painterResource(R.drawable.amity_ic_back),
+                                painter = painterResource(CommonR.drawable.amity_ic_back),
                                 contentDescription = "Back",
                                 tint = AmityTheme.colors.base,
                                 modifier = Modifier
@@ -283,7 +295,7 @@ fun AmityUserProfilePage(
                                 if (user?.isBrand() == true) {
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Image(
-                                        painter = painterResource(id = R.drawable.amity_ic_brand_badge),
+                                        painter = painterResource(id = CommonComposeR.drawable.amity_ic_brand_badge),
                                         contentDescription = "Brand badge",
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -291,7 +303,7 @@ fun AmityUserProfilePage(
                             }
 
                             Icon(
-                                painter = painterResource(R.drawable.amity_ic_more_horiz),
+                                painter = painterResource(CommonR.drawable.amity_ic_more_horiz),
                                 contentDescription = "Menu",
                                 tint = AmityTheme.colors.base,
                                 modifier = Modifier
@@ -304,9 +316,10 @@ fun AmityUserProfilePage(
                         }
 
                         AmityUserProfileTabRow(
-                            selectedIndex = selectedTabIndex,
+                            tabs = visibleTabs,
+                            selected = selectedTab,
                             onSelect = {
-                                selectedTabIndex = it
+                                selectedTab = it
                             },
                             currentFilter = feedFilter[selectedFilterIndex],
                             onFilterLaunch = {
@@ -325,7 +338,7 @@ fun AmityUserProfilePage(
                     ) {
                         if (AmityCoreClient.isSignedIn()) {
                             Icon(
-                                painter = painterResource(R.drawable.amity_ic_more_horiz),
+                                painter = painterResource(CommonR.drawable.amity_ic_more_horiz),
                                 contentDescription = "Close",
                                 tint = AmityTheme.colors.base,
                                 modifier = Modifier
@@ -361,9 +374,10 @@ fun AmityUserProfilePage(
                         elementId = "user_profile_content",
                     ) {
                         AmityUserProfileTabRow(
-                            selectedIndex = selectedTabIndex,
+                            tabs = visibleTabs,
+                            selected = selectedTab,
                             onSelect = { it ->
-                                selectedTabIndex = it
+                                selectedTab = it
                             },
                             currentFilter = feedFilter[selectedFilterIndex],
                             onFilterLaunch = {
@@ -375,8 +389,8 @@ fun AmityUserProfilePage(
                     }
                 }
                 if (isUserProfileContentVisible) {
-                    when (selectedTabIndex) {
-                    0 -> {
+                    when (selectedTab) {
+                    AmityUserProfilePageTab.FEED -> {
                         AmityUserProfilePageViewModel.PostListState.from(
                             loadState = userPosts.loadState.refresh,
                             itemCount = userPosts.itemCount
@@ -396,10 +410,11 @@ fun AmityUserProfilePage(
                             },
                             postListState = postListState,
                             isBlockedByMe = isBlockedByMe,
+                            refreshKey = refreshKey,
                         )
                     }
 
-                    1 -> {
+                    AmityUserProfilePageTab.MEDIA -> {
                         item {
                             AmityBaseComponent(
                                 componentId = "user_video_feed",
@@ -530,7 +545,7 @@ fun AmityUserProfilePage(
                             .align(Alignment.BottomEnd)
                     ) {
                         Icon(
-                            painter = painterResource(id = R.drawable.amity_ic_plus),
+                            painter = painterResource(id = CommonR.drawable.amity_ic_plus),
                             contentDescription = "create post",
                             tint = amityColorWhite,
                             modifier = Modifier
@@ -607,13 +622,13 @@ fun AmityUserProfilePage(
                             onSuccess = {
                                 getPageScope().showSnackbar(
                                     message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_user_blocked"),
-                                    drawableRes = R.drawable.amity_ic_snack_bar_success,
+                                    drawableRes = CommonComposeR.drawable.amity_ic_snack_bar_success,
                                 )
                             },
                             onError = {
                                 getPageScope().showErrorSnackbar(
                                     message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_block_failed"),
-                                    drawableRes = R.drawable.amity_ic_snack_bar_warning
+                                    drawableRes = CommonComposeR.drawable.amity_ic_snack_bar_warning
                                 )
                             }
                         )
@@ -648,13 +663,13 @@ fun AmityUserProfilePage(
                             onSuccess = {
                                 getPageScope().showSnackbar(
                                     message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_user_unblocked"),
-                                    drawableRes = R.drawable.amity_ic_snack_bar_success,
+                                    drawableRes = CommonComposeR.drawable.amity_ic_snack_bar_success,
                                 )
                             },
                             onError = {
                                 getPageScope().showErrorSnackbar(
                                     message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_user_unblock_failed"),
-                                    drawableRes = R.drawable.amity_ic_snack_bar_warning
+                                    drawableRes = CommonComposeR.drawable.amity_ic_snack_bar_warning
                                 )
                             }
                         )

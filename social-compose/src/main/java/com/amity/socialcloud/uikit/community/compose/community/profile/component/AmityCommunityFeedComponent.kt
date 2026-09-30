@@ -3,7 +3,11 @@ package com.amity.socialcloud.uikit.community.compose.community.profile.componen
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -22,6 +26,12 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.flow.catch
 import java.util.concurrent.TimeUnit
+import com.amity.socialcloud.uikit.common.config.AmityUIKitDataGate
+import com.amity.socialcloud.uikit.common.config.AmityUIKitFeature
+import androidx.paging.PagingData
+import kotlinx.coroutines.flow.flowOf
+import com.amity.socialcloud.uikit.community.compose.dropGatedPostTypes
+import com.amity.socialcloud.uikit.community.compose.dropGatedPinnedPostTypes
 
 @Composable
 fun AmityCommunityFeedComponent(
@@ -41,6 +51,7 @@ fun AmityCommunityFeedComponent(
                 communityId = communityId,
                 placement = AmityPinnedPost.PinPlacement.ANNOUNCEMENT.value
             )
+            .dropGatedPinnedPostTypes()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .asFlow()
@@ -53,6 +64,7 @@ fun AmityCommunityFeedComponent(
                 communityId = communityId,
                 placement = AmityPinnedPost.PinPlacement.DEFAULT.value
             )
+            .dropGatedPinnedPostTypes()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .asFlow()
@@ -65,13 +77,16 @@ fun AmityCommunityFeedComponent(
             communityId = communityId,
         )
 
-        AmitySocialClient.newFeedRepository()
+        if (!AmityUIKitDataGate.isOn(AmityUIKitFeature.POST)) {
+            flowOf(PagingData.empty())
+        } else AmitySocialClient.newFeedRepository()
             .getCommunityFeed(communityId)
             .includeDeleted(false)
             .dataTypes(AmitySocialBehaviorHelper.supportedPostTypes)
             .matchingOnlyParentPosts(true)
             .build()
             .query()
+            .dropGatedPostTypes()
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .onBackpressureBuffer()
@@ -81,8 +96,11 @@ fun AmityCommunityFeedComponent(
             .catch {}
     }.collectAsLazyPagingItems()
 
+    var refreshKey by remember { mutableIntStateOf(0) }
+
     LaunchedEffect(shouldRefresh) {
         if (shouldRefresh) {
+            refreshKey++
             communityPosts.refresh()
         }
     }
@@ -105,7 +123,8 @@ fun AmityCommunityFeedComponent(
                     category = AmityPostCategory.PIN,
                     autoFocusCommentInput = true,
                     )
-            }
+            },
+            refreshKey = refreshKey,
         )
     }
 }

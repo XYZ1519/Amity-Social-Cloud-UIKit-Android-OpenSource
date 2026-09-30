@@ -35,6 +35,7 @@ import com.amity.socialcloud.sdk.model.social.comment.AmityCommentReferenceType
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
 import com.amity.socialcloud.uikit.common.eventbus.AmityUIKitSnackbar
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
+import com.amity.socialcloud.uikit.common.ui.scope.isElementExcluded
 import com.amity.socialcloud.uikit.common.ui.elements.AmityAlertDialog
 import com.amity.socialcloud.uikit.common.ui.elements.AmityPostPreviewLinkView
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
@@ -53,6 +54,7 @@ import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostCatego
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostContentElement
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostEngagementView
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostHeaderElement
+import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostEventElement
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostLivestreamElement
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostMediaElement
 import com.amity.socialcloud.uikit.community.compose.post.detail.elements.AmityPostNonMemberSection
@@ -80,6 +82,7 @@ fun AmityPostContentComponent(
     onClipClick: (childPost: AmityPost) -> Unit = {},
     onTapAction: () -> Unit = {},
     isNonMemberOfCommunity: Boolean? = null,
+    refreshKey: Int = 0,
 ) {
     val context = LocalContext.current
     val behavior = remember {
@@ -257,6 +260,37 @@ fun AmityPostContentComponent(
                     modifier = modifier,
                     post = post
                 )
+            } else if (post.getChildren().any { it.getData() is AmityPost.Data.EVENT }) {
+                AmityPostEventElement(
+                    modifier = modifier,
+                    componentScope = getComponentScope(),
+                    post = post,
+                    style = style,
+                    boldedText = boldedText,
+                    onClick = {
+                        if (!isPostDetailPage) {
+                            onTapAction()
+                        }
+                    },
+                    onEventClick = { eventId ->
+                        behavior.goToEventDetailPage(
+                            context = context,
+                            eventId = eventId,
+                        )
+                    },
+                    onMentionedUserClick = {
+                        behavior.goToUserProfilePage(
+                            context = context,
+                            userId = it,
+                        )
+                    },
+                    onHashtagClick = {
+                        behavior.goToGlobalSearchPage(
+                            context = context,
+                            prefilledText = it
+                        )
+                    }
+                )
             } else if (post.getChildren().any { it.getData() is AmityPost.Data.POLL }) {
 
                 AmityPostPollElement(
@@ -321,7 +355,8 @@ fun AmityPostContentComponent(
                         } else {
                             onClipClick(it)
                         }
-                    }
+                    },
+                    refreshKey = refreshKey,
                 )
             } else {
                 AmityPostContentElement(
@@ -353,7 +388,8 @@ fun AmityPostContentComponent(
                 )
                 AmityPostMediaElement(
                     modifier = modifier,
-                    post = post
+                    post = post,
+                    refreshKey = refreshKey,
                 )
             }
 
@@ -380,7 +416,12 @@ fun AmityPostContentComponent(
                 }
             )
 
-            if (!isPostDetailPage && post.getCommentCount() > 0) {
+            // The latest-comment preview under a post in the feed. It renders a
+            // comment, its reactions and a Reply, and none of that carried an id
+            // — with Comment switched off the button went and the preview stayed.
+            if (!isPostDetailPage && post.getCommentCount() > 0 &&
+                !getComponentScope().isElementExcluded("comment_button")
+            ) {
                 post.getLatestComments()
                     .firstOrNull { !it.isDeleted() && it.getFlagCount() == 0 }
                     ?.let { latestComment ->

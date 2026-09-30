@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import com.amity.socialcloud.uikit.sample.login.theme.SampleChevron
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +63,10 @@ fun SelectModuleScreen(
     onSocialClick: () -> Unit,
     onChangeUser: () -> Unit,
     onLoggedOut: () -> Unit,
+    onModuleFlagsClick: () -> Unit = {},
+    onDiscoveryWidgetClick: () -> Unit,
+    onUserProfileClick: () -> Unit,
+    onVisitorUsageLimitClick: () -> Unit,
 ) {
     val config by viewModel.config.collectAsState()
     val loggedInUserId by viewModel.loggedInUserId.collectAsState()
@@ -204,6 +209,65 @@ fun SelectModuleScreen(
                     Text("Re-sync Network Config", fontSize = 15.sp, color = Ink)
                     Text("Enabled when Sync = ON", fontSize = 11.sp, color = Muted)
                 }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Phase 1 modules — what the network grants this session, kept current
+            // as the entitlement lands after login.
+            val moduleSummary = rememberModuleSummary("sample-module-card-select")
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = CardBg),
+                modifier = Modifier
+                    .padding(horizontal = 14.dp)
+                    .clickable(onClick = onModuleFlagsClick),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 11.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column {
+                        Text("Phase 1 Modules", fontSize = 15.sp, color = Ink)
+                        Text(
+                            moduleSummary,
+                            fontSize = 11.sp, color = Muted,
+                            modifier = Modifier.padding(top = 3.dp),
+                        )
+                    }
+                    Text("›", fontSize = 18.sp, color = SampleChevron)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = CardBg),
+                modifier = Modifier.padding(horizontal = 14.dp),
+            ) {
+                ModuleRow(
+                    icon = "\uD83E\uDDEA",
+                    title = "Discovery Widget",
+                    subtitle = "Topic pool test harness \u2192",
+                    onClick = onDiscoveryWidgetClick,
+                )
+                RowDivider()
+                ModuleRow(
+                    icon = "\uD83D\uDC64",
+                    title = "User Profile",
+                    subtitle = "Your own profile page \u2192",
+                    onClick = onUserProfileClick,
+                )
+                RowDivider()
+                ModuleRow(
+                    icon = "\uD83D\uDEAB",
+                    title = "Visitor Usage Limit",
+                    subtitle = "Limit page \u2192",
+                    onClick = onVisitorUsageLimitClick,
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))

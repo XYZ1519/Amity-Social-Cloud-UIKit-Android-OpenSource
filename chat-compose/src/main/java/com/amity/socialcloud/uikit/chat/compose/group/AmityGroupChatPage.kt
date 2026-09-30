@@ -48,7 +48,7 @@ import com.amity.socialcloud.uikit.chat.compose.live.mention.AmityMentionSuggest
 import com.amity.socialcloud.uikit.chat.compose.localization.amityChatString
 import com.amity.socialcloud.uikit.chat.compose.message.element.AmityChatHeaderSkeleton
 import com.amity.socialcloud.uikit.chat.compose.message.element.AmityChatWaitingForNetworkRow
-import com.amity.socialcloud.uikit.common.compose.R as CommonR
+import com.amity.socialcloud.uikit.common.compose.R as CommonComposeR
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityAvatar
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityAvatarSize
 import com.amity.socialcloud.uikit.common.ui.atoms.AmityAvatarStyle
@@ -105,6 +105,10 @@ fun AmityGroupChatPage(
 
 
     val isUserMuted = membership?.isMuted() == true
+
+    // Per-action channel permissions, replacing the old channel-moderator role check.
+    val canDeleteMessage by remember { viewModel.canDeleteMessage() }.collectAsState(initial = false)
+    val canBypassMute by remember { viewModel.canBypassChannelMute() }.collectAsState(initial = false)
     val headerAvatarUrl = channel?.getAvatar()?.getUrl(AmityImage.Size.LARGE)
     var showAvatarFullScreen by remember { mutableStateOf(false) }
 
@@ -145,7 +149,7 @@ fun AmityGroupChatPage(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        imageVector = ImageVector.vectorResource(id = CommonR.drawable.amity_ic_chevron_left),
+                        imageVector = ImageVector.vectorResource(id = CommonComposeR.drawable.amity_ic_chevron_left),
                         contentDescription = "Back",
                         modifier = Modifier
                             .size(24.dp)
@@ -182,7 +186,7 @@ fun AmityGroupChatPage(
                         .weight(1f)
                         .fillMaxWidth(),
                     variant = AmityEmptyStateVariant.ICON,
-                    icon = CommonR.drawable.amity_ic_comment_exclamation_l,
+                    icon = CommonComposeR.drawable.amity_ic_comment_exclamation_l,
                     title = amityChatString("chat.error.banned.chat.title"),
                     description = amityChatString("chat.error.banned.chat.sub.title"),
                 )
@@ -196,7 +200,7 @@ fun AmityGroupChatPage(
                     AmityGroupChatMessageList(
                         pageScope = getPageScope(),
                         viewModel = viewModel,
-                        isModerator = memberRoles[AmityCoreClient.getUserId()]?.any { it.contains(AmityConstants.CHANNEL_MODERATOR_ROLE) } == true,
+                        canDeleteMessage = canDeleteMessage,
                         memberRoles = memberRoles,
                         isUserMuted = isUserMuted,
                         jumpToMessageId = jumpToMessageId,
@@ -248,7 +252,7 @@ fun AmityGroupChatPage(
                 AmityGroupChatMessageComposer(
                     pageScope = getPageScope(),
                     viewModel = viewModel,
-                    isModerator = memberRoles[AmityCoreClient.getUserId()]?.any { it.contains(AmityConstants.CHANNEL_MODERATOR_ROLE) } == true,
+                    canBypassMute = canBypassMute,
                     isUserMuted = isUserMuted,
                     isUserBanned = membership?.isBanned() == true,
                     isChannelMuted = isChannelMuted,
@@ -292,7 +296,7 @@ private fun GroupChatHeader(
     ) {
         // Back button
         Icon(
-            imageVector = ImageVector.vectorResource(id = CommonR.drawable.amity_ic_chevron_left),
+            imageVector = ImageVector.vectorResource(id = CommonComposeR.drawable.amity_ic_chevron_left),
             contentDescription = "Back",
             modifier = Modifier
                 .size(24.dp)
@@ -312,7 +316,7 @@ private fun GroupChatHeader(
             AmityAvatar(
                 variant = if (!isBanned && !avatarUrl.isNullOrEmpty()) AmityAvatarVariant.Image else AmityAvatarVariant.Icon,
                 imageUrl = avatarUrl.takeUnless { isBanned },
-                icon = CommonR.drawable.amity_ic_comments_alt_s,
+                icon = CommonComposeR.drawable.amity_ic_comments_alt_s,
                 style = AmityAvatarStyle.Squared,
                 size = AmityAvatarSize.Size40,
                 onClick = onAvatarClick,

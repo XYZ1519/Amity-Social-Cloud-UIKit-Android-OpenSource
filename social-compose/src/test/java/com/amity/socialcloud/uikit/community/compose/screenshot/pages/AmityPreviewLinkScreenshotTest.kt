@@ -11,7 +11,6 @@ import com.amity.socialcloud.sdk.core.session.model.SessionState
 import com.amity.socialcloud.sdk.model.core.user.AmityUserType
 import com.amity.socialcloud.uikit.common.config.AmityUIKitConfigController
 import com.amity.socialcloud.uikit.common.linkpreview.AmityPreviewUrl
-import com.amity.socialcloud.uikit.common.token.AmityUserEngine
 import com.amity.socialcloud.uikit.common.linkpreview.models.AmityPreviewMetadataCacheItem
 import com.amity.socialcloud.uikit.common.linkpreview.models.AmityPreviewUrlCacheItem
 import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentViewModel
@@ -84,14 +83,12 @@ class AmityPreviewLinkScreenshotTest {
         AmityUIKitConfigController.setup(ApplicationProvider.getApplicationContext())
         mockkObject(AmityCoreClient)
         mockkObject(AmityPreviewUrl)
-        mockkObject(AmityUserEngine)
         every { AmityCoreClient.getCurrentSessionState() } returns SessionState.NotLoggedIn
         every { AmityCoreClient.observeSessionState() } returns Flowable.never()
         every { AmityCoreClient.getCurrentUserType() } returns AmityUserType.SIGNED_IN
         every { AmityCoreClient.getUserId() } returns "user-001"
         every { AmityCoreClient.getCurrentUser() } returns Flowable.never()
         // hasNickname() = true suppresses UltaNicknameSheet without a 2-second timeout
-        every { AmityUserEngine.hasNickname() } returns true
 
         // Default: URL cache returns a valid cache item so the composable proceeds past the
         // early-return guard and calls fetchMetadataFlow.
@@ -104,7 +101,6 @@ class AmityPreviewLinkScreenshotTest {
     fun tearDown() {
         unmockkObject(AmityCoreClient)
         unmockkObject(AmityPreviewUrl)
-        unmockkObject(AmityUserEngine)
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -690,6 +690,17 @@
     "select_post_target_page/*/my_timeline_avatar": {},
     "select_post_target_page/*/title": {},
     "select_post_target_page/*/my_timeline_text": {},
+    "event_post_target_selection_page/*/*": {},
+    "event_post_target_selection_page/*/close_button": {
+      "image": "closeIcon"
+    },
+    "event_post_target_selection_page/*/my_timeline_avatar": {},
+    "event_post_target_selection_page/*/title": {},
+    "event_post_target_selection_page/*/my_timeline_text": {},
+    "event_detail_page/*/create_event_post_button": {
+      "text": "Post event to feed",
+      "image": ""
+    },
     "select_event_target_page/*/close_button": {
       "image": "closeIcon"
     },
@@ -780,7 +791,7 @@
       "image": "closeCircleButton",
       "background_color": "#80000000"
     },
-    "live_stream_page/*/*": {
+    "livestream_player_page/*/*": {
       "theme": {
         "light": {
           "primary_color": "#1054DE",
@@ -816,7 +827,7 @@
         }
       }
     },
-    "live_stream_page/manage_product_tag_list/*": {
+    "livestream_player_page/manage_product_tag_list/*": {
       "theme": {
         "light": {
           "primary_color": "#1054DE",
@@ -850,7 +861,7 @@
         }
       }
     },
-    "live_stream_page/product_tag_selection/*": {
+    "livestream_player_page/product_tag_selection/*": {
       "theme": {
         "light": {
           "primary_color": "#1054DE",
@@ -884,7 +895,81 @@
         }
       }
     },
-    "live_stream_page/*/livestream_pinned_product": {
+    "livestream_player_page/*/live_viewer_count_element": {},
+    "livestream_player_page/livestream_chat_feed/*": {
+      "theme": {
+        "light": {
+          "primary_color": "#1054DE",
+          "primary_shade1_color": "#4A82F2",
+          "secondary_color": "#292B32",
+          "secondary_shade3_color": "#40434E",
+          "secondary_shade4_color": "#292B32",
+          "base_color": "#EBECEF",
+          "base_shade1_color": "#A5A9B5",
+          "base_shade2_color": "#6E7487",
+          "base_shade3_color": "#40434E",
+          "base_shade4_color": "#292B32",
+          "base_inverse_color": "#FFFFFF",
+          "alert_color": "#FA4D30",
+          "background_color": "#191919",
+          "background_shade1_color": "#40434E"
+        },
+        "dark": {
+          "primary_color": "#1054DE",
+          "primary_shade1_color": "#4A82F2",
+          "secondary_color": "#292B32",
+          "secondary_shade3_color": "#40434E",
+          "secondary_shade4_color": "#292B32",
+          "base_color": "#EBECEF",
+          "base_shade1_color": "#A5A9B5",
+          "base_shade2_color": "#6E7487",
+          "base_shade3_color": "#40434E",
+          "base_shade4_color": "#292B32",
+          "base_inverse_color": "#FFFFFF",
+          "alert_color": "#FA4D30",
+          "background_color": "#191919",
+          "background_shade1_color": "#40434E"
+        }
+      }
+    },
+    "create_livestream_page/livestream_chat_feed/*": {
+      "theme": {
+        "light": {
+          "primary_color": "#1054DE",
+          "primary_shade1_color": "#4A82F2",
+          "secondary_color": "#292B32",
+          "secondary_shade3_color": "#40434E",
+          "base_color": "#EBECEF",
+          "base_shade1_color": "#A5A9B5",
+          "base_shade2_color": "#6E7487",
+          "base_shade3_color": "#40434E",
+          "base_shade4_color": "#292B32",
+          "base_inverse_color": "#FFFFFF",
+          "alert_color": "#FA4D30",
+          "background_color": "#191919",
+          "background_shade1_color": "#40434E"
+        },
+        "dark": {
+          "primary_color": "#1054DE",
+          "primary_shade1_color": "#4A82F2",
+          "secondary_color": "#292B32",
+          "secondary_shade3_color": "#40434E",
+          "base_color": "#EBECEF",
+          "base_shade1_color": "#A5A9B5",
+          "base_shade2_color": "#6E7487",
+          "base_shade3_color": "#40434E",
+          "base_shade4_color": "#292B32",
+          "base_inverse_color": "#FFFFFF",
+          "alert_color": "#FA4D30",
+          "background_color": "#191919",
+          "background_shade1_color": "#40434E"
+        }
+      }
+    },
+    "*/livestream_chat_feed/pin_message_button": {},
+    "*/livestream_chat_feed/pinned_message_banner": {},
+    "*/livestream_chat_feed/unpin_message_button": {},
+    "livestream_player_page/*/livestream_pinned_product": {
       "image": "closeCircleButton",
       "theme": {
         "light": {
@@ -1402,11 +1487,23 @@
       }
     },
     "chat": {
-      "enabled_channel_types": ["conversation", "community"],
+      "enabled_channel_types": [
+        "conversation",
+        "community"
+      ],
       "conversation_chat_user_actions": [
-        { "name": "mute", "enabled": true },
-        { "name": "report", "enabled": true },
-        { "name": "block", "enabled": true }
+        {
+          "name": "mute",
+          "enabled": true
+        },
+        {
+          "name": "report",
+          "enabled": true
+        },
+        {
+          "name": "block",
+          "enabled": true
+        }
       ]
     }
   }

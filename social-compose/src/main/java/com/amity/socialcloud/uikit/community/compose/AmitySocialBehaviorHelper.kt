@@ -1,3 +1,5 @@
+@file:OptIn(com.amity.socialcloud.uikit.common.config.AmityUIKitInternalApi::class)
+
 package com.amity.socialcloud.uikit.community.compose
 
 import com.amity.socialcloud.sdk.model.social.post.AmityPost
@@ -27,6 +29,7 @@ import com.amity.socialcloud.uikit.community.compose.search.global.AmitySocialGl
 import com.amity.socialcloud.uikit.community.compose.socialhome.AmitySocialHomePageBehavior
 import com.amity.socialcloud.uikit.community.compose.socialhome.components.AmityCreatePostMenuComponentBehavior
 import com.amity.socialcloud.uikit.community.compose.socialhome.components.AmityExploreComponentBehavior
+import com.amity.socialcloud.uikit.community.compose.discoverywidget.AmityDiscoveryWidgetComponentBehavior
 import com.amity.socialcloud.uikit.community.compose.socialhome.components.AmityGlobalFeedComponentBehavior
 import com.amity.socialcloud.uikit.community.compose.socialhome.components.AmityMyCommunitiesComponentBehavior
 import com.amity.socialcloud.uikit.community.compose.socialhome.components.AmitySocialHomeTopNavigationComponentBehavior
@@ -35,6 +38,7 @@ import com.amity.socialcloud.uikit.community.compose.story.target.AmityStoryTabC
 import com.amity.socialcloud.uikit.community.compose.story.view.AmityViewStoryPageBehavior
 import com.amity.socialcloud.uikit.community.compose.event.detail.AmityEventDetailPageBehavior
 import com.amity.socialcloud.uikit.community.compose.target.event.AmityEventTargetSelectionPageBehavior
+import com.amity.socialcloud.uikit.community.compose.target.eventpost.AmityEventPostTargetSelectionPageBehavior
 import com.amity.socialcloud.uikit.community.compose.target.livestream.AmityLivestreamPostTargetSelectionPageBehavior
 import com.amity.socialcloud.uikit.community.compose.target.poll.AmityPollTargetSelectionPageBehavior
 import com.amity.socialcloud.uikit.community.compose.target.post.AmityPostTargetSelectionPageBehavior
@@ -45,18 +49,28 @@ import com.amity.socialcloud.uikit.community.compose.user.profile.AmityUserProfi
 import com.amity.socialcloud.uikit.community.compose.user.profile.components.AmityUserFeedComponentBehavior
 import com.amity.socialcloud.uikit.community.compose.user.profile.components.AmityUserProfileHeaderComponentBehavior
 import com.amity.socialcloud.uikit.community.compose.user.relationship.AmityUserRelationshipPageBehavior
+import com.amity.socialcloud.uikit.common.config.AmityUIKitDataGate
+import com.amity.socialcloud.uikit.common.config.AmityUIKitFeature
 
 object AmitySocialBehaviorHelper {
 
-    val supportedPostTypes = listOf(
-        AmityPost.DataType.TEXT,
-        AmityPost.DataType.IMAGE,
-        AmityPost.DataType.VIDEO,
-        AmityPost.DataType.POLL,
-        AmityPost.DataType.LIVE_STREAM,
-        AmityPost.DataType.CLIP,
-        AmityPost.DataType.ROOM,
-    )
+    // Nine feeds ask for these types. A request that names dataTypes[]=clip is
+    // asking the backend for clips, so with clip switched off the list has to
+    // drop it - otherwise every one of those feeds makes a clip request, and an
+    // error response about clips reaches a UI that cannot show clips at all.
+    // Computed on each read, not stored: overrides arrive after this object is
+    // first touched.
+    val supportedPostTypes: List<AmityPost.DataType>
+        get() = listOfNotNull(
+            AmityPost.DataType.TEXT,
+            AmityPost.DataType.IMAGE,
+            AmityPost.DataType.VIDEO,
+            AmityPost.DataType.POLL.takeIf { AmityUIKitDataGate.isOn(AmityUIKitFeature.POLL) },
+            AmityPost.DataType.LIVE_STREAM.takeIf { AmityUIKitDataGate.isOn(AmityUIKitFeature.LIVE) },
+            AmityPost.DataType.CLIP.takeIf { AmityUIKitDataGate.isClipOn() },
+            AmityPost.DataType.ROOM.takeIf { AmityUIKitDataGate.isOn(AmityUIKitFeature.LIVE) },
+            AmityPost.DataType.EVENT.takeIf { AmityUIKitDataGate.isOn(AmityUIKitFeature.EVENTS) },
+        )
 
     val supportedStructureTypes = listOf(
         AmityPost.StructureType.TEXT,
@@ -66,6 +80,7 @@ object AmitySocialBehaviorHelper {
         AmityPost.StructureType.LIVESTREAM,
         AmityPost.StructureType.CLIP,
         AmityPost.StructureType.ROOM,
+        AmityPost.StructureType.EVENT,
     )
 
     var showPollResultInDetailFirst = false
@@ -100,6 +115,9 @@ object AmitySocialBehaviorHelper {
     var eventTargetSelectionPageBehavior: AmityEventTargetSelectionPageBehavior =
         AmityEventTargetSelectionPageBehavior()
 
+    var eventPostTargetSelectionPageBehavior: AmityEventPostTargetSelectionPageBehavior =
+        AmityEventPostTargetSelectionPageBehavior()
+
     var eventDetailPageBehavior: AmityEventDetailPageBehavior =
         AmityEventDetailPageBehavior()
 
@@ -131,6 +149,9 @@ object AmitySocialBehaviorHelper {
 
     var globalFeedComponentBehavior: AmityGlobalFeedComponentBehavior =
         AmityGlobalFeedComponentBehavior()
+
+    var discoveryWidgetComponentBehavior: AmityDiscoveryWidgetComponentBehavior =
+        AmityDiscoveryWidgetComponentBehavior()
 
     var communitySearchResultComponentBehavior: AmityCommunitySearchResultComponentBehavior =
         AmityCommunitySearchResultComponentBehavior()

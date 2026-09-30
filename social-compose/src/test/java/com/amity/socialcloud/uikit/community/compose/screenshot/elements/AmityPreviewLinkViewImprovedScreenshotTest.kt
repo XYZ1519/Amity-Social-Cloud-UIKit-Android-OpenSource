@@ -12,7 +12,6 @@ import com.amity.socialcloud.uikit.common.linkpreview.AmityPreviewUrl
 import com.amity.socialcloud.uikit.common.linkpreview.models.AmityPreviewMetadataCacheItem
 import com.amity.socialcloud.uikit.common.linkpreview.models.AmityPreviewNoUrl
 import com.amity.socialcloud.uikit.common.linkpreview.models.AmityPreviewUrlCacheItem
-import com.amity.socialcloud.uikit.common.token.AmityUserEngine
 import com.amity.socialcloud.uikit.community.compose.comment.AmityCommentTrayComponentViewModel
 import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostCategory
 import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostDetailPage
@@ -65,14 +64,12 @@ class AmityPreviewLinkViewImprovedScreenshotTest : BaseScreenshotTest() {
 
         mockkObject(AmityCoreClient)
         mockkObject(AmityPreviewUrl)
-        mockkObject(AmityUserEngine)
 
         every { AmityCoreClient.getCurrentSessionState() } returns SessionState.NotLoggedIn
         every { AmityCoreClient.observeSessionState() } returns Flowable.never()
         every { AmityCoreClient.getCurrentUserType() } returns AmityUserType.SIGNED_IN
         every { AmityCoreClient.getUserId() } returns "user-001"
         every { AmityCoreClient.getCurrentUser() } returns Flowable.never()
-        every { AmityUserEngine.hasNickname() } returns true
 
         // URL-aware mock: url=null → extractUrls() returned empty (URL rejected by regex) →
         // AmityPreviewNoUrl → AmityPostPreviewLinkView returns early → card not shown.
@@ -89,7 +86,6 @@ class AmityPreviewLinkViewImprovedScreenshotTest : BaseScreenshotTest() {
     fun tearDown() {
         unmockkObject(AmityCoreClient)
         unmockkObject(AmityPreviewUrl)
-        unmockkObject(AmityUserEngine)
     }
 
     private fun fakeOwner(post: com.amity.socialcloud.sdk.model.social.post.AmityPost) =

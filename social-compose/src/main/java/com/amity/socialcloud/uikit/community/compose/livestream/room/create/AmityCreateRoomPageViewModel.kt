@@ -793,8 +793,7 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                 when (event) {
                     is AmityCoHostEvent.CoHostInviteRejected -> {
                         AmityUIKitSnackbar.publishSnackbarMessage(
-                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_cohost_declined_invitation"),
-                            offsetFromBottom = 50
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_cohost_declined_invitation")
                         )
                     }
                     is AmityCoHostEvent.CoHostLeft -> {
@@ -802,21 +801,18 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                         val actorInternalId = event.actorInternalId
                         if (hostInternalId != actorInternalId) {
                             AmityUIKitSnackbar.publishSnackbarMessage(
-                                message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_status_cohost_left"),
-                                offsetFromBottom = 50
+                                message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_status_cohost_left")
                             )
                         }
                     }
                     is AmityCoHostEvent.CoHostInviteAccepted -> {
                         AmityUIKitSnackbar.publishSnackbarMessage(
-                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_cohost_accepted_invitation"),
-                            offsetFromBottom = 50
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_cohost_accepted_invitation")
                         )
                     }
                     is AmityCoHostEvent.CoHostRemoved -> {
                         AmityUIKitSnackbar.publishSnackbarMessage(
-                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_status_cohost_removed"),
-                            offsetFromBottom = 50
+                            message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_status_cohost_removed")
                         )
                     }
                     else -> {
@@ -1062,7 +1058,6 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                 .apply()
                 .doOnError {
                     AmityUIKitSnackbar.publishSnackbarMessage(
-                        offsetFromBottom = 50,
                         message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_product_tag_add_failed")
                     )
                 }
@@ -1072,12 +1067,10 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                         val newTaggedProductSize = currentTaggedProduct.size + taggedProducts.size
                         if (newTaggedProductSize > _uiState.value.getRoomPost()?.getProductTags().orEmpty().size) {
                             AmityUIKitSnackbar.publishSnackbarErrorMessage(
-                                offsetFromBottom = 50,
                                 message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_tagged_products_unavailable")
                             )
                         } else {
                             AmityUIKitSnackbar.publishSnackbarMessage(
-                                offsetFromBottom = 50,
                                 message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_product_tags_added")
                             )
                         }
@@ -1112,13 +1105,11 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                 .apply()
                 .doOnError {
                     AmityUIKitSnackbar.publishSnackbarMessage(
-                        offsetFromBottom = 50,
                         message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_product_tag_remove_failed")
                     )
                 }
                 .doOnComplete {
                     AmityUIKitSnackbar.publishSnackbarMessage(
-                        offsetFromBottom = 50,
                         message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_product_tag_removed")
                     )
                 }
@@ -1159,12 +1150,10 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                             )
                         }
                         AmityUIKitSnackbar.publishSnackbarMessage(
-                            offsetFromBottom = 50,
                             message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_product_tag_unpinned")
                         )
                     } else {
                         AmityUIKitSnackbar.publishSnackbarMessage(
-                            offsetFromBottom = 50,
                             message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_label_product_tag_pinned")
                         )
                     }
@@ -1172,12 +1161,10 @@ class AmityCreateRoomPageViewModel constructor(val postId: String? = null) : Ami
                 .doOnError {
                     if (productId == null) {
                         AmityUIKitSnackbar.publishSnackbarErrorMessage(
-                            offsetFromBottom = 50,
                             message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_unpin_product_tag_failed")
                         )
                     } else {
                         AmityUIKitSnackbar.publishSnackbarErrorMessage(
-                            offsetFromBottom = 50,
                             message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_pin_product_tag_failed")
                         )
                     }

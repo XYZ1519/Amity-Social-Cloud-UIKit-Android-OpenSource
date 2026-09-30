@@ -1,6 +1,5 @@
 package com.amity.socialcloud.uikit.community.compose.socialhome.components
 
-import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,30 +17,35 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LocalPinnableContainer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
-import com.amity.socialcloud.uikit.common.ad.AmityListItem
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
+import com.amity.socialcloud.uikit.common.ui.scope.isComponentExcluded
 import com.amity.socialcloud.uikit.common.ui.elements.AmityNewsFeedDivider
 import com.amity.socialcloud.uikit.common.ui.scope.AmityComposePageScope
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
 import com.amity.socialcloud.uikit.community.compose.paging.feed.global.amityGlobalFeedLLS
 import com.amity.socialcloud.uikit.community.compose.paging.feed.global.amityGlobalPinnedFeedLLS
 import com.amity.socialcloud.uikit.community.compose.post.composer.AmityPostComposerHelper
+import com.amity.socialcloud.uikit.community.compose.paging.feed.global.pinnedPostIds
+import com.amity.socialcloud.uikit.community.compose.paging.feed.global.postIds
+import com.amity.socialcloud.uikit.community.compose.paging.feed.global.renderableFeedItemCount
+import com.amity.socialcloud.uikit.community.compose.paging.feed.global.renderablePinnedPosts
 import com.amity.socialcloud.uikit.community.compose.post.detail.AmityPostCategory
 import com.amity.socialcloud.uikit.community.compose.post.detail.components.AmityPostShimmer
 import com.amity.socialcloud.uikit.community.compose.socialhome.AmitySocialHomePageViewModel
 import com.amity.socialcloud.uikit.community.compose.story.target.AmityStoryTabComponent
 import com.amity.socialcloud.uikit.community.compose.story.target.AmityStoryTabComponentType
-import com.amity.socialcloud.uikit.community.compose.story.target.global.AmityStoryShimmer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -60,31 +64,76 @@ fun AmityNewsFeedComponent(
 
     val viewModel = viewModel<AmitySocialHomePageViewModel>()
     val posts = remember { viewModel.getGlobalFeed() }.collectAsLazyPagingItems()
-    val pinnedPosts = remember {
-        viewModel.getGlobalPinnedPosts()
-    }.collectAsState(emptyList())
+    val pinnedPosts = viewModel.globalPinnedPosts.collectAsState()
+    val pinnedPostsState by viewModel.globalPinnedPostsState.collectAsState()
 
     val lazyListState = rememberLazyListState()
-    val postListState by viewModel.postListState.collectAsState()
+    // Renderable content across every source this feed shows. The empty state must reflect what
+    // the user can actually SEE, so each source is filtered by the one shared predicate before
+    // being counted — a source holding only unsupported or deleted posts contributes nothing.
+    val visiblePinnedPosts = if (AmityFeedAuxiliarySources.FOLLOWING_SHOWS_PINNED_POSTS) {
+        pinnedPosts.value.renderablePinnedPosts()
+    } else {
+        emptyList()
+    }
+    val visibleCreatedPosts = if (AmityFeedAuxiliarySources.FOLLOWING_SHOWS_CREATED_POSTS) {
+        AmityPostComposerHelper.getCreatedPosts()
+    } else {
+        emptyList()
+    }
+    val renderableItemCount = posts.itemSnapshotList.items.renderableFeedItemCount(
+        // The set amityGlobalFeedLLS de-dups against, exactly: EVERY pinned id, not only the
+        // renderable ones. A pinned entry whose post payload has not loaded still carries a
+        // postId and still suppresses that paginated row, so counting it here keeps a row the
+        // renderer drops.
+        pinnedPostIds = pinnedPosts.value.pinnedPostIds(),
+        createdPostIds = visibleCreatedPosts.postIds(),
+    ) + visiblePinnedPosts.size + visibleCreatedPosts.size
+
+    // Only ask the paginated load state when NOTHING renderable exists; otherwise the feed has
+    // content and is a success regardless of what the paginated source alone would say.
+    val postListState = derivePostListState(
+        refreshLoadState = posts.loadState.refresh,
+        appendLoadState = posts.loadState.append,
+        renderableItemCount = renderableItemCount,
+        auxiliaryContentState = if (AmityFeedAuxiliarySources.FOLLOWING_SHOWS_PINNED_POSTS) {
+            pinnedPostsState.contentState
+        } else {
+            AmitySocialHomePageViewModel.AuxiliaryContentState.READY
+        },
+    )
+    RequestNextRenderableFeedPage(posts, renderableItemCount)
 
     val isRefreshing by viewModel.isGlobalFeedRefreshing.collectAsState()
     val isPullRefreshIndicatorVisible by viewModel.isPullRefreshIndicatorVisible.collectAsState()
     val isStoryTabVisible by viewModel.isStoryTabVisible.collectAsState()
+    // The story tab reports its own visibility through a callback. Excluded, it
+    // renders nothing and the callback never fires, so the 130dp box it sits in
+    // kept its height — a blank band at the top of the feed where the rings had
+    // been.
+    val isStoryModuleOn = !isComponentExcluded(componentId = "story_tab_component")
 
     val scope = rememberCoroutineScope()
 
+    var refreshKey by remember { mutableIntStateOf(0) }
+
     val onRefresh = {
+        refreshKey++
         viewModel.setGlobalFeedRefreshing(showIndicator = true)
         posts.refresh()
         scope.launch {
             viewModel.refreshGlobalPinnedPosts()
         }
-        AmityPostComposerHelper.clear()
+        viewModel.clearCreatedPostsForRefresh()
     }
 
 
     LaunchedEffect(Unit) {
         viewModel.setGlobalFeedRefreshing(showIndicator = false)
+    }
+
+    LaunchedEffect(postListState) {
+        viewModel.setPostListState(postListState)
     }
 
     LaunchedEffect(isStoryTabVisible) {
@@ -122,49 +171,20 @@ fun AmityNewsFeedComponent(
                 state = lazyListState,
                 modifier = modifier.fillMaxSize()
             ) {
-                AmitySocialHomePageViewModel.PostListState.from(
-                    loadState = posts.loadState.refresh,
-                    itemCount = posts.itemCount,
-                ).let(viewModel::setPostListState)
-
-                item(key = "dummy_story_tab") {
-                    LocalPinnableContainer.current?.pin()
-                    if (isRefreshing) {
-                        Column(
-                            modifier = Modifier.height(126.dp)
-                        ) {
-                            AmityNewsFeedDivider()
-                            LazyRow(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                contentPadding = PaddingValues(start = 16.dp),
-                                modifier = modifier
-                                    .fillMaxWidth()
-                            ) {
-                                items(6) {
-                                    AmityStoryShimmer(modifier)
-                                }
-                            }
-                        }
-                    }
-                }
-
                 item(key = "story_tab") {
                     LocalPinnableContainer.current?.pin()
-                    if (!isRefreshing) {
-                        val storyTabHeight = if (isStoryTabVisible) 130.dp else 0.dp
-                        Box(
-                            modifier = Modifier.height(storyTabHeight)
-                        ) {
-                            AmityStoryTabComponent(
-                                type = AmityStoryTabComponentType.GlobalFeed(
-                                    refreshEventFlow = viewModel.isGlobalFeedRefreshing,
-                                    onStateChanged = {
-                                        viewModel.setStoryTabState(it)
-                                    }
-                                )
+                    val storyTabHeight = if (isStoryTabVisible && isStoryModuleOn) 130.dp else 0.dp
+                    Box(
+                        modifier = Modifier.height(storyTabHeight)
+                    ) {
+                        AmityStoryTabComponent(
+                            type = AmityStoryTabComponentType.GlobalFeed(
+                                refreshEventFlow = viewModel.isGlobalFeedRefreshing,
+                                onStateChanged = {
+                                    viewModel.setStoryTabState(it)
+                                }
                             )
-                        }
+                        )
                     }
                 }
 
@@ -172,13 +192,13 @@ fun AmityNewsFeedComponent(
                     AmityNewsFeedDivider()
                 }
 
-                if (isRefreshing) {
+                if (isRefreshing && renderableItemCount == 0) {
                     items(4) {
                         AmityPostShimmer()
                         AmityNewsFeedDivider()
                     }
                 } else {
-                    if (posts.itemCount > 0) {
+                    if (visiblePinnedPosts.isNotEmpty()) {
                         amityGlobalPinnedFeedLLS(
                             modifier = modifier,
                             pageScope = pageScope,
@@ -199,7 +219,8 @@ fun AmityNewsFeedComponent(
                                     context = context,
                                     postId = it.getPostId()
                                 )
-                            }
+                            },
+                            refreshKey = refreshKey,
                         )
                     }
                 }
@@ -231,7 +252,8 @@ fun AmityNewsFeedComponent(
                     },
                     onExploreCommunityClicked = {
                         onExploreRequested()
-                    }
+                    },
+                    refreshKey = refreshKey,
                 )
             }
         }

@@ -36,7 +36,7 @@ class AmityEventsComponentViewModel : ViewModel() {
             .originType(originType)
 
         originId?.let { query.originId(it) }
-        if (excludeOwnEvents) query.excludeOwnEvents(true)
+        //        if (excludeOwnEvents) query.excludeOwnEvents(true)  // TEMP: local SDK lacks it
 
         return query.build()
             .query()
@@ -65,7 +65,7 @@ class AmityEventsComponentViewModel : ViewModel() {
             .orderBy(AmityEventOrderOption.ASCENDING)
 
         userId?.let { query.userId(it) }
-        if (excludeOwnEvents) query.excludeOwnEvents(true)
+        //        if (excludeOwnEvents) query.excludeOwnEvents(true)  // TEMP: local SDK lacks it
 
         return query.build()
             .query()

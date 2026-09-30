@@ -18,6 +18,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
+import com.amity.socialcloud.uikit.community.compose.livestream.chat.amityLiveChatFeedHeight
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -99,6 +100,8 @@ import com.amity.socialcloud.uikit.common.model.AmityMessageReactions
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseComponent
 import com.amity.socialcloud.uikit.common.ui.base.AmityBaseElement
 import com.amity.socialcloud.uikit.common.ui.base.AmityBasePage
+import com.amity.socialcloud.uikit.common.ui.scope.isElementExcludedOnPage
+import kotlinx.coroutines.flow.flowOf
 import com.amity.socialcloud.uikit.common.ui.elements.AmityAlertDialog
 import com.amity.socialcloud.uikit.common.ui.elements.AmityBottomSheetActionItem
 import com.amity.socialcloud.uikit.common.ui.elements.DisposableEffectWithLifeCycle
@@ -112,11 +115,13 @@ import com.amity.socialcloud.uikit.common.utils.getIcon
 import com.amity.socialcloud.uikit.common.utils.getText
 import com.amity.socialcloud.uikit.common.utils.isVisitor
 import com.amity.socialcloud.uikit.community.compose.AmitySocialBehaviorHelper
+import com.amity.socialcloud.uikit.common.R as CommonR
 import com.amity.socialcloud.uikit.community.compose.R
 import com.amity.socialcloud.uikit.community.compose.livestream.chat.AmityLivestreamMessageComposeBar
 import com.amity.socialcloud.uikit.community.compose.livestream.chat.ChatOverlay
 import com.amity.socialcloud.uikit.community.compose.livestream.chat.FloatingReaction
 import com.amity.socialcloud.uikit.community.compose.livestream.chat.FloatingReactionsOverlay
+import com.amity.socialcloud.uikit.community.compose.livestream.chat.amityLiveChatHiddenByKeyboard
 import com.amity.socialcloud.uikit.community.compose.livestream.chat.ReactionPicker
 import com.amity.socialcloud.uikit.community.compose.livestream.create.AmityCreateLivestreamPageActivity.Companion.EXTRA_PARAM_TARGET_ID
 import com.amity.socialcloud.uikit.community.compose.livestream.create.AmityCreateLivestreamPageActivity.Companion.EXTRA_PARAM_TARGET_TYPE
@@ -308,7 +313,15 @@ fun AmityCreateLivestreamPage(
     var messageText by remember { mutableStateOf("") }
 
 
-    val reactions by remember(uiState.createPostId) {  viewModel.observeLiveReactions(uiState.createPostId ?: "") }.collectAsState(emptyList())
+    // Rule 6: a module switched off makes no request. The live-reaction stream is
+    // opened above AmityBasePage, so the overlay's own wrapper cannot stop it —
+    // and the overlay reserves 182dp whether or not a reaction ever arrives, which
+    // is the band rule 3 forbids. One question, asked once, answers both.
+    val liveReactionVisible = !isElementExcludedOnPage("create_livestream_page", "livestream_reaction")
+    val reactions by remember(liveReactionVisible, uiState.createPostId) {
+        if (liveReactionVisible) viewModel.observeLiveReactions(uiState.createPostId ?: "")
+        else flowOf(emptyList())
+    }.collectAsState(emptyList())
 
     LaunchedEffect(reactions) {
         reactions.map {
@@ -563,7 +576,7 @@ fun AmityCreateLivestreamPage(
                                     }
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Image(
-                                        painter = painterResource(R.drawable.amity_arrow_down),
+                                        painter = painterResource(CommonR.drawable.amity_arrow_down),
                                         contentDescription = "Close Button",
                                         modifier = modifier
                                             .size(16.dp)
@@ -777,7 +790,7 @@ fun AmityCreateLivestreamPage(
                                                             showEndLivestreamDialog = true
                                                         }
                                                         .testTag(getAccessibilityId()),
-                                                    painter = painterResource(id = R.drawable.amity_ic_close),
+                                                    painter = painterResource(id = CommonR.drawable.amity_ic_close),
                                                     contentDescription = "end_livestream_button",
                                                     contentScale = ContentScale.Fit
                                                 )
@@ -830,7 +843,7 @@ fun AmityCreateLivestreamPage(
                                                                     showBottomSheet = true
                                                                 }
                                                                 .testTag(getAccessibilityId()),
-                                                            painter = painterResource(id = R.drawable.amity_ic_more_vertical),
+                                                            painter = painterResource(id = CommonR.drawable.amity_ic_more_vertical),
                                                             contentDescription = "create_livestream_option_button",
                                                             tint = AmityTheme.colors.baseInverse
                                                         )
@@ -1068,13 +1081,16 @@ fun AmityCreateLivestreamPage(
                             .imePadding()
                             .fillMaxSize()
                     ) {
-                        // Floating reactions animation
-                        FloatingReactionsOverlay(
-                            reactions = floatingReactions,
-                            modifier = Modifier
-                                .height(182.dp)
-                                .width(120.dp),
-                        )
+                        // Floating reactions animation. Hidden while the keyboard is open,
+                        // so a reaction never flies over the keyboard while the user types.
+                        if (liveReactionVisible && !amityLiveChatHiddenByKeyboard()) {
+                            FloatingReactionsOverlay(
+                                reactions = floatingReactions,
+                                modifier = Modifier
+                                    .height(182.dp)
+                                    .width(120.dp),
+                            )
+                        }
                         Spacer(modifier = Modifier.height(12.dp))
                         Column(
                             verticalArrangement = Arrangement.Bottom,
@@ -1097,7 +1113,7 @@ fun AmityCreateLivestreamPage(
                             ChatOverlay(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .fillMaxHeight(0.5f)
+                                    .height(amityLiveChatFeedHeight())
                                     .drawWithContent {
                                         drawContent()
                                         // Draw fade to transparent at top
@@ -1201,7 +1217,7 @@ fun AmityCreateLivestreamPage(
                                     .testTag("switch_camera_button")
                             ) {
                                 Image(
-                                    painter = painterResource(R.drawable.amity_v4_switch_camera_button),
+                                    painter = painterResource(CommonR.drawable.amity_v4_switch_camera_button),
                                     contentDescription = "",
                                     modifier = Modifier
                                         .size(36.dp)
@@ -1250,7 +1266,7 @@ fun AmityCreateLivestreamPage(
                     val postLink = if(post != null) AmityUIKitConfigController.getPostLink(post) else ""
                     if(postLink.isNotEmptyOrBlank()) {
                         AmityBottomSheetActionItem(
-                            icon = R.drawable.amity_v4_link_icon,
+                            icon = CommonR.drawable.amity_v4_link_icon,
                             text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_status_copy_live_stream_link"),
                             modifier = Modifier
                                 .padding(horizontal = 12.dp),
@@ -1263,7 +1279,7 @@ fun AmityCreateLivestreamPage(
                         }
 
                         AmityBottomSheetActionItem(
-                            icon = R.drawable.amity_v4_share_icon,
+                            icon = CommonR.drawable.amity_v4_share_icon,
                             text = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_button_share_to"),
                             modifier = Modifier
                                 .padding(horizontal = 12.dp),
@@ -1385,8 +1401,7 @@ fun AmityCreateLivestreamPage(
 
         if (showLivestreamLimitSnackBar) {
             AmityUIKitSnackbar.publishSnackbarErrorMessage(
-                message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_create_livestream_duration_exceed_snackbar"),
-                offsetFromBottom = 130
+                message = DefaultAmitySocialStringProvider.getInstance().getString("amity_social_toast_create_livestream_duration_exceed_snackbar")
             )
             showLivestreamLimitSnackBar = false
         }

@@ -4,6 +4,7 @@ import android.content.Context
 import com.amity.socialcloud.uikit.common.behavior.AmityBaseBehavior
 import com.amity.socialcloud.uikit.community.compose.clip.view.AmityClipFeedPageActivity
 import com.amity.socialcloud.uikit.community.compose.clip.view.AmityClipFeedPageType
+import com.amity.socialcloud.uikit.community.compose.event.detail.AmityEventDetailPageActivity
 import com.amity.socialcloud.uikit.community.compose.user.profile.AmityUserProfilePageActivity
 
 open class AmityPendingPostContentComponentBehavior : AmityBaseBehavior() {
@@ -23,6 +24,21 @@ open class AmityPendingPostContentComponentBehavior : AmityBaseBehavior() {
         val intent = AmityClipFeedPageActivity.newIntent(
             context = context,
             type = AmityClipFeedPageType.NewsFeed(postId)
+        )
+        context.startActivity(intent)
+    }
+
+    /**
+     * Invoked when the event card of a pending event post is tapped. Only a resolved card
+     * navigates — the deleted / unavailable card is non-interactive.
+     */
+    open fun goToEventDetailPage(
+        context: Context,
+        eventId: String,
+    ) {
+        val intent = AmityEventDetailPageActivity.newIntent(
+            context = context,
+            eventId = eventId,
         )
         context.startActivity(intent)
     }

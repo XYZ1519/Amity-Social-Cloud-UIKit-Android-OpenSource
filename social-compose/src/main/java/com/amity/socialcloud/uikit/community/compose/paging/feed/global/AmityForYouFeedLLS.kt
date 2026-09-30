@@ -22,8 +22,14 @@ fun LazyListScope.amityForYouFeedLLS(
     forYouPosts: LazyPagingItems<AmityListItem>,
     pinnedPosts: State<List<AmityPinnedPost>>,
     onClick: (AmityPost) -> Unit,
+    // PDT-4735: every other feed forwards clip taps; this one did not, so the play button on a
+    // clip in the For You feed did nothing.
+    onClipClick: (AmityPost) -> Unit = {},
+    refreshKey: Int = 0,
 ) {
     val createdPosts = AmityPostComposerHelper.getCreatedPosts()
+    val pinnedPostIds = pinnedPosts.value.pinnedPostIds()
+    val createdPostIds = createdPosts.postIds()
 
     // Newly created posts — appear immediately below the pinned section
     items(
@@ -39,7 +45,9 @@ fun LazyListScope.amityForYouFeedLLS(
             pageScope = pageScope,
             style = AmityPostContentComponentStyle.FEED,
             hideMenuButton = false,
-            onTapAction = { onClick(post) }
+            onClipClick = { childPost -> onClipClick(childPost) },
+            onTapAction = { onClick(post) },
+            refreshKey = refreshKey,
         )
         AmityNewsFeedDivider()
     }
@@ -58,16 +66,17 @@ fun LazyListScope.amityForYouFeedLLS(
         when (val item = forYouPosts[idx]) {
             is AmityListItem.PostItem -> {
                 val post = item.post
-                val isFeatured = pinnedPosts.value.any { pinned -> pinned.postId == post.getPostId() }
-                val isInCreatedList = createdPosts.any { it.getPostId() == post.getPostId() }
-                if (!post.isSupportedDataTypes() || isFeatured || isInCreatedList) return@items
+                // Same predicate the empty-state count uses — see AmityFeedRenderability.
+                if (!item.isRenderableFeedItem(pinnedPostIds, createdPostIds)) return@items
 
                 AmityPostContentComponent(
                     post = post,
                     pageScope = pageScope,
                     style = AmityPostContentComponentStyle.FEED,
                     hideMenuButton = false,
-                    onTapAction = { onClick(post) }
+                    onClipClick = { childPost -> onClipClick(childPost) },
+                    onTapAction = { onClick(post) },
+                    refreshKey = refreshKey,
                 )
                 AmityNewsFeedDivider()
             }

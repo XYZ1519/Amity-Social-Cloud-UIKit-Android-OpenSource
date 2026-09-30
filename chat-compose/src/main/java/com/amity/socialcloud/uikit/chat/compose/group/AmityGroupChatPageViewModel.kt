@@ -146,7 +146,20 @@ class AmityGroupChatPageViewModel(
             .catch { }
     }
 
-    fun isChannelModerator(): Flow<Boolean> {
+    // Deleting other users' messages is gated on DELETE_MESSAGE.
+    fun canDeleteMessage(): Flow<Boolean> {
+        return AmityCoreClient.hasPermission(AmityPermission.DELETE_MESSAGE)
+            .atChannel(channelId)
+            .check()
+            .distinctUntilChanged()
+            .subscribeOn(Schedulers.io())
+            .asFlow()
+            .catch { }
+    }
+
+    // Typing while the CHANNEL is muted is gated on MUTE_CHANNEL. A member's own personal mute
+    // (member.isMuted) always blocks typing regardless of this — handled in the composer.
+    fun canBypassChannelMute(): Flow<Boolean> {
         return AmityCoreClient.hasPermission(AmityPermission.MUTE_CHANNEL)
             .atChannel(channelId)
             .check()
